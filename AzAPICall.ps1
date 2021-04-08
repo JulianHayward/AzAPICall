@@ -160,6 +160,26 @@ function createBearerToken($targetEndPoint) {
             $catchResult = $_
         }
     }
+    if ($targetEndPoint -eq "AZDevOps") {
+        $contextForADOToken = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile.DefaultContext
+        $catchResult = "letscheck"
+        try {
+            $newBearerAccessTokenRequest = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($contextForADOToken.Account, $contextForADOToken.Environment, $contextForADOToken.Tenant.Id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "https://app.vssps.visualstudio.com/")
+        }
+        catch {
+            $catchResult = $_
+        }
+    }
+    if ($targetEndPoint -eq "MSPowerBi") {
+        $contextForPowerBIToken = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile.DefaultContext
+        $catchResult = "letscheck"
+        try {
+            $newBearerAccessTokenRequest = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($contextForPowerBIToken.Account, $contextForPowerBIToken.Environment, $contextForPowerBIToken.Tenant.Id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "https://graph.microsoft.com")
+        }
+        catch {
+            $catchResult = $_
+        }
+    }
     if ($catchResult -ne "letscheck") {
         Write-Host "-ERROR processing new bearer token request ($targetEndPoint): $catchResult" -ForegroundColor Red
         Write-Host "Likely your Azure credentials have not been set up or have expired, please run 'Connect-AzAccount' to set up your Azure credentials."
@@ -173,6 +193,12 @@ function createBearerToken($targetEndPoint) {
     if ($targetEndPoint -eq "MSGraphAPI") {
         $script:htBearerAccessToken.AccessTokenMSGraph = $newBearerAccessTokenRequest.AccessToken
     }
+    if ($targetEndPoint -eq "AZDevOps") {
+        $script:htBearerAccessToken.AccessTokenADO = $newBearerAccessTokenRequest.AccessToken
+    }
+    if ($targetEndPoint -eq "MSPowerBi") {
+        $script:htBearerAccessToken.AccessTokenPowerBI = $newBearerAccessTokenRequest.AccessToken
+    }
     $bearerDetails = GetJWTDetails -token $newBearerAccessTokenRequest.AccessToken
     $bearerAccessTokenExpiryDateTime = $bearerDetails.expiryDateTime
     $bearerAccessTokenTimeToExpiry = $bearerDetails.timeToExpiry
@@ -184,7 +210,41 @@ $htBearerAccessToken = [System.Collections.Hashtable]::Synchronized((New-Object 
 
 #API
 #region azapicall
-function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumption, $getGroup, $getApp, $getSp, $getGuests, $caller) {
+function AzAPICall {
+    #($uri, $method, $currentTask, $body, $listenOn, $getConsumption, $getGroup, $getApp, $getSp, $getGuests, $caller)
+    [cmdletbinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$uri,
+
+        [Parameter(Mandatory = $true)][ValidateSet("GET","PUT","DELETE","POST","PATCH")]
+        [string]$method,
+
+        [Parameter(Mandatory = $false)]
+        [string]$currentTask,
+
+        [Parameter(Mandatory = $false)][ValidateSet("Content","ContentProperties","CSV")]
+        [string]$listenOn,
+
+        [Parameter(Mandatory = $false)]
+        [string]$getConsumption,
+
+        [Parameter(Mandatory = $false)]
+        [string]$getGroup, 
+
+        [Parameter(Mandatory = $false)]
+        [string]$getApp, 
+
+        [Parameter(Mandatory = $false)]
+        [string]$getSp, 
+
+        [Parameter(Mandatory = $false)]
+        [string]$getGuests, 
+
+        [Parameter(Mandatory = $false)]
+        [string]$caller
+    )
+
     $tryCounter = 0
     $tryCounterUnexpectedError = 0
     $retryAuthorizationFailed = 5
@@ -208,6 +268,14 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
         if ($arrayAzureManagementEndPointUrls | Where-Object { $uri -match $_ }) {
             $targetEndpoint = "ManagementAPI"
             $bearerToUse = $htBearerAccessToken.AccessTokenManagement
+        }
+        elseif ($uri -like "*dev.azure*") {
+            $targetEndpoint = "AZDevOps"
+            $bearerToUse = $htBearerAccessToken.AccessTokenADO
+        }
+        elseif ($uri -like "*api.powerbi*") {
+            $targetEndpoint = "MSPowerBi"
+            $bearerToUse = $htBearerAccessToken.AccessTokenPowerBI
         }
         else {
             $targetEndpoint = "MSGraphAPI"
@@ -268,7 +336,11 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
         
         if ($unexpectedError -eq $false) {
             if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "   DEBUG: unexpectedError: false" -ForegroundColor $debugForeGroundColor }
-            if ($azAPIRequest.StatusCode -ne 200) {
+            if ($azAPIRequest.StatusCode -eq 203 -and $targetEndPoint -eq "AZDevOps") { 
+                Write-Host "Debug: get devops token or use Private Access Token -> Unauthorize: HTTP Code 203"
+                createBearerToken -targetEndPoint $targetEndpoint
+            }
+            if ($azAPIRequest.StatusCode -notin 200..204) {
                 if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "   DEBUG: apiStatusCode: $($azAPIRequest.StatusCode)" -ForegroundColor $debugForeGroundColor }
                 if ($catchResult.error.code -like "*GatewayTimeout*" -or 
                     $catchResult.error.code -like "*BadGatewayConnection*" -or 
@@ -294,7 +366,8 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                     ($getGuests -and $catchResult.error.code -like "*Authorization_RequestDenied*") -or 
                     $catchResult.error.message -like "*The offer MS-AZR-0110P is not supported*" -or
                     $catchResult.error.code -like "*UnknownError*" -or
-                    $catchResult.error.code -eq "500") {
+                    $catchResult.error.code -eq "500" -or 
+                    $catchResult.error.code -like "*throttled*") {
                     if ($catchResult.error.code -like "*ResponseTooLarge*") {
                         Write-Host "###### LIMIT #################################"
                         Write-Host "Hitting LIMIT getting Policy Compliance States!"
@@ -354,7 +427,12 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                             Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) investigate that error!/exit"
                             Throw "Authorization_RequestDenied"
                         }
-                    }                    
+                    }
+                    if ($catchResult.error.code -like "*throttled*") {
+                        Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again"
+                        Write-Output "Waiting for Azure API Throttling Limits"
+                        Start-Sleep -Seconds 11 #MOST API´s had counters Around 10 Secounds for next API Call without Throttling.
+                    }                         
                 }
                 else {
                     if (-not $catchResult.code -and -not $catchResult.error.code -and -not $catchResult.message -and -not $catchResult.error.message -and -not $catchResult -and $tryCounter -lt 6){
@@ -373,6 +451,10 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
             else {
                 if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "   DEBUG: apiStatusCode: $($azAPIRequest.StatusCode)" -ForegroundColor $debugForeGroundColor }
                 $azAPIRequestConvertedFromJson = ($azAPIRequest.Content | ConvertFrom-Json)
+                if ($listenOn -eq "CSV") {
+                    $azAPIRequestConvertedFromCSV = ($azAPIRequest.Content | ConvertFrom-csv)
+                    $apiCallResultsCollection.Add($azAPIRequestConvertedFromCSV.Content)
+                }
                 if ($listenOn -eq "Content") {       
                     if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "   DEBUG: listenOn=content ($((($azAPIRequestConvertedFromJson) | Measure-Object).count))" -ForegroundColor $debugForeGroundColor }      
                     $null = $apiCallResultsCollection.Add($azAPIRequestConvertedFromJson)
@@ -498,7 +580,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
             }
         }
     }
-    until($azAPIRequest.StatusCode -eq 200 -and -not $isMore)
+    until($azAPIRequest.StatusCode -in 200..204 -and -not $isMore)
     return $apiCallResultsCollection
 }
 $funcAzAPICall = $function:AzAPICall.ToString()
@@ -590,8 +672,7 @@ foreach ($checkAzEnvironment in $checkAzEnvironments) {
     ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name) = @{ }
     ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name).ResourceManagerUrl = $checkAzEnvironment.ResourceManagerUrl
     $arrayAzureManagementEndPointUrls += $checkAzEnvironment.ResourceManagerUrl
-    ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name).ServiceManagementUrl = $checkAzEnvironment.ServiceManagementUrl
-    ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name).ActiveDirectoryAuthority = $checkAzEnvironment.ActiveDirectoryAuthority
+    ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name).AzureKeyVaultUrl = $checkAzEnvironment.AzureKeyVaultServiceEndpointResourceId
     if ($checkAzEnvironment.Name -eq "AzureCloud") {
         ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name).MSGraphUrl = "https://graph.microsoft.com"
     }
