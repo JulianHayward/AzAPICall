@@ -256,8 +256,12 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
         }
         catch {
             try {
-                $catchResultPlain = $_.ErrorDetails.Message
-                $catchResult = ($catchResultPlain | ConvertFrom-Json -ErrorAction SilentlyContinue) 
+                if($listenOn -eq "StatusCode") {
+                    $catchResultPlain = $_.Exception.Response.StatusCode #Accepted error since the resource isn't existing
+                } else {
+                    $catchResultPlain = $_.ErrorDetails.Message
+                    $catchResult = ($catchResultPlain | ConvertFrom-Json -ErrorAction SilentlyContinue) 
+                }
             }
             catch {
                 $catchResult = $catchResultPlain
@@ -268,7 +272,11 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
         
         if ($unexpectedError -eq $false) {
             if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "   DEBUG: unexpectedError: false" -ForegroundColor $debugForeGroundColor }
-            if ($azAPIRequest.StatusCode -ne 200) {
+            if ($listenOn -eq "StatusCode" -and $catchResultPlain -eq "NotFound") { #Accepted error since the resource isn't existing
+                if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "   DEBUG: listenOn=statuscode ($azAPIRequestStatusCode)" -ForegroundColor $debugForeGroundColor }      
+                return $catchResultPlain
+            }
+            if ($azAPIRequest.StatusCode -ne 200 -and $azAPIRequest.StatusCode -ne 204) {
                 if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "   DEBUG: apiStatusCode: $($azAPIRequest.StatusCode)" -ForegroundColor $debugForeGroundColor }
                 if ($catchResult.error.code -like "*GatewayTimeout*" -or 
                     $catchResult.error.code -like "*BadGatewayConnection*" -or 
@@ -393,6 +401,11 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
                         }
                     }
                 }
+                elseif ($listenOn -eq "StatusCode") {
+                    $azAPIRequestStatusCode = $azAPIRequest.StatusCode
+                    if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "   DEBUG: listenOn=statuscode ($azAPIRequestStatusCode)" -ForegroundColor $debugForeGroundColor }      
+                    $null = $apiCallResultsCollection.Add($azAPIRequestStatusCode)
+                }
                 else {       
                     if (($azAPIRequestConvertedFromJson).value) {
                         if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "   DEBUG: listenOn=default(value) value exists ($((($azAPIRequestConvertedFromJson).value | Measure-Object).count))" -ForegroundColor $debugForeGroundColor }
@@ -498,7 +511,7 @@ function AzAPICall($uri, $method, $currentTask, $body, $listenOn, $getConsumptio
             }
         }
     }
-    until($azAPIRequest.StatusCode -eq 200 -and -not $isMore)
+    until(($azAPIRequest.StatusCode -eq 200 -or $azAPIRequest.StatusCode -eq 204) -and -not $isMore)
     return $apiCallResultsCollection
 }
 $funcAzAPICall = $function:AzAPICall.ToString()
@@ -616,16 +629,45 @@ if (-not $NoAADGroupsResolveMembers -or -not $NoAADServicePrincipalResolve) {
 
 
 #EXAMPLE MGMT API
-$startGetSubscriptions = get-date
-$currentTask = "Getting all Subscriptions"
-Write-Host "$currentTask"
-#https://management.azure.com/subscriptions?api-version=2020-01-01
-$uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions?api-version=2019-10-01"
-#$path = "/providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
-$method = "GET"
+# $startGetSubscriptions = get-date
+# $currentTask = "Getting all Subscriptions"
+# Write-Host "$currentTask"
+# #https://management.azure.com/subscriptions?api-version=2020-01-01
+# $uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions?api-version=2019-10-01"
+# #$path = "/providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
+# $method = "GET"
 
-$requestAllSubscriptionsAPI = ((AzAPICall -uri $uri -method $method -currentTask $currentTask))
-$requestAllSubscriptionsAPICount = $requestAllSubscriptionsAPI.Count
+# $requestAllSubscriptionsAPI = ((AzAPICall -uri $uri -method $method -currentTask $currentTask))
+# $requestAllSubscriptionsAPICount = $requestAllSubscriptionsAPI.Count
 
-$endGetSubscriptions = get-date
-Write-Host "Getting all $($requestAllSubscriptionsAPICount) Subscriptions duration: $((NEW-TIMESPAN -Start $startGetSubscriptions -End $endGetSubscriptions).TotalSeconds) seconds" 
+# $endGetSubscriptions = get-date
+# Write-Host "Getting all $($requestAllSubscriptionsAPICount) Subscriptions duration: $((NEW-TIMESPAN -Start $startGetSubscriptions -End $endGetSubscriptions).TotalSeconds) seconds" 
+
+
+#Region kaiaschulz
+
+#init missing variables
+$arrayAPICallTracking = [System.Collections.ArrayList]@()
+$arrayAPICallTrackingCustomDataCollection = [System.Collections.ArrayList]@()
+
+#create bearer token
+createBearerToken -targetEndPoint "ManagementAPI"
+
+$mainUri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)"
+Write-Host "Main URI: $mainUri"
+$apiVersion = "2020-10-01"
+$subscriptionId = "<INSERT YOUR SUBSCRIPTION ID>";
+$resourceGroupName = "<INSERT YOUR RESOURCE GROUP NAME>";
+# https://docs.microsoft.com/en-us/rest/api/resources/resourcegroups/checkexistence
+$uri = $mainUri + "subscriptions/" + $subscriptionId + "/resourcegroups/" + $resourceGroupName + "?api-version=" + $apiVersion
+Write-Host "Request URI: $uri"
+$currentTask = "Resource Group - Check Existence"
+$method = "HEAD"
+$listenOn = "StatusCode"
+$response = AzAPICall -uri $uri -method $method -currentTask $currentTask -listenOn $listenOn
+if($response -eq 204) {
+    Write-Host "Resource group '$resourceGroupName' exists in '$subscriptionId'"
+} elseif ($response -eq "NotFound") {
+    Write-Host "Resource group '$resourceGroupName' do NOT exist in '$subscriptionId'"
+}
+#EndRegion kaiaschulz
