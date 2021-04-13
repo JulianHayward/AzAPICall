@@ -23,3 +23,20 @@ AzApiCall -uri 'https://management.azure.com/subscriptions/**subscriptionId**/re
 ```powershell
 AzAPICall -uri 'https://api.powerbi.com/v1.0/myorg/groups/**GroupID**/datasets/**DataSetId**/refreshes' -Method Post -body { "notifyOption": "MailOnFailure" }
 ```
+
+### Full Code Example
+```powershell
+$startGetSubscriptions = get-date
+$currentTask = "Getting all Subscriptions"
+Write-Host "$currentTask"
+#https://management.azure.com/subscriptions?api-version=2020-01-01
+$uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions?api-version=2019-10-01"
+#$path = "/providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
+$method = "GET"
+
+$requestAllSubscriptionsAPI = ((AzAPICall -uri $uri -method $method -currentTask $currentTask))
+$requestAllSubscriptionsAPICount = $requestAllSubscriptionsAPI.Count
+
+$endGetSubscriptions = get-date
+Write-Host "Getting all $($requestAllSubscriptionsAPICount) Subscriptions duration: $((NEW-TIMESPAN -Start $startGetSubscriptions -End $endGetSubscriptions).TotalSeconds) seconds" 
+```

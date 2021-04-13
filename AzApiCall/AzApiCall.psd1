@@ -3,7 +3,7 @@
 	RootModule = 'AzApiCall.psm1'
 	
 	# Version number of this module.
-	ModuleVersion = '1.0.0'
+	ModuleVersion = '1.0.1'
 	
 	# ID used to uniquely identify this module
 	GUID = '06c8b02a-f5a8-4c1a-8380-f86ab7be973f'

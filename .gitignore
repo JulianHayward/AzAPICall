@@ -4,16 +4,6 @@
 *.psproj
 *TempPoint*
 
-# Ignore staging info from Visual Studio
-library/AzApiCall/.vs/*
-library/AzApiCall/AzApiCall/bin/*
-library/AzApiCall/AzApiCall/obj/*
-
-# ignore PowerShell Studio MetaData
-AzApiCall/AzApiCall.psproj
-AzApiCall/AzApiCall.psproj.bak
-AzApiCall/AzApiCall.psprojs
-AzApiCall/AzApiCall.psproj
 
 # ignore the TestResults
 TestResults/*

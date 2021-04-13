@@ -103,18 +103,8 @@ if ($AutoVersion)
 
 #region Publish
 if ($SkipPublish) { return }
-if ($LocalRepo)
-{
-	# Dependencies must go first
-	Write-PSFMessage -Level Important -Message "Creating Nuget Package for module: PSFramework"
-	New-PSMDModuleNugetPackage -ModulePath (Get-Module -Name PSFramework).ModuleBase -PackagePath .
-	Write-PSFMessage -Level Important -Message "Creating Nuget Package for module: AzApiCall"
-	New-PSMDModuleNugetPackage -ModulePath "$($publishDir.FullName)\AzApiCall" -PackagePath .
-}
-else
-{
+
 	# Publish to Gallery
 	Write-PSFMessage -Level Important -Message "Publishing the AzApiCall module to $($Repository)"
 	Publish-Module -Path "$($publishDir.FullName)\AzApiCall" -NuGetApiKey $ApiKey -Force -Repository $Repository
-}
 #endregion Publish

@@ -56,38 +56,27 @@
         Throw "Error - check the last console output for details"
     }
     $dateTimeTokenCreated = (get-date -format "MM/dd/yyyy HH:mm:ss")
-    <#if ($targetEndPoint -eq "AzManagementAPI") {
-        $script:htBearerAccessToken.AccessTokenManagement = $newBearerAccessTokenRequest.AccessToken
-    }
-    if ($targetEndPoint -eq "MsGraphAPI") {
-        $script:htBearerAccessToken.AccessTokenMSGraph = $newBearerAccessTokenRequest.AccessToken
-    }
-    if ($targetEndPoint -eq "AzDevOps") {
-        $script:htBearerAccessToken.AccessTokenADO = $newBearerAccessTokenRequest.AccessToken
-    }
-    if ($targetEndPoint -eq "MsPowerBi") {
-        $script:htBearerAccessToken.AccessTokenPowerBI = $newBearerAccessTokenRequest.AccessToken
-    }#>
+
     if ($targetEndPoint -eq "AzManagementAPI") {
-        $script:htBearerAccessToken.AzManagementAPI =  [PSCustomObject]@{
+        $script:htBearerAccessToken.AzManagementAPI = [PSCustomObject]@{
             AccessToken = $newBearerAccessTokenRequest.AccessToken
             expire = $newBearerAccessTokenRequest.ExpiresOn
         }
     }
     if ($targetEndPoint -eq "MsGraphAPI") {
-        $script:htBearerAccessToken.MsGraphAPI =  [PSCustomObject]@{
+        $script:htBearerAccessToken.MsGraphAPI = [PSCustomObject]@{
             AccessToken = $newBearerAccessTokenRequest.AccessToken
             expire = $newBearerAccessTokenRequest.ExpiresOn
         }
     }
     if ($targetEndPoint -eq "AzDevOps") {
-        $script:htBearerAccessToken.AzDevOps =  [PSCustomObject]@{
+        $script:htBearerAccessToken.AzDevOps = [PSCustomObject]@{
             AccessToken = $newBearerAccessTokenRequest.AccessToken
             expire = $newBearerAccessTokenRequest.ExpiresOn
         }
     }
     if ($targetEndPoint -eq "MsPowerBi") {
-        $script:htBearerAccessToken.MsPowerBi =  [PSCustomObject]@{
+        $script:htBearerAccessToken.MsPowerBi = [PSCustomObject]@{
             AccessToken = $newBearerAccessTokenRequest.AccessToken
             expire = $newBearerAccessTokenRequest.ExpiresOn
         }
