@@ -1,0 +1,12 @@
+<!-- errors.xml -->
+<errors>
+    <error name="PolicyLimit">
+        <if>
+            <url>"*/Policy/*" </url>
+            <response>"*ToLarge*"</response>
+        </if>
+        <then>  
+            <action>'Throw "Authorization_RequestDenied"'</action>
+        </then>
+    </error>
+</errors>

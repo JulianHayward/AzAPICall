@@ -1,0 +1,11 @@
+﻿TOPIC
+	about_AzApiCall
+	
+SHORT DESCRIPTION
+	Explains how to use the AzApiCall powershell module
+	
+LONG DESCRIPTION
+	<Insert Content here>
+
+KEYWORDS
+	AzApiCall

@@ -1,0 +1,23 @@
+name: Publish to Powershell Gallery
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  PublishtoGallery:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install Prerequisites
+      run: .\build\vsts-prerequisites.ps1
+      shell: powershell
+    - name: Validate
+      run: .\build\vsts-validate.ps1
+      shell: powershell
+    - name: Publish
+      run: .\build\vsts-build.ps1 -ApiKey $env:APIKEY
+      shell: powershell
+      env:
+        APIKEY: ${{ secrets.APIKEY }}
