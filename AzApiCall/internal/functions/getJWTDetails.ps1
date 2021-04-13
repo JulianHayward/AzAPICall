@@ -1,4 +1,19 @@
-﻿function getJWTDetails {
+﻿function getJWTDetails
+{
+    <#
+    .SYNOPSIS
+        Output JWT Token details
+    
+    .DESCRIPTION
+        Output JWT Token details
+    .PARAMETER token
+        token
+
+    .EXAMPLE
+        PS C:\> getJWTDetails
+
+        Get Token
+    #>
     [cmdletbinding()]
     param(
         [Parameter(Mandatory = $true, ValueFromPipeline = $true, Position = 0)]
@@ -17,7 +32,7 @@
         }
     }
 
-    $decodedToken = [System.Text.Encoding]::UTF8.GetString([convert]::FromBase64String($data)) | ConvertFrom-Json 
+    $decodedToken = [System.Text.Encoding]::UTF8.GetString([convert]::FromBase64String($data)) | ConvertFrom-Json
     Write-Verbose "JWT Token:"
     Write-Verbose $decodedToken
 

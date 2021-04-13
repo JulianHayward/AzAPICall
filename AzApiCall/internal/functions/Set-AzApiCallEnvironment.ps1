@@ -1,4 +1,17 @@
-function Set-AzApiCallEnvironment {
+﻿function Set-AzApiCallEnvironment
+{
+    <#
+    .SYNOPSIS
+        Set-AzApiCallEnvironment
+    
+    .DESCRIPTION
+        Set-AzApiCallEnvironment
+    
+    .EXAMPLE
+        PS C:\> Set-AzApiCallEnvironment
+
+        Set Envirement for different Cloud (Global, GCC, China)
+    #>
     [CmdletBinding()]
     param (
         

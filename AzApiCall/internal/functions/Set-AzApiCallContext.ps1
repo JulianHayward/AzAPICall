@@ -1,4 +1,18 @@
-function Set-AzApiCallContext {
+﻿function Set-AzApiCallContext
+{
+    <#
+    .SYNOPSIS
+        Set-Context for Auth
+
+    .DESCRIPTION
+        Set-Context for Auth
+
+    .EXAMPLE
+        PS C:\> Set-AzApiCallContext
+
+        Set Context
+    #>
+
     [CmdletBinding()]
     param (
         

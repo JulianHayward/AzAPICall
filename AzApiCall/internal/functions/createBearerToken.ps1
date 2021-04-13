@@ -1,5 +1,20 @@
 ﻿function createBearerToken
 {
+    <#
+    .SYNOPSIS
+        get token for specific Api Endpoint
+    
+    .DESCRIPTION
+        get token for specific Api Endpoint
+    
+    .PARAMETER targetEndPoint
+        Api Endpoint like 'MsGraphApi'
+
+    .EXAMPLE
+        PS C:\> createBearerToken -targetEndpoint "MsGraphApi"
+
+        get token
+    #>
 	[CmdletBinding()]
 	param (
 		$targetEndPoint
@@ -7,7 +22,7 @@
     Set-AzApiCallContext
     Set-AzApiCallEnvironment
 
-    Write-Host "+Processing new bearer token request ($targetEndPoint)"
+    Write-Output "+Processing new bearer token request ($targetEndPoint)"
     if ($targetEndPoint -eq "AzManagementAPI") {
         $azureRmProfile = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile;
         $profileClient = New-Object Microsoft.Azure.Commands.ResourceManager.Common.RMProfileClient($azureRmProfile);

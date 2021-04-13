@@ -1,5 +1,29 @@
-﻿function AzAPICall {
-    #($uri, $method, $currentTask, $body, $listenOn, $getConsumption, $getGroup, $getApp, $getSp, $getGuests, $caller)
+﻿function AzAPICall
+{
+    <#
+    .SYNOPSIS
+        Send request against API call and handle auth and errors
+    
+    .DESCRIPTION
+        Send request against API call and handle auth and errors
+    
+    .PARAMETER uri
+        url from API Endpoint
+
+    .PARAMETER Method
+        Method for api request
+    
+    .PARAMETER currentTask
+        For debuging help
+    
+    .PARAMETER listenON
+        some Endpoint return different Outputs
+        
+    .EXAMPLE
+        PS C:\> AzAPICall -uri 'https://graph.microsoft.com/beta/directoryRoles' -Method Get -currentTask "Collecting AADDirectoryRoles"
+
+        Get all AzureAD Directory Roles
+    #>
     [cmdletbinding()]
     param(
         [Parameter(Mandatory = $true)][string]$uri,
@@ -8,19 +32,7 @@
 
         [Parameter(Mandatory = $false)][string]$currentTask = "DefaultTask",
 
-        [Parameter(Mandatory = $false)][ValidateSet("Content","ContentProperties","CSV")][string]$listenOn,
-
-        [Parameter(Mandatory = $false)][string]$getConsumption,
-
-        [Parameter(Mandatory = $false)][string]$getGroup, 
-
-        [Parameter(Mandatory = $false)][string]$getApp, 
-
-        [Parameter(Mandatory = $false)][string]$getSp, 
-
-        [Parameter(Mandatory = $false)][string]$getGuests, 
-
-        [Parameter(Mandatory = $false)][string]$caller
+        [Parameter(Mandatory = $false)][ValidateSet("Content","ContentProperties","CSV")][string]$listenOn
     )
 
     $tryCounter = 0
@@ -73,7 +85,7 @@
 
         #API Call Tracking
         $tstmp = (Get-Date -format "yyyyMMddHHmmssms")
-        $null = $script:arrayAPICallTracking.Add([PSCustomObject]@{ 
+        $null = $script:arrayAPICallTracking.Add([PSCustomObject]@{
                 CurrentTask                          = $currentTask
                 TargetEndpoint                       = $targetEndpoint
                 Uri                                  = $uri
@@ -86,7 +98,7 @@
             })
         
         if ($caller -eq "CustomDataCollection") {
-            $null = $script:arrayAPICallTrackingCustomDataCollection.Add([PSCustomObject]@{ 
+            $null = $script:arrayAPICallTrackingCustomDataCollection.Add([PSCustomObject]@{
                     CurrentTask                          = $currentTask
                     TargetEndpoint                       = $targetEndpoint
                     Uri                                  = $uri
@@ -114,7 +126,7 @@
         catch {
             try {
                 $catchResultPlain = $_.ErrorDetails.Message
-                $catchResult = ($catchResultPlain | ConvertFrom-Json -ErrorAction SilentlyContinue) 
+                $catchResult = ($catchResultPlain | ConvertFrom-Json -ErrorAction SilentlyContinue)
             }
             catch {
                 $catchResult = $catchResultPlain
@@ -125,37 +137,30 @@
         
         if ($unexpectedError -eq $false) {
             if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "   DEBUG: unexpectedError: false" -ForegroundColor $debugForeGroundColor }
-            if ($azAPIRequest.StatusCode -eq 203 -and $targetEndPoint -eq "AZDevOps") { 
+            if ($azAPIRequest.StatusCode -eq 203 -and $targetEndPoint -eq "AZDevOps") {
                 Write-Host "Debug: get devops token or use Private Access Token -> Unauthorize: HTTP Code 203"
                 createBearerToken -targetEndPoint $targetEndpoint
             }
             if ($azAPIRequest.StatusCode -notin 200..204) {
                 if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "   DEBUG: apiStatusCode: $($azAPIRequest.StatusCode)" -ForegroundColor $debugForeGroundColor }
-                if ($catchResult.error.code -like "*GatewayTimeout*" -or 
-                    $catchResult.error.code -like "*BadGatewayConnection*" -or 
-                    $catchResult.error.code -like "*InvalidGatewayHost*" -or 
-                    $catchResult.error.code -like "*ServerTimeout*" -or 
-                    $catchResult.error.code -like "*ServiceUnavailable*" -or 
-                    $catchResult.code -like "*ServiceUnavailable*" -or 
-                    $catchResult.error.code -like "*MultipleErrorsOccurred*" -or 
-                    $catchResult.code -like "*InternalServerError*" -or 
-                    $catchResult.error.code -like "*InternalServerError*" -or 
-                    $catchResult.error.code -like "*RequestTimeout*" -or 
-                    $catchResult.error.code -like "*AuthorizationFailed*" -or 
-                    $catchResult.error.code -like "*ExpiredAuthenticationToken*" -or 
-                    $catchResult.error.code -like "*Authentication_ExpiredToken*" -or 
-                    $catchResult.error.code -like "*ResponseTooLarge*" -or 
-                    $catchResult.error.code -like "*InvalidAuthenticationToken*" -or 
-                    ($getConsumption -and $catchResult.error.code -eq 404) -or 
-                    ($getSp -and $catchResult.error.code -like "*Request_ResourceNotFound*") -or 
-                    ($getSp -and $catchResult.error.code -like "*Authorization_RequestDenied*") -or
-                    ($getApp -and $catchResult.error.code -like "*Request_ResourceNotFound*") -or 
-                    ($getApp -and $catchResult.error.code -like "*Authorization_RequestDenied*") -or 
-                    ($getGroup -and $catchResult.error.code -like "*Request_ResourceNotFound*") -or 
-                    ($getGuests -and $catchResult.error.code -like "*Authorization_RequestDenied*") -or 
+                if ($catchResult.error.code -like "*GatewayTimeout*" -or
+                    $catchResult.error.code -like "*BadGatewayConnection*" -or
+                    $catchResult.error.code -like "*InvalidGatewayHost*" -or
+                    $catchResult.error.code -like "*ServerTimeout*" -or
+                    $catchResult.error.code -like "*ServiceUnavailable*" -or
+                    $catchResult.code -like "*ServiceUnavailable*" -or
+                    $catchResult.error.code -like "*MultipleErrorsOccurred*" -or
+                    $catchResult.code -like "*InternalServerError*" -or
+                    $catchResult.error.code -like "*InternalServerError*" -or
+                    $catchResult.error.code -like "*RequestTimeout*" -or
+                    $catchResult.error.code -like "*AuthorizationFailed*" -or
+                    $catchResult.error.code -like "*ExpiredAuthenticationToken*" -or
+                    $catchResult.error.code -like "*Authentication_ExpiredToken*" -or
+                    $catchResult.error.code -like "*ResponseTooLarge*" -or
+                    $catchResult.error.code -like "*InvalidAuthenticationToken*" -or
                     $catchResult.error.message -like "*The offer MS-AZR-0110P is not supported*" -or
                     $catchResult.error.code -like "*UnknownError*" -or
-                    $catchResult.error.code -eq "500" -or 
+                    $catchResult.error.code -eq "500" -or
                     $catchResult.error.code -like "*throttled*") {
                     if ($catchResult.error.code -like "*ResponseTooLarge*") {
                         Write-Host "###### LIMIT #################################"
@@ -194,34 +199,11 @@
                         Write-Host " $currentTask - try #$tryCounter; returned: '$($catchResult.error.code)' | '$($catchResult.error.message)' - requesting new bearer token ($targetEndpoint)"
                         createBearerToken -targetEndPoint $targetEndpoint
                     }
-                    if ($getConsumption -and $catchResult.error.code -eq 404) {
-                        Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems Subscriptions was created only recently - skipping"
-                        return $apiCallResultsCollection
-                    }
-                    if (($getGroup) -and $catchResult.error.code -like "*Request_ResourceNotFound*") {
-                        Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) uncertain Group status - skipping for now :)"
-                        return "Request_ResourceNotFound"
-                    }
-                    if (($getApp -or $getSp) -and $catchResult.error.code -like "*Request_ResourceNotFound*") {
-                        Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) uncertain ServicePrincipal status - skipping for now :)"
-                        return "Request_ResourceNotFound"
-                    }
-                    if ((($getApp -or $getSp) -and $catchResult.error.code -like "*Authorization_RequestDenied*") -or ($getGuests -and $catchResult.error.code -like "*Authorization_RequestDenied*")) {
-                        if ($userType -eq "Guest") {
-                            Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult)"
-                            Write-Host " AzGovViz says: You are a 'Guest' User in the tenant therefore not enough permissions. You have the following options: [1. request membership to AAD Role 'Directory readers'.] [2. Use parameters '-NoAADGuestUsers' and '-NoAADServicePrincipalResolve'.] [3. Grant explicit Microsoft Graph API permission. Permissions reference Users: https://docs.microsoft.com/en-us/graph/api/user-list | Applications: https://docs.microsoft.com/en-us/graph/api/application-list]" -ForegroundColor Yellow
-                            Throw "Authorization_RequestDenied"
-                        }
-                        else {
-                            Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) investigate that error!/exit"
-                            Throw "Authorization_RequestDenied"
-                        }
-                    }
                     if ($catchResult.error.code -like "*throttled*") {
                         Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again"
                         Write-Output "Waiting for Azure API Throttling Limits"
                         Start-Sleep -Seconds 11 #MOST APIÂ´s had counters Around 10 Secounds for next API Call without Throttling.
-                    }                         
+                    }
                 }
                 else {
                     if (-not $catchResult.code -and -not $catchResult.error.code -and -not $catchResult.message -and -not $catchResult.error.message -and -not $catchResult -and $tryCounter -lt 6){
@@ -244,14 +226,14 @@
                     $azAPIRequestConvertedFromCSV = ($azAPIRequest.Content | ConvertFrom-csv)
                     $apiCallResultsCollection.Add($azAPIRequestConvertedFromCSV.Content)
                 }
-                if ($listenOn -eq "Content") {       
-                    if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "   DEBUG: listenOn=content ($((($azAPIRequestConvertedFromJson) | Measure-Object).count))" -ForegroundColor $debugForeGroundColor }      
+                if ($listenOn -eq "Content") {
+                    if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "   DEBUG: listenOn=content ($((($azAPIRequestConvertedFromJson) | Measure-Object).count))" -ForegroundColor $debugForeGroundColor }
                     $null = $apiCallResultsCollection.Add($azAPIRequestConvertedFromJson)
                 }
                 elseif ($listenOn -eq "ContentProperties") {
                     if (($azAPIRequestConvertedFromJson.properties.rows | Measure-Object).Count -gt 0) {
                         foreach ($consumptionline in $azAPIRequestConvertedFromJson.properties.rows) {
-                            $null = $apiCallResultsCollection.Add([PSCustomObject]@{ 
+                            $null = $apiCallResultsCollection.Add([PSCustomObject]@{
                                     "$($azAPIRequestConvertedFromJson.properties.columns.name[0])" = $consumptionline[0]
                                     "$($azAPIRequestConvertedFromJson.properties.columns.name[1])" = $consumptionline[1]
                                     SubscriptionMgPath                                             = $htSubscriptionsMgPath.($consumptionline[1]).ParentNameChain
@@ -264,7 +246,7 @@
                         }
                     }
                 }
-                else {       
+                else {
                     if (($azAPIRequestConvertedFromJson).value) {
                         if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "   DEBUG: listenOn=default(value) value exists ($((($azAPIRequestConvertedFromJson).value | Measure-Object).count))" -ForegroundColor $debugForeGroundColor }
                         $null = $apiCallResultsCollection.AddRange($azAPIRequestConvertedFromJson.value)
@@ -325,7 +307,7 @@
                     }
                     if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "   DEBUG: @oData.nextLink: $Uri" -ForegroundColor $debugForeGroundColor }
                 }
-                elseif ($azAPIRequestConvertedFromJson.properties.nextLink) {              
+                elseif ($azAPIRequestConvertedFromJson.properties.nextLink) {
                     $isMore = $true
                     if ($uri -eq $azAPIRequestConvertedFromJson.properties.nextLink) {
                         if ($restartDueToDuplicateNextlinkCounter -gt 3) {
