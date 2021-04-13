@@ -13,7 +13,7 @@ $global:__pester_data.ScriptAnalyzer = New-Object System.Collections.ArrayList
 
 Describe 'Invoking PSScriptAnalyzer against commandbase' {
 	$commandFiles = Get-ChildItem -Path $CommandPath -Recurse | Where-Object Name -like "*.ps1"
-	$scriptAnalyzerRules = Get-ScriptAnalyzerRule | Where-Object {$_.RuleName -ne "PSAvoidUsingWriteHost"}
+	$scriptAnalyzerRules = Get-ScriptAnalyzerRule | Where-Object {($_.RuleName -ne "PSAvoidUsingWriteHost") -and ($_.RuleName -ne "PSUseShouldProcessForStateChangingFunctions") -and ($_.RuleName -ne "PSUseOutputTypeCorrectly")}
 	
 	foreach ($file in $commandFiles)
 	{
