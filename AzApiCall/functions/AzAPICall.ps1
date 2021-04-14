@@ -35,7 +35,7 @@
 
         [Parameter(Mandatory = $false)][string]$currentTask = "DefaultTask",
 
-        [Parameter(Mandatory = $false)][ValidateSet("Content","ContentProperties","CSV")][string]$listenOn,
+        [Parameter(Mandatory = $false)][ValidateSet("Content","ContentProperties","CSV","StatusCode")][string]$listenOn,
 
         [Parameter(Mandatory = $false)]$body
     )
@@ -130,8 +130,13 @@
         }
         catch {
             try {
-                $catchResultPlain = $_.ErrorDetails.Message
-                $catchResult = ($catchResultPlain | ConvertFrom-Json -ErrorAction SilentlyContinue)
+                if ($Method -like "Head" -and $targetEndpoint -eq "AzManagementAPI") { 
+                    $catchResult = $_.Exception.Response
+                }
+                else { 
+                    $catchResultPlain = $_.ErrorDetails.Message
+                    $catchResult = ($catchResultPlain | ConvertFrom-Json -ErrorAction SilentlyContinue)
+                }
             }
             catch {
                 $catchResult = $catchResultPlain
@@ -210,6 +215,9 @@
                         Start-Sleep -Seconds 11 #MOST APIÂ´s had counters Around 10 Secounds for next API Call without Throttling.
                     }
                 }
+                elseif ($catchResult.StatusCode.value__ -like "404") {
+                    Throw "Information - Ressource didnt exist"
+                }
                 else {
                     if (-not $catchResult.code -and -not $catchResult.error.code -and -not $catchResult.message -and -not $catchResult.error.message -and -not $catchResult -and $tryCounter -lt 6){
                         $sleepSec = @(3, 7, 12, 20, 30, 45)[$tryCounter]
@@ -227,6 +235,9 @@
             else {
                 if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "   DEBUG: apiStatusCode: $($azAPIRequest.StatusCode)" -ForegroundColor $debugForeGroundColor }
                 $azAPIRequestConvertedFromJson = ($azAPIRequest.Content | ConvertFrom-Json)
+                if ($listenOn -eq "StatusCode") {
+                    $apiCallResultsCollection.Add("Azure Resource exist!") | Out-Null
+                }
                 if ($listenOn -eq "CSV") {
                     $azAPIRequestConvertedFromCSV = ($azAPIRequest.Content | ConvertFrom-csv)
                     $apiCallResultsCollection.Add($azAPIRequestConvertedFromCSV.Content)
