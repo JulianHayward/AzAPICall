@@ -19,7 +19,7 @@
     param (
         $targetEndpoint
     )
-    Write-Output "Check token"
+    Write-Verbose "Check token"
     if ($script:htBearerAccessToken.$targetEndpoint.expire.LocalDateTime -lt $(Get-Date).AddMinutes(-5) -or ($null -eq $script:htBearerAccessToken.$targetEndpoint.expire))
     {
         Write-Output "Generate new token for Endpoint $($TargetEndpoint)"

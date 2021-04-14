@@ -18,6 +18,9 @@
     
     .PARAMETER listenON
         some Endpoint return different Outputs
+    
+    .PARAMETER body
+        Add a body to the API Call
         
     .EXAMPLE
         PS C:\> AzAPICall -uri 'https://graph.microsoft.com/beta/directoryRoles' -Method Get -currentTask "Collecting AADDirectoryRoles"
@@ -32,7 +35,9 @@
 
         [Parameter(Mandatory = $false)][string]$currentTask = "DefaultTask",
 
-        [Parameter(Mandatory = $false)][ValidateSet("Content","ContentProperties","CSV")][string]$listenOn
+        [Parameter(Mandatory = $false)][ValidateSet("Content","ContentProperties","CSV")][string]$listenOn,
+
+        [Parameter(Mandatory = $false)]$body
     )
 
     $tryCounter = 0
@@ -53,9 +58,9 @@
             $debugForeGroundColor = "Cyan"
         }
     }
-    
+    Set-AzApiCallEnvironment
     do {
-        if ($arrayAzureManagementEndPointUrls | Where-Object { $uri -match $_ }) {
+        if ($script:arrayAzureManagementEndPointUrls | Where-Object { $uri -match $_ }) {
             $targetEndpoint = "AzManagementAPI"
             #check if valid Token exist
             checkToken -targetEndpoint $targetEndpoint
@@ -134,7 +139,7 @@
                 $unexpectedError = $true
             }
         }
-        
+
         if ($unexpectedError -eq $false) {
             if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "   DEBUG: unexpectedError: false" -ForegroundColor $debugForeGroundColor }
             if ($azAPIRequest.StatusCode -eq 203 -and $targetEndPoint -eq "AZDevOps") {
@@ -351,6 +356,6 @@
             }
         }
     }
-    until($azAPIRequest.StatusCode -in 200..204 -and -not $isMore)
+    until(($azAPIRequest.StatusCode -in 200..204 -and -not $isMore ) -or ($Method -eq "HEAD" -and $azAPIRequest.StatusCode -eq 404))
     return $apiCallResultsCollection
 }

@@ -28,7 +28,7 @@
         $profileClient = New-Object Microsoft.Azure.Commands.ResourceManager.Common.RMProfileClient($azureRmProfile);
         $catchResult = "letscheck"
         try {
-            $newBearerAccessTokenRequest = ($profileClient.AcquireAccessToken($checkContext.Subscription.TenantId))
+            $newBearerAccessTokenRequest = ($profileClient.AcquireAccessToken($script:checkContext.Subscription.TenantId))
         }
         catch {
             $catchResult = $_
@@ -38,7 +38,7 @@
         $contextForMSGraphToken = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile.DefaultContext
         $catchResult = "letscheck"
         try {
-            $newBearerAccessTokenRequest = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($contextForMSGraphToken.Account, $contextForMSGraphToken.Environment, $contextForMSGraphToken.Tenant.id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "$(($script:htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MSGraphUrl)")
+            $newBearerAccessTokenRequest = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($contextForMSGraphToken.Account, $contextForMSGraphToken.Environment, $contextForMSGraphToken.Tenant.id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "$(($script:htAzureEnvironmentRelatedUrls).(checkContext).Environment.Name).MSGraphUrl)")
         }
         catch {
             $catchResult = $_

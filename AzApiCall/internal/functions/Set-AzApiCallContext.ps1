@@ -26,8 +26,8 @@
         Throw "Error - check the last console output for details"
     }
     else {
-        $accountType = $checkContext.Account.Type
-        $accountId = $checkContext.Account.id
+        $accountType = $script:checkContext.Account.Type
+        $accountId = $script:checkContext.Account.id
         Write-Host " Context AccountId: '$($accountId)'" -ForegroundColor Yellow
         Write-Host " Context AccountType: '$($accountType)'" -ForegroundColor Yellow
 
@@ -43,7 +43,7 @@
         }#>
         
         #else{
-        if (-not $checkContext.Subscription) { #Maybe delete
+        if (-not $script:checkContext.Subscription) { #Maybe delete
             $checkContext
             Write-Host " Context test failed: Context is not set to any Subscription. Set your context to a subscription by running: Set-AzContext -subscription <subscriptionId> (run Get-AzSubscription to get the list of available Subscriptions). When done re-run script" -ForegroundColor Red
             Throw "Error - check the last console output for details"
