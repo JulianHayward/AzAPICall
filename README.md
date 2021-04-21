@@ -19,6 +19,11 @@ AzAPICall -uri 'https://graph.microsoft.com/beta/directoryRoles' -Method Get -cu
 ```powershell
 AzApiCall -uri 'https://management.azure.com/subscriptions/**subscriptionId**/resourceGroups/**resourceGroupName**/providers/Microsoft.ApiManagement/service/**serviceName**/groups/**groupId**?api-version=2019-12-01' -Method Get
 ```
+
+#### Check Ressource avability
+```powershell
+azapicall -uri "https://management.azure.com/subscriptions/**subscriptionId**/resourcegroups/**resourcegrouname**?api-version=2020-10-01" -method HEAD -listenOn StatusCode
+```
 ### PowerBi
 ```powershell
 AzAPICall -uri 'https://api.powerbi.com/v1.0/myorg/groups/**GroupID**/datasets/**DataSetId**/refreshes' -Method Post -body { "notifyOption": "MailOnFailure" }
@@ -40,3 +45,5 @@ $requestAllSubscriptionsAPICount = $requestAllSubscriptionsAPI.Count
 $endGetSubscriptions = get-date
 Write-Host "Getting all $($requestAllSubscriptionsAPICount) Subscriptions duration: $((NEW-TIMESPAN -Start $startGetSubscriptions -End $endGetSubscriptions).TotalSeconds) seconds" 
 ```
+
+### Parallel Code Example

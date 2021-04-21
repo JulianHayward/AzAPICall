@@ -37,7 +37,9 @@
 
         [Parameter(Mandatory = $false)][ValidateSet("Content","ContentProperties","CSV","StatusCode")][string]$listenOn,
 
-        [Parameter(Mandatory = $false)]$body
+        [Parameter(Mandatory = $false)]$body,
+
+        [Parameter(Mandatory = $false)]$consistencylevel
     )
 
     $tryCounter = 0
@@ -116,16 +118,28 @@
                 })
         }
 
+        $Header = @{
+            "Content-Type" = "application/json";
+            "Authorization" = "Bearer $bearerToUse"
+        }
+        if ($consistencylevel) { 
+            $Header = @{
+                "Content-Type" = "application/json";
+                "Authorization" = "Bearer $bearerToUse";
+                "consistencylevel" = "$consistencylevel"
+            }
+        }
+
         $unexpectedError = $false
         $tryCounter++
         if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "  DEBUGTASK: attempt#$($tryCounter) processing: $($currenttask)" -ForegroundColor $debugForeGroundColor }
         try {
             if ($body) {
                 #write-host "has BODY"
-                $azAPIRequest = Invoke-WebRequest -Uri $uri -Method $method -body $body -Headers @{"Content-Type" = "application/json"; "Authorization" = "Bearer $bearerToUse" } -ContentType "application/json" -UseBasicParsing
+                $azAPIRequest = Invoke-WebRequest -Uri $uri -Method $method -body $body -Headers $Header -UseBasicParsing
             }
             else {
-                $azAPIRequest = Invoke-WebRequest -Uri $uri -Method $method -Headers @{"Content-Type" = "application/json"; "Authorization" = "Bearer $bearerToUse" } -UseBasicParsing
+                $azAPIRequest = Invoke-WebRequest -Uri $uri -Method $method -Headers $Header -UseBasicParsing
             }
         }
         catch {
