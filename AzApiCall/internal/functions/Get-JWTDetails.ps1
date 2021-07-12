@@ -1,4 +1,4 @@
-﻿function getJWTDetails
+﻿function Get-JWTDetails
 {
     <#
     .SYNOPSIS
@@ -6,18 +6,18 @@
     
     .DESCRIPTION
         Output JWT Token details
+    
     .PARAMETER token
         token
 
     .EXAMPLE
-        PS C:\> getJWTDetails
+        PS C:\> Get-JWTDetails
 
-        Get Token
+        Get-JWTDetails
     #>
     [cmdletbinding()]
     param(
-        [Parameter(Mandatory = $true, ValueFromPipeline = $true, Position = 0)]
-        [string]$token
+        [Parameter(Mandatory = $true)][string]$token
     )
 
     if (!$token -contains (".") -or !$token.StartsWith("eyJ")) { Write-Error "Invalid token" -ErrorAction Stop }

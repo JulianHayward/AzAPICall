@@ -66,13 +66,13 @@
 		PSData = @{
 			
 			# Tags applied to this module. These help with module discovery in online galleries.
-			# Tags = @()
+			Tags = @('Graph','API')
 			
 			# A URL to the license for this module.
-			# LicenseUri = ''
+			LicenseUri = 'https://github.com/JulianHayward/AzAPICall/blob/main/LICENSE'
 			
 			# A URL to the main website for this project.
-			# ProjectUri = ''
+			ProjectUri = 'https://github.com/JulianHayward/AzAPICall'
 			
 			# A URL to an icon representing this module.
 			# IconUri = ''

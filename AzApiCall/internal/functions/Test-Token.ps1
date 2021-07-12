@@ -1,4 +1,4 @@
-﻿function checkToken
+﻿function Test-Token
 {
     <#
     .SYNOPSIS
@@ -11,7 +11,7 @@
         Api Endpoint like 'MsGraphApi'
 
     .EXAMPLE
-        PS C:\> checkToken -targetEndpoint "MsGraphApi"
+        PS C:\> Test-Token -targetEndpoint "MsGraphApi"
 
         check Token
     #>
@@ -23,6 +23,6 @@
     if ($script:htBearerAccessToken.$targetEndpoint.expire.LocalDateTime -lt $(Get-Date).AddMinutes(-5) -or ($null -eq $script:htBearerAccessToken.$targetEndpoint.expire))
     {
         Write-Output "Generate new token for Endpoint $($TargetEndpoint)"
-        createBearerToken -targetEndPoint $targetEndpoint
+        New-BearerToken -targetEndPoint $targetEndpoint
     }
 }

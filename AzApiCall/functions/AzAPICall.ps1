@@ -21,7 +21,10 @@
     
     .PARAMETER body
         Add a body to the API Call
-        
+
+    .PARAMETER consistencylevel
+        some Endpoints require consistencylevel information for full outcome
+
     .EXAMPLE
         PS C:\> AzAPICall -uri 'https://graph.microsoft.com/beta/directoryRoles' -Method Get -currentTask "Collecting AADDirectoryRoles"
 
@@ -65,25 +68,25 @@
         if ($script:arrayAzureManagementEndPointUrls | Where-Object { $uri -match $_ }) {
             $targetEndpoint = "AzManagementAPI"
             #check if valid Token exist
-            checkToken -targetEndpoint $targetEndpoint
+            Test-Token -targetEndpoint $targetEndpoint
             $bearerToUse = $script:htBearerAccessToken.$targetEndpoint.AccessToken
         }
         elseif ($uri -like "*dev.azure*") {
             $targetEndpoint = "AzDevOps"
             #check if valid Token exist
-            checkToken -targetEndpoint $targetEndpoint
+            Test-Token -targetEndpoint $targetEndpoint
             $bearerToUse = $script:htBearerAccessToken.$targetEndpoint.AccessToken
         }
         elseif ($uri -like "*api.powerbi*") {
             $targetEndpoint = "MsPowerBi"
             #check if valid Token exist
-            checkToken -targetEndpoint $targetEndpoint
+            Test-Token -targetEndpoint $targetEndpoint
             $bearerToUse = $script:htBearerAccessToken.$targetEndpoint.AccessToken
         }
         elseif ($uri -like "*graph.microsoft*"){
             $targetEndpoint = "MsGraphAPI"
             #check if valid Token exist
-            checkToken -targetEndpoint $targetEndpoint
+            Test-Token -targetEndpoint $targetEndpoint
             $bearerToUse = $script:htBearerAccessToken.$targetEndpoint.AccessToken
         }
         else {
@@ -118,36 +121,31 @@
                 })
         }
 
-        $Header = @{
+        [Hashtable]$Header = @{
             "Content-Type" = "application/json";
-            "Authorization" = "Bearer $bearerToUse"
+            "Authorization" = "Bearer $bearerToUse";
+            "consistencylevel" = "$consistencylevel"
         }
-        if ($consistencylevel) { 
-            $Header = @{
-                "Content-Type" = "application/json";
-                "Authorization" = "Bearer $bearerToUse";
-                "consistencylevel" = "$consistencylevel"
-            }
+
+        $params = @{
+            uri = $Uri
+            Method = $Method 
+            Header = $Header
+            body = $body
         }
 
         $unexpectedError = $false
         $tryCounter++
         if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "  DEBUGTASK: attempt#$($tryCounter) processing: $($currenttask)" -ForegroundColor $debugForeGroundColor }
         try {
-            if ($body) {
-                #write-host "has BODY"
-                $azAPIRequest = Invoke-WebRequest -Uri $uri -Method $method -body $body -Headers $Header -UseBasicParsing
-            }
-            else {
-                $azAPIRequest = Invoke-WebRequest -Uri $uri -Method $method -Headers $Header -UseBasicParsing
-            }
+            $azAPIRequest = Invoke-WebRequest @params
         }
         catch {
             try {
-                if ($Method -like "Head" -and $targetEndpoint -eq "AzManagementAPI") { 
+                if ($Method -like "Head" -and $targetEndpoint -eq "AzManagementAPI") {
                     $catchResult = $_.Exception.Response
                 }
-                else { 
+                else {
                     $catchResultPlain = $_.ErrorDetails.Message
                     $catchResult = ($catchResultPlain | ConvertFrom-Json -ErrorAction SilentlyContinue)
                 }
@@ -163,7 +161,7 @@
             if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "   DEBUG: unexpectedError: false" -ForegroundColor $debugForeGroundColor }
             if ($azAPIRequest.StatusCode -eq 203 -and $targetEndPoint -eq "AZDevOps") {
                 Write-Host "Debug: get devops token or use Private Access Token -> Unauthorize: HTTP Code 203"
-                createBearerToken -targetEndPoint $targetEndpoint
+                New-BearerToken -targetEndPoint $targetEndpoint
             }
             if ($azAPIRequest.StatusCode -notin 200..204) {
                 if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "   DEBUG: apiStatusCode: $($azAPIRequest.StatusCode)" -ForegroundColor $debugForeGroundColor }
@@ -221,7 +219,7 @@
                     }
                     if ($catchResult.error.code -like "*ExpiredAuthenticationToken*" -or $catchResult.error.code -like "*Authentication_ExpiredToken*" -or $catchResult.error.code -like "*InvalidAuthenticationToken*") {
                         Write-Host " $currentTask - try #$tryCounter; returned: '$($catchResult.error.code)' | '$($catchResult.error.message)' - requesting new bearer token ($targetEndpoint)"
-                        createBearerToken -targetEndPoint $targetEndpoint
+                        New-BearerToken -targetEndPoint $targetEndpoint
                     }
                     if ($catchResult.error.code -like "*throttled*") {
                         Write-Host " $currentTask - try #$tryCounter; returned: <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again"
@@ -303,7 +301,7 @@
                             $apiCallResultsCollection = [System.Collections.ArrayList]@()
                             $uri = $initialUri
                             Start-Sleep -Seconds 1
-                            createBearerToken -targetEndPoint $targetEndpoint
+                            New-BearerToken -targetEndPoint $targetEndpoint
                             Start-Sleep -Seconds 1
                         }
                     }
@@ -328,7 +326,7 @@
                             $apiCallResultsCollection = [System.Collections.ArrayList]@()
                             $uri = $initialUri
                             Start-Sleep -Seconds 1
-                            createBearerToken -targetEndPoint $targetEndpoint
+                            New-BearerToken -targetEndPoint $targetEndpoint
                             Start-Sleep -Seconds 1
                         }
                     }
@@ -353,7 +351,7 @@
                             $apiCallResultsCollection = [System.Collections.ArrayList]@()
                             $uri = $initialUri
                             Start-Sleep -Seconds 1
-                            createBearerToken -targetEndPoint $targetEndpoint
+                            New-BearerToken -targetEndPoint $targetEndpoint
                             Start-Sleep -Seconds 1
                         }
                     }

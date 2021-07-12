@@ -8,7 +8,8 @@ For information on how to get started, additional dokumentation or examples, che
 - Microsoft PowerBi
 ## How to install
 ```powershell
-    Todo  Build up a module and bring it to PSGallery
+    Install-Module AzApiCall
+    Import-Module AzApiCall
 ```
 ## Example
 ### Microsoft Graph
@@ -35,7 +36,7 @@ $startGetSubscriptions = get-date
 $currentTask = "Getting all Subscriptions"
 Write-Host "$currentTask"
 #https://management.azure.com/subscriptions?api-version=2020-01-01
-$uri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ResourceManagerUrl)subscriptions?api-version=2019-10-01"
+$uri = "https://management.azure.com/subscriptions?api-version=2020-01-01"
 #$path = "/providers/Microsoft.Authorization/policyDefinitions?api-version=2019-09-01"
 $method = "GET"
 
@@ -47,3 +48,19 @@ Write-Host "Getting all $($requestAllSubscriptionsAPICount) Subscriptions durati
 ```
 
 ### Parallel Code Example
+```powershell 
+$uri = 'https://graph.microsoft.com/beta/users?$select=displayName,Id'
+$Users = AzApiCall -Method Get -Uri $uri
+
+$users | foreach-object -parallel { 
+    $uri = 'https://graph.microsoft.com/beta/users/$($_.id)/transitiveMemberOf'
+
+    $GroupMembership = AzAPICall -Method Get -uri $Uri
+
+    [PSCustomObject]@{
+        Name    = $_.Name
+        Id      = $_.Id
+        Groups  = $GroupMembership
+    }
+}
+```

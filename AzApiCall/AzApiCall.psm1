@@ -14,7 +14,7 @@ This is important when testing for paths.
 #>
 
 # Detect whether at some level loading individual module files, rather than the compiled module was enforced
-$importIndividualFiles = Get-PSFConfigValue -FullName AzApiCall.Import.IndividualFiles -Fallback $false
+#$importIndividualFiles = Get-PSFConfigValue -FullName AzApiCall.Import.IndividualFiles -Fallback $false
 if ($AzApiCall_importIndividualFiles) { $importIndividualFiles = $true }
 if (Test-Path (Resolve-PSFPath -Path "$($script:ModuleRoot)\..\.git" -SingleItem -NewChild)) { $importIndividualFiles = $true }
 if ("<was not compiled>" -eq '<was not compiled>') { $importIndividualFiles = $true }
@@ -51,8 +51,8 @@ function Import-ModuleFile
 }
 
 #region Load individual files
-if ($importIndividualFiles)
-{
+#if ($importIndividualFiles)
+#{
 	# Execute Preimport actions
 	foreach ($path in (& "$ModuleRoot\internal\scripts\preimport.ps1")) {
 		. Import-ModuleFile -Path $path
@@ -77,9 +77,5 @@ if ($importIndividualFiles)
 	
 	# End it here, do not load compiled code below
 	return
-}
+#}
 #endregion Load individual files
-
-#region Load compiled code
-"<compile code into here>"
-#endregion Load compiled code

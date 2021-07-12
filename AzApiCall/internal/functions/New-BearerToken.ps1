@@ -1,4 +1,4 @@
-﻿function createBearerToken
+﻿function New-BearerToken
 {
     <#
     .SYNOPSIS
@@ -11,7 +11,7 @@
         Api Endpoint like 'MsGraphApi'
 
     .EXAMPLE
-        PS C:\> createBearerToken -targetEndpoint "MsGraphApi"
+        PS C:\> New-BearerToken -targetEndpoint "MsGraphApi"
 
         get token
     #>
@@ -38,7 +38,7 @@
         $contextForMSGraphToken = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile.DefaultContext
         $catchResult = "letscheck"
         try {
-            $newBearerAccessTokenRequest = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($contextForMSGraphToken.Account, $contextForMSGraphToken.Environment, $contextForMSGraphToken.Tenant.id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "$(($script:htAzureEnvironmentRelatedUrls).(checkContext).Environment.Name).MSGraphUrl)")
+            $newBearerAccessTokenRequest = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($contextForMSGraphToken.Account, $contextForMSGraphToken.Environment, $contextForMSGraphToken.Tenant.id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, $(($script:htAzureEnvironmentRelatedUrls).$(($checkContext).Environment.Name).MSGraphUrl))
         }
         catch {
             $catchResult = $_
@@ -97,7 +97,7 @@
         }
     }
 
-    $bearerDetails = GetJWTDetails -token $newBearerAccessTokenRequest.AccessToken
+    $bearerDetails = Get-JWTDetails -token $newBearerAccessTokenRequest.AccessToken
     $bearerAccessTokenExpiryDateTime = $bearerDetails.expiryDateTime
     $bearerAccessTokenTimeToExpiry = $bearerDetails.timeToExpiry
     Write-Host "+Bearer token ($targetEndPoint): [tokenRequestProcessed: '$dateTimeTokenCreated']; [expiryDateTime: '$bearerAccessTokenExpiryDateTime']; [timeUntilExpiry: '$bearerAccessTokenTimeToExpiry']"
