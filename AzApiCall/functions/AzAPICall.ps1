@@ -129,7 +129,7 @@
 
         $params = @{
             uri = $Uri
-            Method = $Method 
+            Method = $Method
             Header = $Header
             body = $body
         }
@@ -307,6 +307,7 @@
                     }
                     else {
                         $uri = $azAPIRequestConvertedFromJson.nextLink
+
                     }
                     if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "   DEBUG: nextLink: $Uri" -ForegroundColor $debugForeGroundColor }
                 }

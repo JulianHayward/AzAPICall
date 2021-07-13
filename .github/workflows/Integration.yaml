@@ -1,0 +1,56 @@
+﻿name: Integration - AzureCloud
+on: [push, pull_request]
+
+jobs:
+  # This workflow contains a single job called "build"
+  Integration-PublicCloud:
+    # The type of runner that the job will run on
+    runs-on: windows-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+    - uses: actions/checkout@v2
+    - name: Install Dependencies
+      shell : powershell
+      run: |
+       [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+       $manifest = Import-PowerShellDataFile "./AzApiCall/AzApiCall.psd1"
+       $dependencies = $manifest.RequiredModules
+       foreach ($dependency in $dependencies)
+       {
+           Write-Verbose -Message "Installing Module {$($dependency.ModuleName)} Version {$($dependency.RequiredVersion)}"
+           Install-Module $dependency.ModuleName -RequiredVersion $dependency.RequiredVersion -Force -SkipPublisherCheck -AllowClobber -Scope AllUsers -Verbose
+           try
+           {
+               Import-Module $dependency.ModuleName -Force
+           }
+           catch
+           {
+               Write-Verbose -Message $_
+           }
+       }
+    - name: Install AzApiCall
+      shell : powershell
+      run: |
+        winrm quickconfig -force
+        $source = "./AzApiCall/"
+        $destination = "C:\Program Files\WindowsPowerShell\Modules"
+        Copy-Item -Path $source -Recurse -Destination $destination -Container -Force
+    - name: Run Integration Tests
+      shell : powershell
+      env:
+        PUBLIC_USERNAME: ${{ secrets.PUBLIC_USERNAME }}
+        PUBLIC_PASSWORD: ${{ secrets.PUBLIC_PASSWORD }}
+      run: |
+       Set-ExecutionPolicy Unrestricted -Force
+       Get-ChildItem "C:\Program Files\WindowsPowerShell\Modules" -Recurse | Unblock-File
+       $GlobalAdminPassword = ConvertTo-SecureString $env:PUBLIC_PASSWORD -AsPlainText -Force
+       $VerbosePreference = 'Continue'
+       Write-Verbose -Message "Username: $($env:PUBLIC_USERNAME)"
+       $PassWord = ConvertTo-SecureString -String $env:PUBLIC_PASSWORD -AsPlainText -Force
+       $Credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $env:PUBLIC_USERNAME, $PassWord
+       Connect-AzAccount -Credential $Credential 
+       & ./AzApiCall/tests/Integration/AzApiCallIntegration.Tests.ps1 `
+       -User $env:PUBLIC_USERNAME `
+       -UserPassword $env:PUBLIC_PASSWORD
