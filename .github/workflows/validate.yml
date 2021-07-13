@@ -8,10 +8,10 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - name: Install Prerequisites
+      shell: pwsh
       run: .\build\vsts-prerequisites.ps1
-      shell: powershell
     - name: Validate
       run: .\build\vsts-validate.ps1
-      shell: powershell
+      shell: pwsh
