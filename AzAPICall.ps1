@@ -3,71 +3,101 @@
 [CmdletBinding()]
 Param
 (
-    [switch]$DebugAzAPICall,
-    [string]$SubscriptionId4AzContext = "undefined"
+    [Parameter(Mandatory=$False)][switch]$DebugAzAPICall = $true,
+    [Parameter(Mandatory=$False)][string]$SubscriptionId4AzContext = "undefined",
+    [Parameter(Mandatory=$False)][switch]$PsParallelization = $true,
+    [Parameter(Mandatory=$True)][string]$TenantId,
+    [Parameter(Mandatory=$False)][int]$ThrottleLimitMicrosoftGraph = 20,
+    [Parameter(Mandatory=$False)][int]$ThrottleLimitARM = 10
 )
 
 #Region Prerequisites
 $ErrorActionPreference = "Stop"
 
-#Region htParameters
-#(all switch params used in foreach-object -parallel)
-$htParameters = @{ }
+#region htParameters (all switch params used in foreach-object -parallel)
+
+if ($env:GITHUB_SERVER_URL -and $env:CODESPACES) {
+    #GitHub Codespaces
+    Write-Host "CheckCodeRunPlatform: running in GitHub Codespaces"
+    $checkCodeRunPlatform = "GitHubCodespaces"
+}
+elseif ($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) {
+    #Azure DevOps
+    Write-Host "CheckCodeRunPlatform: running in Azure DevOps"
+    $checkCodeRunPlatform = "AzureDevOps"
+}
+elseif ($PSPrivateMetadata) {
+    #Azure Automation
+    Write-Output "CheckCodeRunPlatform: running in Azure Automation"
+    $checkCodeRunPlatform = "AzureAutomation"
+}
+else {
+    #Other Console
+    Write-Host "CheckCodeRunPlatform: not Codespaces, not Azure DevOps, not Azure Automation - likely local console"
+    $checkCodeRunPlatform = "Console"
+}
+
+$htParameters = @{}
+
 if ($DebugAzAPICall) {
     $htParameters.DebugAzAPICall = $true
+    write-host "AzAPICall debug enabled" -ForegroundColor Cyan
 }
 else {
     $htParameters.DebugAzAPICall = $false
+    write-host "AzAPICall debug disabled" -ForegroundColor Cyan
 }
-#EndRegion htParameters
+#endregion htParameters
 
 #Region PowerShellEditionAnVersionCheck
-Write-Host "Checking powershell edition and version"
-$requiredPSVersion = "7.0.3"
-$splitRequiredPSVersion = $requiredPSVersion.split('.')
-$splitRequiredPSVersionMajor = $splitRequiredPSVersion[0]
-$splitRequiredPSVersionMinor = $splitRequiredPSVersion[1]
-$splitRequiredPSVersionPatch = $splitRequiredPSVersion[2]
+if($PsParallelization) {
+    Write-Host "Checking powershell edition and version"
+    $requiredPSVersion = "7.0.3"
+    $splitRequiredPSVersion = $requiredPSVersion.split('.')
+    $splitRequiredPSVersionMajor = $splitRequiredPSVersion[0]
+    $splitRequiredPSVersionMinor = $splitRequiredPSVersion[1]
+    $splitRequiredPSVersionPatch = $splitRequiredPSVersion[2]
 
-$thisPSVersion = ($PSVersionTable.PSVersion)
-$thisPSVersionMajor = ($thisPSVersion).Major
-$thisPSVersionMinor = ($thisPSVersion).Minor
-$thisPSVersionPatch = ($thisPSVersion).Patch
+    $thisPSVersion = ($PSVersionTable.PSVersion)
+    $thisPSVersionMajor = ($thisPSVersion).Major
+    $thisPSVersionMinor = ($thisPSVersion).Minor
+    $thisPSVersionPatch = ($thisPSVersion).Patch
 
-$psVersionCheckResult = "letsCheck"
+    $psVersionCheckResult = "letsCheck"
 
-if ($PSVersionTable.PSEdition -eq "Core" -and $thisPSVersionMajor -eq $splitRequiredPSVersionMajor) {
-    if ($thisPSVersionMinor -gt $splitRequiredPSVersionMinor) {
-        $psVersionCheckResult = "passed"
-        $psVersionCheck = "(Major[$splitRequiredPSVersionMajor]; Minor[$thisPSVersionMinor] gt $($splitRequiredPSVersionMinor))"
-    }
-    else {
-        if ($thisPSVersionPatch -ge $splitRequiredPSVersionPatch) {
+    if ($PSVersionTable.PSEdition -eq "Core" -and $thisPSVersionMajor -eq $splitRequiredPSVersionMajor) {
+        if ($thisPSVersionMinor -gt $splitRequiredPSVersionMinor) {
             $psVersionCheckResult = "passed"
-            $psVersionCheck = "(Major[$splitRequiredPSVersionMajor]; Minor[$splitRequiredPSVersionMinor]; Patch[$thisPSVersionPatch] gt $($splitRequiredPSVersionPatch))"
+            $psVersionCheck = "(Major[$splitRequiredPSVersionMajor]; Minor[$thisPSVersionMinor] gt $($splitRequiredPSVersionMinor))"
         }
         else {
-            $psVersionCheckResult = "failed"
-            $psVersionCheck = "(Major[$splitRequiredPSVersionMajor]; Minor[$splitRequiredPSVersionMinor]; Patch[$thisPSVersionPatch] lt $($splitRequiredPSVersionPatch))"
+            if ($thisPSVersionPatch -ge $splitRequiredPSVersionPatch) {
+                $psVersionCheckResult = "passed"
+                $psVersionCheck = "(Major[$splitRequiredPSVersionMajor]; Minor[$splitRequiredPSVersionMinor]; Patch[$thisPSVersionPatch] gt $($splitRequiredPSVersionPatch))"
+            }
+            else {
+                $psVersionCheckResult = "failed"
+                $psVersionCheck = "(Major[$splitRequiredPSVersionMajor]; Minor[$splitRequiredPSVersionMinor]; Patch[$thisPSVersionPatch] lt $($splitRequiredPSVersionPatch))"
+            }
         }
     }
-}
-else {
-    $psVersionCheckResult = "failed"
-    $psVersionCheck = "(Major[$splitRequiredPSVersionMajor] ne $($splitRequiredPSVersionMajor))"
-}
+    else {
+        $psVersionCheckResult = "failed"
+        $psVersionCheck = "(Major[$splitRequiredPSVersionMajor] ne $($splitRequiredPSVersionMajor))"
+    }
 
-if ($psVersionCheckResult -eq "passed") {
-    Write-Host " PS check $psVersionCheckResult : $($psVersionCheck); (minimum supported version '$requiredPSVersion')"
-    Write-Host " PS Edition: $($PSVersionTable.PSEdition)"
-    Write-Host " PS Version: $($PSVersionTable.PSVersion)"
-}
-else {
-    Write-Host " PS check $psVersionCheckResult : $($psVersionCheck)"
-    Write-Host " PS Edition: $($PSVersionTable.PSEdition)"
-    Write-Host " PS Version: $($PSVersionTable.PSVersion)"
-    Write-Host " This script version only supports Powershell 'Core' version '$($requiredPSVersion)' or higher"
-    Throw "Error - check the last console output for details"
+    if ($psVersionCheckResult -eq "passed") {
+        Write-Host " PS check $psVersionCheckResult : $($psVersionCheck); (minimum supported version '$requiredPSVersion')"
+        Write-Host " PS Edition: $($PSVersionTable.PSEdition)"
+        Write-Host " PS Version: $($PSVersionTable.PSVersion)"
+    }
+    else {
+        Write-Host " PS check $psVersionCheckResult : $($psVersionCheck)"
+        Write-Host " PS Edition: $($PSVersionTable.PSEdition)"
+        Write-Host " PS Version: $($PSVersionTable.PSVersion)"
+        Write-Host " This script version only supports Powershell 'Core' version '$($requiredPSVersion)' or higher"
+        Throw "Error - check the last console output for details"
+    }
 }
 #EndRegion PowerShellEditionAnVersionCheck
 
@@ -194,21 +224,6 @@ function AzAPICall {
                 Duration                             = $durationAPICall.TotalSeconds
             })
 
-        if ($caller -eq "CustomDataCollection") {
-            $null = $script:arrayAPICallTrackingCustomDataCollection.Add([PSCustomObject]@{
-                    CurrentTask                          = $currentTask
-                    TargetEndpoint                       = $targetEndpoint
-                    Uri                                  = $uri
-                    Method                               = $method
-                    TryCounter                           = $tryCounter
-                    TryCounterUnexpectedError            = $tryCounterUnexpectedError
-                    RetryAuthorizationFailedCounter      = $retryAuthorizationFailedCounter
-                    RestartDueToDuplicateNextlinkCounter = $restartDueToDuplicateNextlinkCounter
-                    TimeStamp                            = $tstmp
-                    Duration                             = $durationAPICall.TotalSeconds
-                })
-        }
-
         $tryCounter++
         if ($htParameters.DebugAzAPICall -eq $true -or $tryCounter -gt 3) {
             if ($htParameters.DebugAzAPICall -eq $true) { Write-Host "  DEBUGTASK: attempt#$($tryCounter) processing: $($currenttask) uri: '$($uri)'" -ForegroundColor $debugForeGroundColor }
@@ -314,12 +329,7 @@ function AzAPICall {
                                 foreach ($htParameter in ($htParameters.Keys | Sort-Object)) {
                                     Write-Host "$($htParameter):$($htParameters.($htParameter))"
                                 }
-                                if ($htParameters.onAzureDevOps -eq $true) {
-                                    Write-Error "Error"
-                                }
-                                else {
-                                    Throw "Error: check the last console output for details"
-                                }
+                                Throw "Error: check the last console output for details"
                             }
                             else {
                                 if ($retryAuthorizationFailedCounter -gt 2) {
@@ -407,12 +417,7 @@ function AzAPICall {
                         $sleepSec = @(1, 3, 5, 7, 10, 12, 20, 30, 40, 45)[$tryCounter]
                         if ($tryCounter -gt $maxTries) {
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - exit"
-                            if ($htParameters.onAzureDevOps -eq $true) {
-                                Write-Error "Error"
-                            }
-                            else {
-                                Throw "Error - AzGovViz: check the last console output for details"
-                            }
+                            Throw "Error - check the last console output for details"
                         }
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' sleeping $($sleepSec) seconds"
                         start-sleep -Seconds $sleepSec
@@ -441,12 +446,7 @@ function AzAPICall {
                             if ($userType -eq "unknown") {
                                 Write-Host " Your UserType is 'unknown' (member/guest/unknown) in the tenant. Seems you do not have enough permissions geeting AAD related data. You have the following options: [1. request membership to AAD Role 'Directory readers'.]" -ForegroundColor Yellow
                             }
-                            if ($htParameters.onAzureDevOps -eq $true) {
-                                Write-Error "Error"
-                            }
-                            else {
-                                Throw "Authorization_RequestDenied"
-                            }
+                            Throw "Authorization_RequestDenied"
                         }
                         else {
                             Write-Host "- - - - - - - - - - - - - - - - - - - - "
@@ -457,12 +457,7 @@ function AzAPICall {
                             foreach ($htParameter in ($htParameters.Keys | Sort-Object)) {
                                 Write-Host "$($htParameter):$($htParameters.($htParameter))"
                             }
-                            if ($htParameters.onAzureDevOps -eq $true) {
-                                Write-Error "Error"
-                            }
-                            else {
-                                Throw "Authorization_RequestDenied"
-                            }
+                            Throw "Authorization_RequestDenied"
                         }
                     }
 
@@ -524,12 +519,7 @@ function AzAPICall {
                         $sleepSec = @(1, 3, 5, 7, 10, 12, 20, 30, 40, 45)[$tryCounter]
                         if ($tryCounter -gt $maxTries) {
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - exit"
-                            if ($htParameters.onAzureDevOps -eq $true) {
-                                Write-Error "Error"
-                            }
-                            else {
-                                Throw "Error - check the last console output for details"
-                            }
+                            Throw "Error - check the last console output for details"
                         }
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' sleeping $($sleepSec) seconds"
                         start-sleep -Seconds $sleepSec
@@ -594,12 +584,7 @@ function AzAPICall {
                         if ($getConsumption) {
                             Write-Host "If Consumption data is not that important for you, do not use parameter: -DoAzureConsumption (however, please still report the issue - thank you)"
                         }
-                        if ($htParameters.onAzureDevOps -eq $true) {
-                            Write-Error "Error"
-                        }
-                        else {
-                            Throw "Error - check the last console output for details"
-                        }
+                        Throw "Error - check the last console output for details"
                     }
                 }
             }
@@ -666,12 +651,7 @@ function AzAPICall {
                         if ($uri -eq $azAPIRequestConvertedFromJson.nextLink) {
                             if ($restartDueToDuplicateNextlinkCounter -gt 3) {
                                 Write-Host " $currentTask restartDueToDuplicateNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
-                                if ($htParameters.onAzureDevOps -eq $true) {
-                                    Write-Error "Error"
-                                }
-                                else {
-                                    Throw "Error - check the last console output for details"
-                                }
+                                Throw "Error - check the last console output for details"
                             }
                             else {
                                 $restartDueToDuplicateNextlinkCounter++
@@ -699,12 +679,7 @@ function AzAPICall {
                         if ($uri -eq $azAPIRequestConvertedFromJson."@odata.nextLink") {
                             if ($restartDueToDuplicateNextlinkCounter -gt 3) {
                                 Write-Host " $currentTask restartDueToDuplicate@odataNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
-                                if ($htParameters.onAzureDevOps -eq $true) {
-                                    Write-Error "Error"
-                                }
-                                else {
-                                    Throw "Error - check the last console output for details"
-                                }
+                                Throw "Error - check the last console output for details"
                             }
                             else {
                                 $restartDueToDuplicateNextlinkCounter++
@@ -732,12 +707,7 @@ function AzAPICall {
                         if ($uri -eq $azAPIRequestConvertedFromJson.properties.nextLink) {
                             if ($restartDueToDuplicateNextlinkCounter -gt 3) {
                                 Write-Host " $currentTask restartDueToDuplicateNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
-                                if ($htParameters.onAzureDevOps -eq $true) {
-                                    Write-Error "Error"
-                                }
-                                else {
-                                    Throw "Error - check the last console output for details"
-                                }
+                                Throw "Error - check the last console output for details"
                             }
                             else {
                                 $restartDueToDuplicateNextlinkCounter++
@@ -782,12 +752,7 @@ function AzAPICall {
             }
             else {
                 Write-Host " $currentTask #$tryCounterUnexpectedError 'Unexpected Error' occurred (tried 5 times)/exit"
-                if ($htParameters.onAzureDevOps -eq $true) {
-                    Write-Error "Error"
-                }
-                else {
-                    Throw "Error - check the last console output for details"
-                }
+                Throw "Error - check the last console output for details"
             }
         }
     }
@@ -930,21 +895,16 @@ foreach ($azModule in $azModules) {
 #EndRegion testAzModules
 
 #Region Main
-Clear-AzContext -Force
-Connect-AzAccount
+# Clear-AzContext -Force
+# Connect-AzAccount -TenantId $TenantId
 
 #check AzContext
-#Region checkAzContext
+#Region checkAzContext (FUNCTION)
 $checkContext = Get-AzContext -ErrorAction Stop
 Write-Host "Checking Az Context"
 if (-not $checkContext) {
-    Write-Host " Context test failed: No context found. Please connect to Azure (run: Connect-AzAccount) and re-run AzGovViz" -ForegroundColor Red
-    if ($htParameters.onAzureDevOps -eq $true) {
-        Write-Error "Error"
-    }
-    else {
-        Throw "Error - AzGovViz: check the last console output for details"
-    }
+    Write-Host " Context test failed: No context found. Please connect to Azure (run: Connect-AzAccount) and re-run the script" -ForegroundColor Red
+    Throw "Error - check the last console output for details"
 }
 else {
     $accountType = $checkContext.Account.Type
@@ -959,44 +919,29 @@ else {
                 $null = Set-AzContext -SubscriptionId $SubscriptionId4AzContext -ErrorAction Stop
             }
             catch {
-                if ($htParameters.onAzureDevOps -eq $true) {
-                    Write-Error "Error"
-                }
-                else {
-                    Throw "Error - AzGovViz: check the last console output for details"
-                }
+                Throw "Error - check the last console output for details"
             }
             $checkContext = Get-AzContext -ErrorAction Stop
-            Write-Host "AzContext: $($checkContext.Subscription.Name) ($($checkContext.Subscription.Id))" -ForegroundColor Green
+            Write-Host " AzContext: $($checkContext.Subscription.Name) ($($checkContext.Subscription.Id))" -ForegroundColor Green
         }
         else {
             Write-Host " AzContext: $($checkContext.Subscription.Name) ($($checkContext.Subscription.Id))" -ForegroundColor Green
         }
     }
     
-    #else{
     if (-not $checkContext.Subscription) {
         $checkContext
-        Write-Host " Context test failed: Context is not set to any Subscription. Set your context to a subscription by running: Set-AzContext -subscription <subscriptionId> (run Get-AzSubscription to get the list of available Subscriptions). When done re-run AzGovViz" -ForegroundColor Red
-        
-        if ($htParameters.onAzureDevOps -eq $true) {
-            Write-host " If this error occurs you may want to leverage parameter 'SubscriptionId4AzContext' (AzGovVizParallel.ps1 -SubscriptionId4AzContext '<SubscriptionId>')"
-            Write-Error "Error"
-        }
-        else {
-            Throw "Error - AzGovViz: check the last console output for details"
-        }
+        Write-Host " Context test failed: Context is not set to any Subscription. Set your context to a subscription by running: Set-AzContext -subscription <subscriptionId> (run Get-AzSubscription to get the list of available Subscriptions). When done re-run the script" -ForegroundColor Red
+        Throw "Error - check the last console output for details"
     }
     else {
         Write-Host " Context test passed: Context OK" -ForegroundColor Green
     }
-    #}
-
 }
 #EndRegion checkAzContext
 
 #environment check
-#Region environmentcheck
+#Region environmentcheck (FUNCTION)
 $checkAzEnvironments = Get-AzEnvironment -ErrorAction Stop
 
 #FutureUse
@@ -1031,11 +976,19 @@ foreach ($checkAzEnvironment in $checkAzEnvironments) {
         ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name).MicrosoftGraph = "https://graph.microsoft.de"
     }
 }
+
+$uriMicrosoftGraph = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MicrosoftGraph)"
+$uriARM = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ARM)"
+$uriKeyVault = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).KeyVault)"
+$uriLogAnalytics = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).LogAnalytics)"
 #EndRegion environmentcheck
 
 #init variables
-$arrayAPICallTracking = [System.Collections.ArrayList]@()
-$arrayAPICallTrackingCustomDataCollection = [System.Collections.ArrayList]@()
+if($PsParallelization) {
+    $arrayAPICallTracking = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+} else {
+    $arrayAPICallTracking = [System.Collections.ArrayList]@()
+}
 
 #create bearer token
 createBearerToken -targetEndPoint "MicrosoftGraph"
@@ -1043,11 +996,9 @@ createBearerToken -targetEndPoint "MicrosoftGraph"
 # createBearerToken -targetEndPoint "KeyVault"
 # createBearerToken -targetEndPoint "LogAnalytics"
 
-# Example call
+# Example calls
 # https://graph.microsoft.com/v1.0/groups
-$mainUri = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MicrosoftGraph)"
-$uri = "$mainUri" + "/v1.0/groups?`$top=10&`$filter=(mailEnabled eq false and securityEnabled eq true)&`$select=id,createdDateTime,displayName,description&`$orderby=displayName asc&`$count=true" #https://docs.microsoft.com/en-us/graph/paging
-Write-Host "Request URI: $uri"
+$uri = $uriMicrosoftGraph + "/v1.0/groups?`$top=999&`$filter=(mailEnabled eq false and securityEnabled eq true)&`$select=id,createdDateTime,displayName,description&`$orderby=displayName asc&`$count=true" #https://docs.microsoft.com/en-us/graph/paging
 $listenOn = "Value" #Default
 $currentTask = "Microsoft Graph API: Get - Groups"
 $method = "GET"
@@ -1056,6 +1007,49 @@ $aadgroups = AzAPICall -uri $uri `
                        -currentTask $currentTask `
                        -listenOn $listenOn `
                        -consistencyLevel "eventual" `
-                       -noPaging $true #$top in url + paging = $true will iterate further https://docs.microsoft.com/en-us/graph/paging
+                       -noPaging $true #$top in url + paging = $true will iterate further https://docs.microsoft.com/en-us/graph/paging       
 
-$aadgroups
+$htAzureAdGroupDetails = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
+$arrayGroupMembers = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+
+$startTime = get-date
+
+$aadgroups | ForEach-Object -Parallel {
+    $htAzureAdGroupDetails = $using:htAzureAdGroupDetails
+    $uriMicrosoftGraph = $using:uriMicrosoftGraph
+    $arrayGroupMembers = $using:arrayGroupMembers
+    $htParameters = $using:htParameters
+    $htBearerAccessToken = $using:htBearerAccessToken
+    $arrayAPICallTracking = $using:arrayAPICallTracking
+
+    $function:AzAPICall = $using:funcAzAPICall
+    $function:createBearerToken = $using:funcCreateBearerToken
+    $function:GetJWTDetails = $using:funcGetJWTDetails
+
+    $group = $_
+
+    # https://docs.microsoft.com/en-us/graph/api/group-list-members?view=graph-rest-1.0&tabs=http
+    $uri = $uriMicrosoftGraph + "/v1.0/groups/$($group.id)/members"
+    $listenOn = "Value" #Default
+    $currentTask = "Microsoft Graph API: Get - Group List Members"
+    $method = "GET"
+    $AzApiCallResult = AzAPICall -uri $uri `
+                                 -method $method `
+                                 -currentTask $currentTask `
+                                 -listenOn $listenOn `
+                                 -caller "CustomDataCollection" `
+                                 -noPaging $true #https://docs.microsoft.com/en-us/graph/paging
+
+    $htAzureAdGroupDetails.($group.id) = @()
+    $htAzureAdGroupDetails.($group.id) = $AzApiCallResult
+} -ThrottleLimit $ThrottleLimitMicrosoftGraph
+
+$parallelElapsedTime = "elapsed time (parallel foreach loop): " + ((get-date) - $startTime).TotalSeconds + " seconds"
+Write-Host $parallelElapsedTime
+
+($arrayAPICallTracking.Duration | Measure-Object -Average -Maximum -Minimum)
+
+$aadgroups.Count
+$htAzureAdGroupDetails.Keys.Count
+$htAzureAdGroupDetails.Values.Id.Count   
+#EndRegion Main
