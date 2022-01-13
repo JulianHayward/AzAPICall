@@ -12,6 +12,10 @@ Param
 )
 
 #Region Prerequisites
+    Clear-AzContext -Force
+    Connect-AzAccount -Tenant "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" `
+                      -SubscriptionId "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+
     #Region ErrorActionPreference
     # https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_preference_variables?view=powershell-7.2#erroractionpreference
     $ErrorActionPreference = "Stop"
@@ -25,18 +29,18 @@ Param
 
     #Region Functions
         #Region getJWTDetails
-        .\functions\getJWTDetails.ps1
+        . .\functions\getJWTDetails.ps1
         $funcGetJWTDetails = $function:getJWTDetails.ToString()
         #EndRegion getJWTDetails
 
         #Region createBearerToken
-        .\functions\createBearerToken.ps1
+        . .\functions\createBearerToken.ps1
         $funcCreateBearerToken = $function:createBearerToken.ToString()
         $htBearerAccessToken = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
         #EndRegion createBearerToken
 
         #Region AzAPICall
-        .\functions\AzAPICall.ps1
+        . .\functions\AzAPICall.ps1
         $funcAzAPICall = $function:AzAPICall.ToString()
         #EndRegionAzAPICall
     #EndRegion Functions
@@ -49,17 +53,14 @@ Param
     }
     #EndRegion Variables
 
-    .\prerequisites\Test-HashtableParameter.ps1
-    .\prerequisites\Test-PowerShellVersion.ps1
-    .\prerequisites\Test-AzModules.ps1
-    .\prerequisites\Test-AzContext.ps1
-    .\prerequisites\Test-Environment.ps1
+    . .\prerequisites\Test-HashtableParameter.ps1
+    . .\prerequisites\Test-PowerShellVersion.ps1
+    . .\prerequisites\Test-AzModules.ps1
+    . .\prerequisites\Test-AzContext.ps1
+    . .\prerequisites\Test-Environment.ps1
 #EndRegion Prerequisites
 
 #Region Main
-Clear-AzContext -Force
-Connect-AzAccount -TenantId $TenantId
-
 #Region BearerToken
 #create bearer token
 createBearerToken -targetEndPoint "MicrosoftGraph"

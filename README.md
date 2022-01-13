@@ -1,42 +1,23 @@
-﻿# Prerequisites
-## Powershell
-### Versions
-| PowerShell Version | Description									                                        |
-| ------------------ | ------------------------------------------------------------------------------------ |
-| 7.0.3 			 | If you would like to use [PowerShell parallelization](https://devblogs.microsoft.com/powershell/powershell-foreach-object-parallel-feature/), you need to set the parameter `PsParallelization`. |
-| 5.x.x			     | If you don't have many data to collect, you can use the `AzAPICall` without parallelization.                    |
+﻿# AzAPICall
+You want to have easy way to sent requests to the Microsoft endpoints without getting headache of taking care of valid bearer token and error handling?
 
-### Modules
-| PowerShell Module | Version |
-| ----------------- | ------- |
-| Az.Accounts       | 2.6.1   |
+Right.. we also! 
 
-### Files
-| PowerShell file | Description |
-| --------------- | ------- |
-| main.ps1 | Example how to use the `AzAPICall` best. |
-| AzAPICall.ps1   | JULIAN |
-| createBearerToken.ps1 | JULIAN |
-| getJWTDetails.ps1 | JULIAN |
-| Test-AzContext.ps1 | JULIAN |
-| Test-AzModules.ps1 | Check if predefined command `Get-AzContext` can be executed within the executed PowerShell session. Addtionally, check if the needed module `Az.Accounts` is installed and write the version to the output. |
-| Test-Environment.ps1 | Get the environment information of the actual context and predefine the [URI endpoint as variable](#uri). |
-| Test-HashtableParameter.ps1 | Check where the code is running *(e.g.: GitHubCodespaces, AzureDevOps, AzureAutomation, Console)*. Set also the `DebugAzAPICall`. |
-| Test-PowerShellVersion.ps1 | If `PsParallelization`-parameter is set to `$true`, it need to be verified, that the PowerShell version is >= `7.0.3`. |
+Here is **THE SOLUTION**!
 
-## General Parameter
-| Field					   		| Type		| Description									                                        | Required |
-| ----------------------------- | :-------: | ------------------------------------------------------------------------------------- | :------: |
-| DebugAzAPICall			    | `switch`	| Set to `True` to enable the debugging and get further detailed output.                | 		   |
-| SubscriptionId4AzContext		| `string`	| JULIAN                                                                                | 		   |
-| PsParallelization			    | `switch`	| `True` or `False` if parellelization should be used. If it should be used PowerShell version >= 7.0.,3 is required. If set to `False` you can use it also with PowerShell verion >= 5.1. | 	 	   |
-| TenantId			            | `string`	| ID of your Azure tenant                                                               | ✅ 	  |
-| ThrottleLimitMicrosoftGraph	| `int`	    | Only if `PsParallelization` is set to `true`. Set the ThrottelLimit for the Microsoft Graph API call for parallelization. Default and recommended value is `20`. |  		   |
-| ThrottleLimitARM			    | `int`	    | Only if `PsParallelization` is set to `true`. Set the ThrottelLimit for the ARM (Azure Resource Manager) API call for parallelization. Default and recommended value is `10`. |  		   |
-
-# AzAPICall
-
-## AzAPICall - Parameter
+## Table of content
+- [AzAPICall](#AzAPICall)
+    - [Table of content](#Table-of-content)
+    - [AzAPICall Parameter](#AzAPICall-Parameter)
+    - [AzAPICall Function](#AzAPICall-Function)
+    - [AzAPICall Tracking](#AzAPICall-Tracking)
+- [Prerequisites](#Prerequisites)
+    - [Powershell](#Powershell)
+        - [Versions](#Versions)
+        - [Modules](#Modules)
+        - [Files](#Files)
+        - [General Parameter (main.ps1)](#General-Parameter-(main.ps1))
+## AzAPICall Parameter
 | Field					   		| Type		| Description									                                        | Required |
 | ----------------------------- | :-------: | ------------------------------------------------------------------------------------- | :------: |
 | uri				    	    | `string`	| URI of the API request                                                                | ✅		  |
@@ -100,7 +81,117 @@ Regarding to this, the `currentTtask` will be included in the output.
 $currentTask = "Microsoft Graph API: Get - Group List"
 ```
 
-## AzAPICall - Function
+## AzAPICall Function
+
+*(main.ps1)*:
+
+Make sure you are authenticated to Azure otherwise implement it to your script:
+
+```POWERSHELL
+Clear-AzContext -Force
+Connect-AzAccount -Tenant "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" `
+                  -SubscriptionId "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" 
+```
+
+*(main.ps1)*:
+
+First, you should import the following powershell `functions` and define the `variables` for the parallelization to be able to use them:
+```POWERSHELL
+#Region Functions
+#Region getJWTDetails
+.\functions\getJWTDetails.ps1
+$funcGetJWTDetails = $function:getJWTDetails.ToString()
+#EndRegion getJWTDetails
+
+#Region createBearerToken
+.\functions\createBearerToken.ps1
+$funcCreateBearerToken = $function:createBearerToken.ToString()
+$htBearerAccessToken = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
+#EndRegion createBearerToken
+
+#Region AzAPICall
+.\functions\AzAPICall.ps1
+$funcAzAPICall = $function:AzAPICall.ToString()
+#EndRegionAzAPICall
+#EndRegion Functions
+```
+*(main.ps1)*:
+
+Now, depending if you like to use parallelization, you need to define the following variable:
+```POWERSHELL
+#Region Variables
+if($PsParallelization) {
+    $arrayAPICallTracking = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+} else {
+    $arrayAPICallTracking = [System.Collections.ArrayList]@()
+}
+#EndRegion Variables
+```
+*(Test-HashtableParameter.ps1)*:
+
+Additionally, the `$htParameters`-hashtable will be created and the `DebugAzAPICall`-value will be set.
+
+```POWERSHELL
+$htParameters = @{}
+
+if ($DebugAzAPICall) {
+    $htParameters.DebugAzAPICall = $true
+    write-host "AzAPICall debug enabled" -ForegroundColor Cyan
+}
+else {
+    $htParameters.DebugAzAPICall = $false
+    write-host "AzAPICall debug disabled" -ForegroundColor Cyan
+}
+```
+
+*(Test-Environment.ps1)*:
+
+For the later usage, we need the endpoints and store them within a variable.
+```POWERSHELL
+#Region Test-Environment
+$checkAzEnvironments = Get-AzEnvironment -ErrorAction Stop
+
+#FutureUse
+#Graph Endpoints https://docs.microsoft.com/en-us/graph/deployments#microsoft-graph-and-graph-explorer-service-root-endpoints
+#AzureCloud https://graph.microsoft.com
+#AzureUSGovernment L4 https://graph.microsoft.us
+#AzureUSGovernment L5 (DOD) https://dod-graph.microsoft.us
+#AzureChinaCloud https://microsoftgraph.chinacloudapi.cn
+#AzureGermanCloud https://graph.microsoft.de
+
+#AzureEnvironmentRelatedUrls
+$htAzureEnvironmentRelatedUrls = @{ }
+$arrayAzureManagementEndPointUrls = @()
+foreach ($checkAzEnvironment in $checkAzEnvironments) {
+    ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name) = @{ }
+    ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name).ARM = $checkAzEnvironment.ResourceManagerUrl
+    $arrayAzureManagementEndPointUrls += $checkAzEnvironment.ResourceManagerUrl
+    ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name).KeyVault = $checkAzEnvironment.AzureKeyVaultServiceEndpointResourceId
+    $arrayAzureManagementEndPointUrls += $checkAzEnvironment.AzureKeyVaultServiceEndpointResourceId
+    ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name).LogAnalytics = $checkAzEnvironment.AzureOperationalInsightsEndpoint
+    $arrayAzureManagementEndPointUrls += $checkAzEnvironment.AzureOperationalInsightsEndpoint
+    if ($checkAzEnvironment.Name -eq "AzureCloud") {
+        ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name).MicrosoftGraph = "https://graph.microsoft.com"
+    }
+    if ($checkAzEnvironment.Name -eq "AzureChinaCloud") {
+        ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name).MicrosoftGraph = "https://microsoftgraph.chinacloudapi.cn"
+    }
+    if ($checkAzEnvironment.Name -eq "AzureUSGovernment") {
+        ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name).MicrosoftGraph = "https://graph.microsoft.us"
+    }
+    if ($checkAzEnvironment.Name -eq "AzureGermanCloud") {
+        ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name).MicrosoftGraph = "https://graph.microsoft.de"
+    }
+}
+
+$uriMicrosoftGraph = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MicrosoftGraph)"
+$uriARM = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ARM)"
+$uriKeyVault = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).KeyVault)"
+$uriLogAnalytics = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).LogAnalytics)"
+#EndRegion Test-Environment
+```
+
+*(main.ps1)*:
 
 Before we can use the `AzAPICall`-function we need the related bearer-token of the to be [used API](#uri) for the authentication.
 You need to call the `createBearerToken`-function and use the `targetEndPoint`-parameter with the value of the to be [used API](#uri).
@@ -208,9 +299,99 @@ You can address a specific group by the id to see if members are available and w
 $htAzureAdGroupDetails."<GroupId"
 ```
 
+### AzAPICall Tracking
+
+To get some insights about all AzAPIcalls you can use the `$arrayAPICallTracking`-ArrayList.
+
+```POWERSHELL
+$arrayAPICallTracking[0] | ConvertTo-Json
+```
+```JSON
+{
+  "CurrentTask": "Microsoft Graph API: Get - Groups",
+  "TargetEndpoint": "MicrosoftGraph",
+  "Uri": "https://graph.microsoft.com/v1.0/groups?$top=999&$filter=(mailEnabled eq false and securityEnabled eq true)&$select=id,createdDateTime,displayName,description&$orderby=displayName asc&$count=true",
+  "Method": "GET",
+  "TryCounter": 0,
+  "TryCounterUnexpectedError": 0,
+  "RetryAuthorizationFailedCounter": 0,
+  "RestartDueToDuplicateNextlinkCounter": 0,
+  "TimeStamp": "2022011316040343",
+  "Duration": 1.3137266
+}
+```
+As well you can see how fast a AzAPICall was responding:
+```POWERSHELL
+($arrayAPICallTracking.Duration | Measure-Object -Average -Maximum -Minimum) | ConvertTo-Json
+```
+```JSON
+{
+  "Count": 1000,
+  "Average": 0.4292551101999999,
+  "Sum": null,
+  "Maximum": 2.7991866,
+  "Minimum": 0.263543,
+  "StandardDeviation": null,
+  "Property": null
+}
+```
+
+E.g. the slowest one:
+```POWERSHELL
+$arrayAPICallTracking | Sort-Object Duration -Descending | Select-Object -First 1 | ConvertTo-Json
+```
+
+```JSON
+{
+  "CurrentTask": "Microsoft Graph API: Get - Group List Members",
+  "TargetEndpoint": "MicrosoftGraph",
+  "Uri": "https://graph.microsoft.com/v1.0/groups/<GroupId>/members",
+  "Method": "GET",
+  "TryCounter": 0,
+  "TryCounterUnexpectedError": 0,
+  "RetryAuthorizationFailedCounter": 0,
+  "RestartDueToDuplicateNextlinkCounter": 0,
+  "TimeStamp": "20220113160421421",
+  "Duration": 2.7991866
+}
+```
 
 ### Good to know
-
-
 By default, the AzAPICall will have batch results of `100` values. To increase it and to speed up the process you can increase the call also with `$top=999`. Then the batch size of the results will be `999` instead of `100`.
 If you would like to do this, you need to use the `consistencyLevel`-paramenter with the value `eventual` and activate the paging with the `noPaging`-parameter value `$false`.
+
+# Prerequisites
+## Powershell
+### Versions
+| PowerShell Version | Description									                                        |
+| ------------------ | ------------------------------------------------------------------------------------ |
+| 7.0.3 			 | If you would like to use [PowerShell parallelization](https://devblogs.microsoft.com/powershell/powershell-foreach-object-parallel-feature/), you need to set the parameter `PsParallelization`. |
+| 5.x.x			     | If you don't have many data to collect, you can use the `AzAPICall` without parallelization.                    |
+
+### Modules
+| PowerShell Module | Version |
+| ----------------- | ------- |
+| Az.Accounts       | 2.6.1   |
+
+### Files
+| PowerShell file | Description |
+| --------------- | ------- |
+| main.ps1 | Example how to use the `AzAPICall` best. |
+| AzAPICall.ps1   | JULIAN |
+| createBearerToken.ps1 | JULIAN |
+| getJWTDetails.ps1 | JULIAN |
+| Test-AzContext.ps1 | JULIAN |
+| Test-AzModules.ps1 | Check if predefined command `Get-AzContext` can be executed within the executed PowerShell session. Addtionally, check if the needed module `Az.Accounts` is installed and write the version to the output. |
+| Test-Environment.ps1 | Get the environment information of the actual context and predefine the [URI endpoint as variable](#uri). |
+| Test-HashtableParameter.ps1 | Check where the code is running *(e.g.: GitHubCodespaces, AzureDevOps, AzureAutomation, Console)*. Set also the `DebugAzAPICall`. |
+| Test-PowerShellVersion.ps1 | If `PsParallelization`-parameter is set to `$true`, it need to be verified, that the PowerShell version is >= `7.0.3`. |
+
+## General Parameter (main.ps1)
+| Field					   		| Type		| Description									                                        | Required |
+| ----------------------------- | :-------: | ------------------------------------------------------------------------------------- | :------: |
+| DebugAzAPICall			    | `switch`	| Set to `True` to enable the debugging and get further detailed output.                | 		   |
+| SubscriptionId4AzContext		| `string`	| If you would like to use a specific subscription as AzContext. Otherwise, if the `SubscriptionId4AzContext`-parameter value is `undefined`, the standard subscription with the Connect-AzAccount will be used. | 		   |
+| PsParallelization			    | `switch`	| `True` or `False` if parellelization should be used. If it should be used PowerShell version >= 7.0.,3 is required. If set to `False` you can use it also with PowerShell verion >= 5.1. | 	 	   |
+| TenantId			            | `string`	| ID of your Azure tenant                                                               | ✅ 	  |
+| ThrottleLimitMicrosoftGraph	| `int`	    | Only if `PsParallelization` is set to `true`. Set the ThrottelLimit for the Microsoft Graph API call for parallelization. Default and recommended value is `20`. |  		   |
+| ThrottleLimitARM			    | `int`	    | Only if `PsParallelization` is set to `true`. Set the ThrottelLimit for the ARM (Azure Resource Manager) API call for parallelization. Default and recommended value is `10`. |  		   |
