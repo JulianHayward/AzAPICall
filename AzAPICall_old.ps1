@@ -125,11 +125,11 @@ function AzAPICall {
         [Parameter(Mandatory=$False)][string]$body,
         [Parameter(Mandatory=$False)][string]$listenOn,
         [Parameter(Mandatory=$False)][string]$getConsumption,
+        [Parameter(Mandatory=$False)][string]$caller,
+        [Parameter(Mandatory=$False)][string]$consistencyLevel,
         [Parameter(Mandatory=$False)][bool]$getGroup,
         [Parameter(Mandatory=$False)][bool]$getGroupMembersCount,
         [Parameter(Mandatory=$False)][bool]$getApp,
-        [Parameter(Mandatory=$False)][string]$caller,
-        [Parameter(Mandatory=$False)][string]$consistencyLevel,
         [Parameter(Mandatory=$False)][bool]$getCount,
         [Parameter(Mandatory=$False)][bool]$getPolicyCompliance,
         [Parameter(Mandatory=$False)][bool]$getMgAscSecureScore,
@@ -529,7 +529,7 @@ function AzAPICall {
                         #Write-Host "$currentTask failed ('$($catchResult.error.code)' | '$($catchResult.error.message)')" -ForegroundColor DarkRed
                         return "failed"
                     }
-                    
+
 
                     if ($htParameters.userType -eq "Guest" -and $catchResult.error.code -eq "Authorization_RequestDenied") {
                         #https://docs.microsoft.com/en-us/azure/active-directory/enterprise-users/users-restrict-guest-permissions
@@ -756,7 +756,7 @@ function AzAPICall {
             }
         }
     }
-    until($azAPIRequest.StatusCode -eq 200 -and -not $isMore)
+    until(($azAPIRequest.StatusCode -in 200..204 -and -not $isMore ) -or ($Method -eq "HEAD" -and $azAPIRequest.StatusCode -eq 404))
     return $apiCallResultsCollection
 }
 $funcAzAPICall = $function:AzAPICall.ToString()
@@ -899,48 +899,50 @@ foreach ($azModule in $azModules) {
 # Connect-AzAccount -TenantId $TenantId
 
 #check AzContext
+Test-PSMDAzContext
 #Region checkAzContext (FUNCTION)
-$checkContext = Get-AzContext -ErrorAction Stop
-Write-Host "Checking Az Context"
-if (-not $checkContext) {
-    Write-Host " Context test failed: No context found. Please connect to Azure (run: Connect-AzAccount) and re-run the script" -ForegroundColor Red
-    Throw "Error - check the last console output for details"
-}
-else {
-    $accountType = $checkContext.Account.Type
-    $accountId = $checkContext.Account.Id
-    Write-Host " Context AccountId: '$($accountId)'" -ForegroundColor Yellow
-    Write-Host " Context AccountType: '$($accountType)'" -ForegroundColor Yellow
+# $checkContext = Get-AzContext -ErrorAction Stop
+# Write-Host "Checking Az Context"
+# if (-not $checkContext) {
+#     Write-Host " Context test failed: No context found. Please connect to Azure (run: Connect-AzAccount) and re-run the script" -ForegroundColor Red
+#     Throw "Error - check the last console output for details"
+# }
+# else {
+#     $accountType = $checkContext.Account.Type
+#     $accountId = $checkContext.Account.Id
+#     Write-Host " Context AccountId: '$($accountId)'" -ForegroundColor Yellow
+#     Write-Host " Context AccountType: '$($accountType)'" -ForegroundColor Yellow
 
-    if ($SubscriptionId4AzContext -ne "undefined") {
-        if ($checkContext.Subscription.Id -ne $SubscriptionId4AzContext) {
-            Write-Host " Setting AzContext to SubscriptionId: '$SubscriptionId4AzContext'" -ForegroundColor Yellow
-            try {
-                $null = Set-AzContext -SubscriptionId $SubscriptionId4AzContext -ErrorAction Stop
-            }
-            catch {
-                Throw "Error - check the last console output for details"
-            }
-            $checkContext = Get-AzContext -ErrorAction Stop
-            Write-Host " AzContext: $($checkContext.Subscription.Name) ($($checkContext.Subscription.Id))" -ForegroundColor Green
-        }
-        else {
-            Write-Host " AzContext: $($checkContext.Subscription.Name) ($($checkContext.Subscription.Id))" -ForegroundColor Green
-        }
-    }
-    
-    if (-not $checkContext.Subscription) {
-        $checkContext
-        Write-Host " Context test failed: Context is not set to any Subscription. Set your context to a subscription by running: Set-AzContext -subscription <subscriptionId> (run Get-AzSubscription to get the list of available Subscriptions). When done re-run the script" -ForegroundColor Red
-        Throw "Error - check the last console output for details"
-    }
-    else {
-        Write-Host " Context test passed: Context OK" -ForegroundColor Green
-    }
-}
+#     if ($SubscriptionId4AzContext -ne "undefined") {
+#         if ($checkContext.Subscription.Id -ne $SubscriptionId4AzContext) {
+#             Write-Host " Setting AzContext to SubscriptionId: '$SubscriptionId4AzContext'" -ForegroundColor Yellow
+#             try {
+#                 $null = Set-AzContext -SubscriptionId $SubscriptionId4AzContext -ErrorAction Stop
+#             }
+#             catch {
+#                 Throw "Error - check the last console output for details"
+#             }
+#             $checkContext = Get-AzContext -ErrorAction Stop
+#             Write-Host " AzContext: $($checkContext.Subscription.Name) ($($checkContext.Subscription.Id))" -ForegroundColor Green
+#         }
+#         else {
+#             Write-Host " AzContext: $($checkContext.Subscription.Name) ($($checkContext.Subscription.Id))" -ForegroundColor Green
+#         }
+#     }
+
+#     if (-not $checkContext.Subscription) {
+#         $checkContext
+#         Write-Host " Context test failed: Context is not set to any Subscription. Set your context to a subscription by running: Set-AzContext -subscription <subscriptionId> (run Get-AzSubscription to get the list of available Subscriptions). When done re-run the script" -ForegroundColor Red
+#         Throw "Error - check the last console output for details"
+#     }
+#     else {
+#         Write-Host " Context test passed: Context OK" -ForegroundColor Green
+#     }
+# }
 #EndRegion checkAzContext
 
 #environment check
+Test-PSMDEnvironment
 #Region environmentcheck (FUNCTION)
 $checkAzEnvironments = Get-AzEnvironment -ErrorAction Stop
 
@@ -1007,7 +1009,7 @@ $aadgroups = AzAPICall -uri $uri `
                        -currentTask $currentTask `
                        -listenOn $listenOn `
                        -consistencyLevel "eventual" `
-                       -noPaging $true #$top in url + paging = $true will iterate further https://docs.microsoft.com/en-us/graph/paging       
+                       -noPaging $true #$top in url + paging = $true will iterate further https://docs.microsoft.com/en-us/graph/paging
 
 $htAzureAdGroupDetails = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
 $arrayGroupMembers = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
@@ -1051,5 +1053,5 @@ Write-Host $parallelElapsedTime
 
 $aadgroups.Count
 $htAzureAdGroupDetails.Keys.Count
-$htAzureAdGroupDetails.Values.Id.Count   
+$htAzureAdGroupDetails.Values.Id.Count
 #EndRegion Main
