@@ -21,13 +21,6 @@ else {
 }
 
 $htParameters = @{}
-
-if ($DebugAzAPICall) {
-    $htParameters.DebugAzAPICall = $true
-    write-host "AzAPICall debug enabled" -ForegroundColor Cyan
-}
-else {
-    $htParameters.DebugAzAPICall = $false
-    write-host "AzAPICall debug disabled" -ForegroundColor Cyan
-}
+$htParameters.DebugAzAPICall = $DebugAzAPICall #true or false
+write-host "AzAPICall debug enabled" -ForegroundColor Cyan
 #EndRegion Test-HashtableParameter

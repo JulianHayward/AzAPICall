@@ -38,15 +38,8 @@ else {
 }
 
 $htParameters = @{}
-
-if ($DebugAzAPICall) {
-    $htParameters.DebugAzAPICall = $true
-    write-host "AzAPICall debug enabled" -ForegroundColor Cyan
-}
-else {
-    $htParameters.DebugAzAPICall = $false
-    write-host "AzAPICall debug disabled" -ForegroundColor Cyan
-}
+$htParameters.DebugAzAPICall = $DebugAzAPICall
+write-host "AzAPICall debug enabled" -ForegroundColor Cyan
 #endregion htParameters
 
 #Region PowerShellEditionAnVersionCheck

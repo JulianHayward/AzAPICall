@@ -8,6 +8,7 @@ Here is **THE SOLUTION**!
 ## Table of content
 - [AzAPICall](#AzAPICall)
     - [Table of content](#Table-of-content)
+    - [Current supported endpoints](#Current-supported-endpoints)
     - [AzAPICall Parameter](#AzAPICall-Parameter)
     - [AzAPICall Function](#AzAPICall-Function)
     - [AzAPICall Tracking](#AzAPICall-Tracking)
@@ -17,6 +18,12 @@ Here is **THE SOLUTION**!
         - [Modules](#Modules)
         - [Files](#Files)
         - [General Parameter (main.ps1)](#General-Parameter-(main.ps1))
+
+## Current supported endpoints
+- [Microsoft Graph](https://docs.microsoft.com/en-us/graph/api/overview?view=graph-rest-1.0)
+- [Azure Resource Management](https://docs.microsoft.com/en-us/rest/api/resources/)
+- [Azure Key Vault](https://docs.microsoft.com/en-us/rest/api/keyvault/)
+- [Log Analytics](https://docs.microsoft.com/en-us/rest/api/loganalytics/)
 ## AzAPICall Parameter
 | Field					   		| Type		| Description									                                        | Required |
 | ----------------------------- | :-------: | ------------------------------------------------------------------------------------- | :------: |
@@ -27,6 +34,7 @@ Here is **THE SOLUTION**!
 | caller                        | `string`  | Set the value to `CustomDataCollection` for parallelization to have different font colors for the debug output |          |
 | consistencyLevel              | `string`  | For several [OData query parameters](https://docs.microsoft.com/en-us/graph/query-parameters) the `consistencyLevel`-header need to be set to `eventual` |          |
 | listenOn                      | `string`  | Default is `Value`. Depending to the expacted result of the API call the following values are accepted: `Content`, `ContentProperties`, `Value` |          |
+| noPaging                      | `bool`    | If value is `true` paging will be deactivated and you will only get the defined number of `$top` results or [Resource Graph limits any query to returning only `100` records](https://docs.microsoft.com/en-us/azure/governance/resource-graph/concepts/work-with-data). Otherwise, you can use `$top` to increase the result batches from default `100` up to `999` for the `AzAPICall`. `$top`-value must be between 1 and 999 inclusive. |          |
 | getConsumption                | `bool`    | JULIAN                                                                                |          |
 | getGroup                      | `bool`    | JULIAN                                                                                |          |
 | getGroupMembersCount          | `bool`    | JULIAN                                                                                |          |
@@ -38,7 +46,6 @@ Here is **THE SOLUTION**!
 | getDiagnosticSettingsMg       | `bool`    | JULIAN                                                                                |          |
 | validateAccess                | `bool`    | JULIAN                                                                                |          |
 | getMDfC                       | `bool`    | JULIAN                                                                                |          |
-| noPaging                      | `bool`    | If value is `true` paging will be deactivated and you will only get the defined number of `$top` results. Otherwise, you can use `$top` to increase the result batches from default `100` up to `999` for the `AzAPICall`. |          |
 
 ### Examples: 
 #### URI
@@ -57,9 +64,13 @@ By default, 4 endpoint URI`s are available within the script:
 $uri = $uriMicrosoftGraph + "/v1.0/groups"
 ```
 
+If you don't feel comfortable using the predfined variables *(e.g: "$uriMicrosoftGraph")* you can directly use the full uri path by yourself:
+
 ```POWERSHELL
 Write-Output $uri
 https://graph.microsoft.com/v1.0/groups
+
+$uri = "https://graph.microsoft.com/v1.0/groups"
 ```
 
 #### METHOD
@@ -74,8 +85,8 @@ $method = "GET"
 
 #### CURRENT TASK
 
-If the script will call multiple times the `AzAPICall`-function and might doing it also in parellel, it is useful to see where the script is.
-Regarding to this, the `currentTtask` will be included in the output.
+If the script will call multiple times the `AzAPICall`-function and might doing it also in parallel, it is useful to see where the script is.
+Regarding to this, the `currentTask` will be included in the output.
 
 ```POWERSHELL
 $currentTask = "Microsoft Graph API: Get - Group List"
@@ -95,7 +106,7 @@ Connect-AzAccount -Tenant "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" `
 
 *(main.ps1)*:
 
-First, you should import the following powershell `functions` and define the `variables` for the parallelization to be able to use them:
+First, you must import the following powershell `functions` and define the `variables` for the parallelization to be able to use them:
 ```POWERSHELL
 #Region Functions
 #Region getJWTDetails
@@ -129,24 +140,17 @@ if($PsParallelization) {
 ```
 *(Test-HashtableParameter.ps1)*:
 
-Additionally, the `$htParameters`-hashtable will be created and the `DebugAzAPICall`-value will be set.
+Additionally, the `$htParameters`-hashtable will be created and the `DebugAzAPICall`-value will be set:
 
 ```POWERSHELL
 $htParameters = @{}
-
-if ($DebugAzAPICall) {
-    $htParameters.DebugAzAPICall = $true
-    write-host "AzAPICall debug enabled" -ForegroundColor Cyan
-}
-else {
-    $htParameters.DebugAzAPICall = $false
-    write-host "AzAPICall debug disabled" -ForegroundColor Cyan
-}
+$htParameters.DebugAzAPICall = $DebugAzAPICall #$true or $false
+write-host "AzAPICall debug enabled" -ForegroundColor Cyan
 ```
 
 *(Test-Environment.ps1)*:
 
-For the later usage, we need the endpoints and store them within a variable.
+For the later usage, we need [the endpoints and store them within a variable](#URI):
 ```POWERSHELL
 #Region Test-Environment
 $checkAzEnvironments = Get-AzEnvironment -ErrorAction Stop
@@ -241,17 +245,17 @@ In this case:
 `$htAzureAdGroupDetails = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))`
 - use the previous output in the variable and pipe it to an parallel foreach-object call 
 `$aadgroups | ForEach-Object -Parallel {`
-- Define how many requests will be handeled in parallel. These value is set to the ThrottleLimit best-practise. 
+- Define how many requests will be handeled in parallel *(The value is set to the ThrottleLimit best-practis)*
 `} -ThrottleLimit $ThrottleLimitMicrosoftGraph`
-- Defining all variable which need to be re-used within the parellel call by defining it again with 
+- Declaring all variable which need to be available within the parallel call 
 `$using:`
 - Get the value of the actual foreach-object 
 `$group = $_`
 - Call the AzAPICall and temporarilly write the information to a variable 
 `$AzApiCallResult`
-- Define an array within the hashtable for this group
+- Declare an array within the hashtable for this group
 `$htAzureAdGroupDetails.($group.id) = @()`
-- Write the temporarilly information to the synchonized hashtable that they are also available outside of the parallelization
+- Write the temporarilly stored information to the synchonized hashtable that they are also available outside of the parallelization
 `$htAzureAdGroupDetails.($group.id) = $AzApiCallResult`
 
 ```POWERSHELL
@@ -296,7 +300,7 @@ $htAzureAdGroupDetails.keys
 
 You can address a specific group by the id to see if members are available and who are the members of this group:
 ```POWERSHELL
-$htAzureAdGroupDetails."<GroupId"
+$htAzureAdGroupDetails."<GroupId>"
 ```
 
 ### AzAPICall Tracking
@@ -357,7 +361,7 @@ $arrayAPICallTracking | Sort-Object Duration -Descending | Select-Object -First 
 ```
 
 ### Good to know
-By default, the AzAPICall will have batch results of `100` values. To increase it and to speed up the process you can increase the call also with `$top=999`. Then the batch size of the results will be `999` instead of `100`.
+By default, the AzAPICall will have batch results of `100` values. To increase it and to speed up the process you can increase the call also with `$top=999`. Then the batch size of the results will be `999` instead of the default limited `100` returns.
 If you would like to do this, you need to use the `consistencyLevel`-paramenter with the value `eventual` and activate the paging with the `noPaging`-parameter value `$false`.
 
 # Prerequisites
@@ -391,7 +395,7 @@ If you would like to do this, you need to use the `consistencyLevel`-paramenter 
 | ----------------------------- | :-------: | ------------------------------------------------------------------------------------- | :------: |
 | DebugAzAPICall			    | `switch`	| Set to `True` to enable the debugging and get further detailed output.                | 		   |
 | SubscriptionId4AzContext		| `string`	| If you would like to use a specific subscription as AzContext. Otherwise, if the `SubscriptionId4AzContext`-parameter value is `undefined`, the standard subscription with the Connect-AzAccount will be used. | 		   |
-| PsParallelization			    | `switch`	| `True` or `False` if parellelization should be used. If it should be used PowerShell version >= 7.0.,3 is required. If set to `False` you can use it also with PowerShell verion >= 5.1. | 	 	   |
+| PsParallelization			    | `switch`	| `True` or `False` if parallelization should be used. If it should be used PowerShell version >= 7.0.,3 is required. If set to `False` you can use it also with PowerShell verion >= 5.1. | 	 	   |
 | TenantId			            | `string`	| ID of your Azure tenant                                                               | ✅ 	  |
 | ThrottleLimitMicrosoftGraph	| `int`	    | Only if `PsParallelization` is set to `true`. Set the ThrottelLimit for the Microsoft Graph API call for parallelization. Default and recommended value is `20`. |  		   |
 | ThrottleLimitARM			    | `int`	    | Only if `PsParallelization` is set to `true`. Set the ThrottelLimit for the ARM (Azure Resource Manager) API call for parallelization. Default and recommended value is `10`. |  		   |
