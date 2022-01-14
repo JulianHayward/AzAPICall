@@ -32,7 +32,7 @@ createBearerToken -targetEndPoint "MicrosoftGraph"
 
 # Example calls
 # https://graph.microsoft.com/v1.0/groups
-$aadgroups = AzAPICall -uri "https://graph.microsoft.com/v1.0/groups?`$top=10" `
+$aadgroups = AzAPICall -uri $uriMicrosoftGraph + "/v1.0/groups?`$top=10" `
                        -method "GET" `
                        -currentTask "Microsoft Graph API: Get - Groups" `
                        -noPaging $true

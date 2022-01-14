@@ -34,18 +34,18 @@ Here is **THE SOLUTION**!
 | caller                        | `string`  | Set the value to `CustomDataCollection` for parallelization to have different font colors for the debug output |          |
 | consistencyLevel              | `string`  | For several [OData query parameters](https://docs.microsoft.com/en-us/graph/query-parameters) the `consistencyLevel`-header need to be set to `eventual` |          |
 | listenOn                      | `string`  | Default is `Value`. Depending to the expacted result of the API call the following values are accepted: `Content`, `ContentProperties`, `Value` |          |
-| noPaging                      | `bool`    | If value is `true` paging will be deactivated and you will only get the defined number of `$top` results or [Resource Graph limits any query to returning only `100` records](https://docs.microsoft.com/en-us/azure/governance/resource-graph/concepts/work-with-data). Otherwise, you can use `$top` to increase the result batches from default `100` up to `999` for the `AzAPICall`. `$top`-value must be between 1 and 999 inclusive. |          |
-| getConsumption                | `bool`    | JULIAN                                                                                |          |
-| getGroup                      | `bool`    | JULIAN                                                                                |          |
-| getGroupMembersCount          | `bool`    | JULIAN                                                                                |          |
-| getApp                        | `bool`    | JULIAN                                                                                |          |
-| getCount                      | `bool`    | JULIAN                                                                                |          |
-| getPolicyCompliance           | `bool`    | JULIAN                                                                                |          |
-| getMgAscSecureScore           | `bool`    | JULIAN                                                                                |          |
-| getRoleAssignmentSchedules    | `bool`    | JULIAN                                                                                |          |
-| getDiagnosticSettingsMg       | `bool`    | JULIAN                                                                                |          |
-| validateAccess                | `bool`    | JULIAN                                                                                |          |
-| getMDfC                       | `bool`    | JULIAN                                                                                |          |
+| noPaging                      | `switch`    | If value is `true` paging will be deactivated and you will only get the defined number of `$top` results or [Resource Graph limits any query to returning only `100` records](https://docs.microsoft.com/en-us/azure/governance/resource-graph/concepts/work-with-data). Otherwise, you can use `$top` to increase the result batches from default `100` up to `999` for the `AzAPICall`. `$top`-value must be between 1 and 999 inclusive. |          |
+| getConsumption                | `switch`    | JULIAN                                                                                |          |
+| getGroup                      | `switch`    | JULIAN                                                                                |          |
+| getGroupMembersCount          | `switch`    | JULIAN                                                                                |          |
+| getApp                        | `switch`    | JULIAN                                                                                |          |
+| getCount                      | `switch`    | JULIAN                                                                                |          |
+| getPolicyCompliance           | `switch`    | JULIAN                                                                                |          |
+| getMgAscSecureScore           | `switch`    | JULIAN                                                                                |          |
+| getRoleAssignmentSchedules    | `switch`    | JULIAN                                                                                |          |
+| getDiagnosticSettingsMg       | `switch`    | JULIAN                                                                                |          |
+| validateAccess                | `switch`    | JULIAN                                                                                |          |
+| getMDfC                       | `switch`    | JULIAN                                                                                |          |
 
 ### Examples: 
 #### URI

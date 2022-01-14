@@ -120,17 +120,17 @@ function AzAPICall {
         [Parameter(Mandatory=$False)][string]$getConsumption,
         [Parameter(Mandatory=$False)][string]$caller,
         [Parameter(Mandatory=$False)][string]$consistencyLevel,
-        [Parameter(Mandatory=$False)][bool]$getGroup,
-        [Parameter(Mandatory=$False)][bool]$getGroupMembersCount,
-        [Parameter(Mandatory=$False)][bool]$getApp,
-        [Parameter(Mandatory=$False)][bool]$getCount,
-        [Parameter(Mandatory=$False)][bool]$getPolicyCompliance,
-        [Parameter(Mandatory=$False)][bool]$getMgAscSecureScore,
-        [Parameter(Mandatory=$False)][bool]$getRoleAssignmentSchedules,
-        [Parameter(Mandatory=$False)][bool]$getDiagnosticSettingsMg,
-        [Parameter(Mandatory=$False)][bool]$validateAccess,
-        [Parameter(Mandatory=$False)][bool]$getMDfC,
-        [Parameter(Mandatory=$False)][bool]$noPaging
+        [Parameter(Mandatory=$False)][switch]$getGroup,
+        [Parameter(Mandatory=$False)][switch]$getGroupMembersCount,
+        [Parameter(Mandatory=$False)][switch]$getApp,
+        [Parameter(Mandatory=$False)][switch]$getCount,
+        [Parameter(Mandatory=$False)][switch]$getPolicyCompliance,
+        [Parameter(Mandatory=$False)][switch]$getMgAscSecureScore,
+        [Parameter(Mandatory=$False)][switch]$getRoleAssignmentSchedules,
+        [Parameter(Mandatory=$False)][switch]$getDiagnosticSettingsMg,
+        [Parameter(Mandatory=$False)][switch]$validateAccess,
+        [Parameter(Mandatory=$False)][switch]$getMDfC,
+        [Parameter(Mandatory=$False)][switch]$noPaging
     )
 
     $tryCounter = 0
