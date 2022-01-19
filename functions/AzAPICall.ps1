@@ -39,9 +39,6 @@
     .PARAMETER getApp
     Parameter description
 
-    .PARAMETER getCount
-    Parameter description
-
     .PARAMETER getPolicyCompliance
     Parameter description
 
@@ -76,13 +73,12 @@
         [Parameter(Mandatory=$True)][string]$currentTask,
         [Parameter(Mandatory=$False)][string]$body,
         [Parameter(Mandatory=$False)][string]$listenOn,
-        [Parameter(Mandatory=$False)][string]$getConsumption,
         [Parameter(Mandatory=$False)][string]$caller,
         [Parameter(Mandatory=$False)][string]$consistencyLevel,
+        [Parameter(Mandatory=$False)][switch]$getConsumption,
         [Parameter(Mandatory=$False)][switch]$getGroup,
         [Parameter(Mandatory=$False)][switch]$getGroupMembersCount,
         [Parameter(Mandatory=$False)][switch]$getApp,
-        [Parameter(Mandatory=$False)][switch]$getCount,
         [Parameter(Mandatory=$False)][switch]$getPolicyCompliance,
         [Parameter(Mandatory=$False)][switch]$getMgAscSecureScore,
         [Parameter(Mandatory=$False)][switch]$getRoleAssignmentSchedules,
