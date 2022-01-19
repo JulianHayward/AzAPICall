@@ -1,26 +1,36 @@
-﻿#Region Test-HashtableParameter
+﻿#region CheckCodeRunPlatform
 if ($env:GITHUB_SERVER_URL -and $env:CODESPACES) {
     #GitHub Codespaces
-    Write-Host "CheckCodeRunPlatform: running in GitHub Codespaces"
     $checkCodeRunPlatform = "GitHubCodespaces"
 }
 elseif ($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) {
     #Azure DevOps
-    Write-Host "CheckCodeRunPlatform: running in Azure DevOps"
     $checkCodeRunPlatform = "AzureDevOps"
 }
 elseif ($PSPrivateMetadata) {
     #Azure Automation
-    Write-Output "CheckCodeRunPlatform: running in Azure Automation"
     $checkCodeRunPlatform = "AzureAutomation"
+}
+elseif ($env:GITHUB_ACTIONS) {
+    #GitHub Actions
+    $checkCodeRunPlatform = "GitHubActions"
+}
+elseif ($env:ACC_IDLE_TIME_LIMIT -and $env:AZURE_HTTP_USER_AGENT -and $env:AZUREPS_HOST_ENVIRONMENT) {
+    #Azure Cloud Shell
+    $checkCodeRunPlatform = "CloudShell"
 }
 else {
     #Other Console
-    Write-Host "CheckCodeRunPlatform: not Codespaces, not Azure DevOps, not Azure Automation - likely local console"
     $checkCodeRunPlatform = "Console"
 }
+Write-Host "CheckCodeRunPlatform:" $checkCodeRunPlatform
+#endregion CheckCodeRunPlatform
 
+if ($DebugAzAPICall){
+    write-host "AzAPICall debug enabled" -ForegroundColor Cyan
+}
+
+#Region Test-HashtableParameter
 $htParameters = @{}
 $htParameters.DebugAzAPICall = $DebugAzAPICall #true or false
-write-host "AzAPICall debug enabled" -ForegroundColor Cyan
 #EndRegion Test-HashtableParameter
