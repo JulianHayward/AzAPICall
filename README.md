@@ -24,6 +24,7 @@ Here is **THE SOLUTION**!
 - [Azure Resource Management](https://docs.microsoft.com/en-us/rest/api/resources/)
 - [Azure Key Vault](https://docs.microsoft.com/en-us/rest/api/keyvault/)
 - [Log Analytics](https://docs.microsoft.com/en-us/rest/api/loganalytics/)
+- [Power BI](https://docs.microsoft.com/en-us/rest/api/power-bi/)
 ## AzAPICall Parameter
 | Field					   		| Type		| Description									                                        | Required |
 | ----------------------------- | :-------: | ------------------------------------------------------------------------------------- | :------: |
@@ -56,6 +57,7 @@ By default, 4 endpoint URI`s are available within the script:
 | https://management.azure.com/  | `$uriARM`            | ARM            |
 | https://vault.azure.net        | `$uriKeyVault`       | KeyVault       |
 | https://api.loganalytics.io/v1 | `$uriLogAnalytics`   | LogAnalytics   |
+| https://api.powerbi.com/v1.0   | `$uriPowerBI`        | PowerBI        |
 
 [List groups - HTTP request](https://docs.microsoft.com/en-us/graph/api/group-list?view=graph-rest-1.0&tabs=http#http-request)
 
@@ -175,6 +177,7 @@ foreach ($checkAzEnvironment in $checkAzEnvironments) {
     $arrayAzureManagementEndPointUrls += $checkAzEnvironment.AzureOperationalInsightsEndpoint
     if ($checkAzEnvironment.Name -eq "AzureCloud") {
         ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name).MicrosoftGraph = "https://graph.microsoft.com"
+        ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name).PowerBI = "https://api.powerbi.com/v1.0/"
     }
     if ($checkAzEnvironment.Name -eq "AzureChinaCloud") {
         ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name).MicrosoftGraph = "https://microsoftgraph.chinacloudapi.cn"
@@ -205,6 +208,8 @@ createBearerToken -targetEndPoint "MicrosoftGraph"
 createBearerToken -targetEndPoint "ARM"
 createBearerToken -targetEndPoint "KeyVault"
 createBearerToken -targetEndPoint "LogAnalytics"
+createBearerToken -targetEndPoint "PowerBI"
+
 ```
 
 Let's start with an easy example.

@@ -11,8 +11,8 @@ Param
 #EndRegion getJWTDetails
 
 #Region createBearerToken
-. .\functions\createBearerToken.ps1
 $htBearerAccessToken = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
+. .\functions\createBearerToken.ps1
 #EndRegion createBearerToken
 
 #Region AzAPICall

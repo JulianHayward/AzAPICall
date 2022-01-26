@@ -109,16 +109,26 @@
     }
 
     do {
-        if ($arrayAzureManagementEndPointUrls | Where-Object { $uri -match $_ }) {
-            $targetEndpoint = "ManagementAPI"
-            $bearerToUse = $htBearerAccessToken.AccessTokenManagement
+        if ($uri -like "*management.azure.*") {
+            $targetEndpoint = "ARM"
+            $bearerToUse = $htBearerAccessToken."$targetEndpoint"
+        }
+        elseif ($uri -like "*graph.microsoft*") {
+            $targetEndpoint = "MicrosoftGraph"
+            $bearerToUse = $htBearerAccessToken."$targetEndpoint"
+        }
+        elseif ($uri -like "*vault.azure*") {
+            $targetEndpoint = "KeyVault"
+            $bearerToUse = $htBearerAccessToken."$targetEndpoint"
+        }
+        elseif ($uri -like "*api.powerbi*") {
+            $targetEndpoint = "PowerBI"
+            $bearerToUse = $htBearerAccessToken."$targetEndpoint"
         }
         else {
-            $targetEndpoint = "MicrosoftGraph"
-            $bearerToUse = $htBearerAccessToken.AccessTokenMSGraph
+            Throw "Error - Unknown targetEndpoint which couldn't be found in `$uri '$uri'"
         }
 
-        #
         $unexpectedError = $false
 
         $Header = @{

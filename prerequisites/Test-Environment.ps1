@@ -22,6 +22,7 @@ foreach ($checkAzEnvironment in $checkAzEnvironments) {
     $arrayAzureManagementEndPointUrls += $checkAzEnvironment.AzureOperationalInsightsEndpoint
     if ($checkAzEnvironment.Name -eq "AzureCloud") {
         ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name).MicrosoftGraph = "https://graph.microsoft.com"
+        ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name).PowerBI = "https://api.powerbi.com/v1.0/"
     }
     if ($checkAzEnvironment.Name -eq "AzureChinaCloud") {
         ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name).MicrosoftGraph = "https://microsoftgraph.chinacloudapi.cn"
