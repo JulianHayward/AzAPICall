@@ -31,6 +31,9 @@ if ($DebugAzAPICall){
 }
 
 #Region Test-HashtableParameter
-$htParameters = @{}
-$htParameters.DebugAzAPICall = $DebugAzAPICall #true or false
+$htParameters = @{
+    DebugAzAPICall  = [bool]$DebugAzAPICall
+    CodeRunPlatform = $checkCodeRunPlatform
+    GitHubRepository = "https://github.com/JulianHayward/AzAPICall"
+}
 #EndRegion Test-HashtableParameter

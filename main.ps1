@@ -36,7 +36,12 @@ $funcGetJWTDetails = $function:getJWTDetails.ToString()
 #Region createBearerToken
 . .\functions\createBearerToken.ps1
 $funcCreateBearerToken = $function:createBearerToken.ToString()
-$htBearerAccessToken = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
+if ($PsParallelization) {
+    $htBearerAccessToken = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
+}
+else {
+    $htBearerAccessToken = @{}
+}
 #EndRegion createBearerToken
 
 #Region AzAPICall
@@ -59,23 +64,17 @@ else {
 . .\prerequisites\Test-AzModules.ps1
 . .\prerequisites\Test-AzContext.ps1
 . .\prerequisites\Test-Environment.ps1
+. .\prerequisites\Test-UserType.ps1
 #EndRegion Prerequisites
 
 #Region Main
-#Region BearerToken
-#create bearer token
-#createBearerToken -targetEndPoint "MicrosoftGraph"
-#createBearerToken -targetEndPoint "ARM"
-#createBearerToken -targetEndPoint "KeyVault"
-#createBearerToken -targetEndPoint "LogAnalytics"
-#createBearerToken -targetEndPoint "PowerBI"
-#createBearerToken -targetEndPoint "AzDevOps"
-#EndRegion BearerToken
 
 # Example calls
 #Region MicrosoftGraphGroupList
 # https://docs.microsoft.com/en-us/graph/api/group-list?view=graph-rest-1.0&tabs=http
-$uri = $uriMicrosoftGraph + "/v1.0/groups?`$top=999&`$filter=(mailEnabled eq false and securityEnabled eq true)&`$select=id,createdDateTime,displayName,description&`$orderby=displayName asc&`$count=true" # https://graph.microsoft.com/v1.0/groups
+Write-Host "----------------------------------------------------------"
+Write-Host "Processing example call: Microsoft Graph API: Get - Groups"
+$uri = ($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MicrosoftGraph + "/v1.0/groups?`$top=999&`$filter=(mailEnabled eq false and securityEnabled eq true)&`$select=id,createdDateTime,displayName,description&`$orderby=displayName asc&`$count=true" # https://graph.microsoft.com/v1.0/groups
 $listenOn = "Value" #Default
 $currentTask = "'Microsoft Graph API: Get - Groups'"
 Write-Host $currentTask
@@ -92,28 +91,31 @@ Write-Host "$currentTask returned results:" $aadgroups.Count
 
 #Region MicrosoftGraphGroupMemberList
 if ($PsParallelization) {
-    Write-Host "Getting all members for $($aadgroups.Count) AAD Groups (going parallel)"
+    Write-Host "----------------------------------------------------------"
+    Write-Host "Processing example call: Getting all members for $($aadgroups.Count) AAD Groups (going parallel)"
     $htAzureAdGroupDetails = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
     $arrayGroupMembers = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
-    
     $startTime = get-date
-    
+
     $aadgroups | ForEach-Object -Parallel {
-        $htAzureAdGroupDetails = $using:htAzureAdGroupDetails
-        $uriMicrosoftGraph = $using:uriMicrosoftGraph
-        $arrayGroupMembers = $using:arrayGroupMembers
+        #general hashTables and arrays
+        $checkContext = $using:checkContext
+        $htAzureEnvironmentRelatedUrls = $using:htAzureEnvironmentRelatedUrls
         $htParameters = $using:htParameters
         $htBearerAccessToken = $using:htBearerAccessToken
         $arrayAPICallTracking = $using:arrayAPICallTracking
-    
+        #general functions
         $function:AzAPICall = $using:funcAzAPICall
         $function:createBearerToken = $using:funcCreateBearerToken
         $function:GetJWTDetails = $using:funcGetJWTDetails
-    
+        #specific for this operation
+        $htAzureAdGroupDetails = $using:htAzureAdGroupDetails
+        $arrayGroupMembers = $using:arrayGroupMembers
+
         $group = $_
-    
+
         # https://docs.microsoft.com/en-us/graph/api/group-list-members?view=graph-rest-1.0&tabs=http
-        $uri = $uriMicrosoftGraph + "/v1.0/groups/$($group.id)/members" # https://graph.microsoft.com/v1.0/groups/<GroupId>/members
+        $uri = ($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MicrosoftGraph + "/v1.0/groups/$($group.id)/members" # https://graph.microsoft.com/v1.0/groups/<GroupId>/members
         $listenOn = "Value" #Default
         $currentTask = " 'Microsoft Graph API: Get - Group List Members (id: $($group.id))'"
         Write-Host $currentTask
@@ -124,30 +126,30 @@ if ($PsParallelization) {
             -listenOn $listenOn `
             -caller "CustomDataCollection" `
             -noPaging $true #https://docs.microsoft.com/en-us/graph/paging
-    
+
         $htAzureAdGroupDetails.($group.id) = @()
         $htAzureAdGroupDetails.($group.id) = $AzApiCallResult
     } -ThrottleLimit $ThrottleLimitMicrosoftGraph
-    
+
     $parallelElapsedTime = "elapsed time (parallel foreach loop): " + ((get-date) - $startTime).TotalSeconds + " seconds"
     Write-Host $parallelElapsedTime
     Write-Host "returned members:" $htAzureAdGroupDetails.Values.Id.Count
-    
+
     Write-Host "statistics:"
     ($arrayAPICallTracking.Duration | Measure-Object -Average -Maximum -Minimum)
 }
-else{
-    Write-Host "Use switch parameter -PsParallelization to collect all members for the collected Groups" -ForegroundColor DarkGreen
+else {
+    Write-Host "Use switch parameter -PsParallelization to collect all members for the collected Groups leveraging parallelization!" -ForegroundColor Magenta
 }
 
 #EndRegion MicrosoftGraphGroupMemberList
 
-#region 
+#region
 # https://management.azure.com/subscriptions?api-version=2020-01-01
-$uri = $uriARM + "subscriptions?api-version=2020-01-01"
+$uri = ($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ARM + "subscriptions?api-version=2020-01-01"
 $subscriptions = AzAPICall -uri $uri `
-                       -method "GET" `
-                       -currentTask "ARM API: List - Subscriptions" `
+    -method "GET" `
+    -currentTask "ARM API: List - Subscriptions" `
 
 Write-Host "Subscriptions First result:" $subscriptions[0].displayName $subscriptions[0].subscriptionId
 Write-Host "Subscriptions Total results:"$subscriptions.Count
