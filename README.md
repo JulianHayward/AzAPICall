@@ -385,14 +385,14 @@ If you would like to do this, you need to use the `consistencyLevel`-paramenter 
 | PowerShell file | Description |
 | --------------- | ------- |
 | main.ps1 | Example how to use the `AzAPICall` best. |
-| AzAPICall.ps1   | JULIAN |
-| createBearerToken.ps1 | JULIAN |
-| getJWTDetails.ps1 | JULIAN |
-| Test-AzContext.ps1 | JULIAN |
+| AzAPICall.ps1   | Handler for the REST call (handles known return code, handles paging). Optional use parameter `-DebugAzAPICall` to get console output on AzAPICall activity. |
+| createBearerToken.ps1 | Creation of the Bearer Token for target API endpoint (Microsoft Graph, Azure Resource Manager, etc.). |
+| getJWTDetails.ps1 | Decode a JWT Access Token and convert to a PowerShell Object. JWT Access Token updated to include the JWT Signature (sig), JWT Token Expiry (expiryDateTime) and JWT Token time to expiry (timeToExpiry). for more details check [JWTDetails](https://www.powershellgallery.com/packages/JWTDetails/1.0.2). |
+| Test-AzContext.ps1 | Checks if valid context is given. Sets context to target subscription if parameter `-SubscriptionId4AzContext` is used. |
 | Test-AzModules.ps1 | Check if predefined command `Get-AzContext` can be executed within the executed PowerShell session. Addtionally, check if the needed module `Az.Accounts` is installed and write the version to the output. |
 | Test-Environment.ps1 | Get the environment information of the actual context and predefine the [URI endpoint as variable](#uri). |
-| Test-HashtableParameter.ps1 | Check where the code is running *(e.g.: GitHubCodespaces, AzureDevOps, AzureAutomation, Console)*. Set also the `DebugAzAPICall`. |
-| Test-PowerShellVersion.ps1 | If `PsParallelization`-parameter is set to `$true`, it need to be verified, that the PowerShell version is >= `7.0.3`. |
+| Test-HashtableParameter.ps1 | Check where the code is running *(e.g.: GitHub Actions, GitHub Codespaces, Azure DevOps, Azure Automation, Azure CloudShell, Console)*. |
+| Test-PowerShellVersion.ps1 | If switch parameter `-PsParallelization` is used ([PowerShell ForEach-Object Parallel Feature](https://devblogs.microsoft.com/powershell/powershell-foreach-object-parallel-feature/)) then PowerShell version must be >= `7.0.3`. |
 
 ## General Parameter (main.ps1)
 | Field					   		| Type		| Description									                                        | Required |
