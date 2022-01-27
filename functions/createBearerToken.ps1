@@ -20,53 +20,57 @@
     )
     #Region createBearerToken
     $checkContext = Get-AzContext -ErrorAction Stop
-    Write-Host "+Processing new bearer token request ($targetEndPoint)"
+    Write-Host " +Processing new bearer token request ($targetEndPoint)" -ForegroundColor Cyan
+    $contextForToken =  [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile.DefaultContext
     if ($targetEndPoint -eq "ARM") {
-        $azureRmProfile = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile;
-        $profileClient = New-Object Microsoft.Azure.Commands.ResourceManager.Common.RMProfileClient($azureRmProfile);
         $catchResult = "letscheck"
         try {
-            $newBearerAccessTokenRequest = ($profileClient.AcquireAccessToken($checkContext.Subscription.TenantId))
+            $newBearerAccessTokenRequest = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($contextForToken.Account, $contextForToken.Environment, $contextForToken.Tenant.id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ARM)")
         }
         catch {
             $catchResult = $_
         }
     }
     elseif ($targetEndPoint -eq "MicrosoftGraph") {
-        $contextForMSGraphToken = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile.DefaultContext
         $catchResult = "letscheck"
         try {
-            $newBearerAccessTokenRequest = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($contextForMSGraphToken.Account, $contextForMSGraphToken.Environment, $contextForMSGraphToken.Tenant.id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MicrosoftGraph)")
+            $newBearerAccessTokenRequest = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($contextForToken.Account, $contextForToken.Environment, $contextForToken.Tenant.id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MicrosoftGraph)")
         }
         catch {
             $catchResult = $_
         }
     }
     elseif ($targetEndPoint -eq "KeyVault") {
-        $contextForKeyVaultToken = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile.DefaultContext
         $catchResult = "letscheck"
         try {
-            $newBearerAccessTokenRequest = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($contextForKeyVaultToken.Account, $contextForKeyVaultToken.Environment, $contextForKeyVaultToken.Tenant.Id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "https://graph.microsoft.com")
+            $newBearerAccessTokenRequest = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($contextForToken.Account, $contextForToken.Environment, $contextForToken.Tenant.Id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).KeyVault)")
         }
         catch {
             $catchResult = $_
         }
     }
     elseif ($targetEndPoint -eq "LogAnalytics") {
-        $contextForLogAnalyticsToken = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile.DefaultContext
         $catchResult = "letscheck"
         try {
-            $newBearerAccessTokenRequest = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($contextForLogAnalyticsToken.Account, $contextForLogAnalyticsToken.Environment, $contextForLogAnalyticsToken.Tenant.Id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "https://graph.microsoft.com")
+            $newBearerAccessTokenRequest = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($contextForToken.Account, $contextForToken.Environment, $contextForToken.Tenant.Id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).LogAnalytics)")
         }
         catch {
             $catchResult = $_
         }
     }
     elseif ($targetEndPoint -eq "PowerBI") {
-        $contextForPowerBIToken = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile.DefaultContext
         $catchResult = "letscheck"
         try {
-            $newBearerAccessTokenRequest = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($contextForPowerBIToken.Account, $contextForPowerBIToken.Environment, $contextForPowerBIToken.Tenant.Id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "https://graph.microsoft.com")
+            $newBearerAccessTokenRequest = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($contextForToken.Account, $contextForToken.Environment, $contextForToken.Tenant.Id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).PowerBI)")
+        }
+        catch {
+            $catchResult = $_
+        }
+    }
+    elseif ($targetEndPoint -eq "AzDevOps") {
+        $catchResult = "letscheck"
+        try {
+            $newBearerAccessTokenRequest = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($contextForToken.Account, $contextForToken.Environment, $contextForToken.Tenant.Id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "https://app.vssps.visualstudio.com/")
         }
         catch {
             $catchResult = $_
@@ -90,6 +94,6 @@
     $bearerDetails = GetJWTDetails -token $newBearerAccessTokenRequest.AccessToken
     $bearerAccessTokenExpiryDateTime = $bearerDetails.expiryDateTime
     $bearerAccessTokenTimeToExpiry = $bearerDetails.timeToExpiry
-    Write-Host "+Bearer token ($targetEndPoint): [tokenRequestProcessed: '$dateTimeTokenCreated']; [expiryDateTime: '$bearerAccessTokenExpiryDateTime']; [timeUntilExpiry: '$bearerAccessTokenTimeToExpiry']"
+    Write-Host " +Bearer token ($targetEndPoint): [tokenRequestProcessed: '$dateTimeTokenCreated']; [expiryDateTime: '$bearerAccessTokenExpiryDateTime']; [timeUntilExpiry: '$bearerAccessTokenTimeToExpiry']" -ForegroundColor Cyan
     #EndRegion createBearerToken
 }

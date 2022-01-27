@@ -64,10 +64,12 @@ else {
 #Region Main
 #Region BearerToken
 #create bearer token
-createBearerToken -targetEndPoint "MicrosoftGraph"
-# createBearerToken -targetEndPoint "ARM"
-# createBearerToken -targetEndPoint "KeyVault"
-# createBearerToken -targetEndPoint "LogAnalytics"
+#createBearerToken -targetEndPoint "MicrosoftGraph"
+#createBearerToken -targetEndPoint "ARM"
+#createBearerToken -targetEndPoint "KeyVault"
+#createBearerToken -targetEndPoint "LogAnalytics"
+#createBearerToken -targetEndPoint "PowerBI"
+#createBearerToken -targetEndPoint "AzDevOps"
 #EndRegion BearerToken
 
 # Example calls
@@ -134,6 +136,20 @@ if ($PsParallelization) {
     Write-Host "statistics:"
     ($arrayAPICallTracking.Duration | Measure-Object -Average -Maximum -Minimum)
 }
+else{
+    Write-Host "Use switch parameter -PsParallelization to collect all members for the collected Groups" -ForegroundColor DarkGreen
+}
 
 #EndRegion MicrosoftGraphGroupMemberList
+
+#region 
+# https://management.azure.com/subscriptions?api-version=2020-01-01
+$uri = $uriARM + "subscriptions?api-version=2020-01-01"
+$subscriptions = AzAPICall -uri $uri `
+                       -method "GET" `
+                       -currentTask "ARM API: List - Subscriptions" `
+
+Write-Host "Subscriptions First result:" $subscriptions[0].displayName $subscriptions[0].subscriptionId
+Write-Host "Subscriptions Total results:"$subscriptions.Count
+#endregion
 #EndRegion Main

@@ -111,19 +111,31 @@
     do {
         if ($uri -like "*management.azure.*") {
             $targetEndpoint = "ARM"
-            $bearerToUse = $htBearerAccessToken."$targetEndpoint"
+            if (-not $htBearerAccessToken.$targetEndpoint) {
+                CreateBearerToken -targetEndPoint $targetEndpoint
+            }
+            $bearerToUse = $htBearerAccessToken.$targetEndpoint
         }
         elseif ($uri -like "*graph.microsoft*") {
             $targetEndpoint = "MicrosoftGraph"
-            $bearerToUse = $htBearerAccessToken."$targetEndpoint"
+            if (-not $htBearerAccessToken.$targetEndpoint) {
+                CreateBearerToken -targetEndPoint $targetEndpoint
+            }
+            $bearerToUse = $htBearerAccessToken.$targetEndpoint
         }
         elseif ($uri -like "*vault.azure*") {
             $targetEndpoint = "KeyVault"
-            $bearerToUse = $htBearerAccessToken."$targetEndpoint"
+            if (-not $htBearerAccessToken.$targetEndpoint) {
+                CreateBearerToken -targetEndPoint $targetEndpoint
+            }
+            $bearerToUse = $htBearerAccessToken.$targetEndpoint
         }
         elseif ($uri -like "*api.powerbi*") {
             $targetEndpoint = "PowerBI"
-            $bearerToUse = $htBearerAccessToken."$targetEndpoint"
+            if (-not $htBearerAccessToken.$targetEndpoint) {
+                CreateBearerToken -targetEndPoint $targetEndpoint
+            }
+            $bearerToUse = $htBearerAccessToken.$targetEndpoint
         }
         else {
             Throw "Error - Unknown targetEndpoint which couldn't be found in `$uri '$uri'"

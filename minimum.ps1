@@ -1,7 +1,8 @@
 ﻿[CmdletBinding()]
 Param
 (
-    [Parameter(Mandatory=$False)][string]$SubscriptionId4AzContext = "undefined"
+    [Parameter(Mandatory=$False)][string]$SubscriptionId4AzContext = "undefined",
+    [switch]$DebugAzAPICall
 )
 
 #Region Functions
@@ -11,7 +12,7 @@ Param
 #EndRegion getJWTDetails
 
 #Region createBearerToken
-$htBearerAccessToken = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
+$htBearerAccessToken = @{}
 . .\functions\createBearerToken.ps1
 #EndRegion createBearerToken
 
@@ -23,8 +24,9 @@ $htBearerAccessToken = [System.Collections.Hashtable]::Synchronized((New-Object 
 
 #Region Variables
 $arrayAPICallTracking = [System.Collections.ArrayList]@()
-$htParameters = @{}
-$htParameters.DebugAzAPICall = $true
+$htParameters = @{
+    DebugAzAPICall = [bool]$DebugAzAPICall
+}
 #EndRegion Variables
 
 #Connect-AzAccount -Tenant "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" -SubscriptionId "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
@@ -33,7 +35,12 @@ $htParameters.DebugAzAPICall = $true
 . .\prerequisites\Test-Environment.ps1
 
 #create bearer token
-createBearerToken -targetEndPoint "MicrosoftGraph"
+#createBearerToken -targetEndPoint "MicrosoftGraph"
+#createBearerToken -targetEndPoint "ARM"
+#createBearerToken -targetEndPoint "KeyVault"
+#createBearerToken -targetEndPoint "LogAnalytics"
+#createBearerToken -targetEndPoint "PowerBI"
+#createBearerToken -targetEndPoint "AzDevOps"
 
 # Example calls
 # https://graph.microsoft.com/v1.0/groups
@@ -43,5 +50,14 @@ $aadgroups = AzAPICall -uri $uri `
                        -currentTask "Microsoft Graph API: Get - Groups" `
                        -noPaging $true
 
-$aadgroups[0]
-$aadgroups.Count
+Write-Host "Groups First result:" $aadgroups[0].displayName $aadgroups[0].id
+Write-Host "Groups Total results:"$aadgroups.Count
+
+# https://management.azure.com/subscriptions?api-version=2020-01-01
+$uri = $uriARM + "subscriptions?api-version=2020-01-01"
+$subscriptions = AzAPICall -uri $uri `
+                       -method "GET" `
+                       -currentTask "ARM API: List - Subscriptions" `
+
+Write-Host "Subscriptions First result:" $subscriptions[0].displayName $subscriptions[0].subscriptionId
+Write-Host "Subscriptions Total results:"$subscriptions.Count
