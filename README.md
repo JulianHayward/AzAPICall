@@ -1,4 +1,7 @@
 ﻿# AzAPICall
+
+[![GitHub Super-Linter](https://github.com/JulianHayward/AzAPICall/workflows/Lint%20Code%20Base/badge.svg)](https://github.com/marketplace/actions/super-linter)
+
 You want to have easy way to sent requests to the Microsoft endpoints without getting headache of taking care of valid bearer token and error handling?
 
 Right.. we also! 
