@@ -2,6 +2,7 @@
 $checkAzEnvironments = Get-AzEnvironment -ErrorAction Stop
 
 $htAzureEnvironmentRelatedUrls = @{}
+$htAzureEnvironmentRelatedTargetEndpoints = @{}
 
 foreach ($checkAzEnvironment in $checkAzEnvironments) {
     ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name) = @{ }
@@ -10,15 +11,10 @@ foreach ($checkAzEnvironment in $checkAzEnvironments) {
     ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name).LogAnalytics = $checkAzEnvironment.AzureOperationalInsightsEndpointResourceId
     ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name).MicrosoftGraph = $checkAzEnvironment.ExtendedProperties.MicrosoftGraphUrl
 
-    #if ($checkAzEnvironment.Name -eq "AzureCloud") {
-    #    ($htAzureEnvironmentRelatedUrls).($checkAzEnvironment.Name).PowerBI = "https://graph.microsoft.com"
-    #}
+    ($htAzureEnvironmentRelatedTargetEndpoints).($checkAzEnvironment.Name) = @{ }
+    ($htAzureEnvironmentRelatedTargetEndpoints).($checkAzEnvironment.Name).((($checkAzEnvironment.ResourceManagerUrl) -split "/")[2]) = "ARM"
+    ($htAzureEnvironmentRelatedTargetEndpoints).($checkAzEnvironment.Name).((($checkAzEnvironment.AzureKeyVaultServiceEndpointResourceId) -split "/")[2]) = "KeyVault"
+    ($htAzureEnvironmentRelatedTargetEndpoints).($checkAzEnvironment.Name).((($checkAzEnvironment.AzureOperationalInsightsEndpointResourceId) -split "/")[2]) = "LogAnalytics"
+    ($htAzureEnvironmentRelatedTargetEndpoints).($checkAzEnvironment.Name).((($checkAzEnvironment.ExtendedProperties.MicrosoftGraphUrl) -split "/")[2]) = "MicrosoftGraph"
 }
-
-#$uriMicrosoftGraph = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MicrosoftGraph)"
-#$uriARM = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ARM)"
-#$uriKeyVault = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).KeyVault)"
-#$uriLogAnalytics = "$(($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).LogAnalytics)"
-#$uriPowerBI = "https://api.powerbi.com/v1.0/"
-#$uriAzDevops = "<uri>"
 #EndRegion Test-Environment

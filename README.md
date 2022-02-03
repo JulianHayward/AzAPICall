@@ -396,6 +396,7 @@ If you would like to do this, you need to use the `consistencyLevel`-paramenter 
 | Test-Environment.ps1 | Get the environment information of the actual context and predefine the [URI endpoint as variable](#uri). |
 | Test-HashtableParameter.ps1 | Check where the code is running *(e.g.: GitHub Actions, GitHub Codespaces, Azure DevOps, Azure Automation, Azure CloudShell, Console)*. |
 | Test-PowerShellVersion.ps1 | If switch parameter `-PsParallelization` is used ([PowerShell ForEach-Object Parallel Feature](https://devblogs.microsoft.com/powershell/powershell-foreach-object-parallel-feature/)) then PowerShell version must be >= `7.0.3`. |
+| Test-UserType.ps1 | JULIAN |
 
 ## General Parameter (main.ps1)
 | Field					   		| Type		| Description									                                        | Required |

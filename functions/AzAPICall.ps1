@@ -68,24 +68,24 @@
     #>
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory=$True)][string]$uri,
-        [Parameter(Mandatory=$True)][string]$method,
-        [Parameter(Mandatory=$True)][string]$currentTask,
-        [Parameter(Mandatory=$False)][string]$body,
-        [Parameter(Mandatory=$False)][string]$listenOn,
-        [Parameter(Mandatory=$False)][string]$caller,
-        [Parameter(Mandatory=$False)][string]$consistencyLevel,
-        [Parameter(Mandatory=$False)][switch]$getConsumption,
-        [Parameter(Mandatory=$False)][switch]$getGroup,
-        [Parameter(Mandatory=$False)][switch]$getGroupMembersCount,
-        [Parameter(Mandatory=$False)][switch]$getApp,
-        [Parameter(Mandatory=$False)][switch]$getPolicyCompliance,
-        [Parameter(Mandatory=$False)][switch]$getMgAscSecureScore,
-        [Parameter(Mandatory=$False)][switch]$getRoleAssignmentSchedules,
-        [Parameter(Mandatory=$False)][switch]$getDiagnosticSettingsMg,
-        [Parameter(Mandatory=$False)][switch]$validateAccess,
-        [Parameter(Mandatory=$False)][switch]$getMDfC,
-        [Parameter(Mandatory=$False)][switch]$noPaging
+        [Parameter(Mandatory = $True)][string]$uri,
+        [Parameter(Mandatory = $True)][string]$method,
+        [Parameter(Mandatory = $True)][string]$currentTask,
+        [Parameter(Mandatory = $False)][string]$body,
+        [Parameter(Mandatory = $False)][string]$listenOn,
+        [Parameter(Mandatory = $False)][string]$caller,
+        [Parameter(Mandatory = $False)][string]$consistencyLevel,
+        [Parameter(Mandatory = $False)][switch]$getConsumption,
+        [Parameter(Mandatory = $False)][switch]$getGroup,
+        [Parameter(Mandatory = $False)][switch]$getGroupMembersCount,
+        [Parameter(Mandatory = $False)][switch]$getApp,
+        [Parameter(Mandatory = $False)][switch]$getPolicyCompliance,
+        [Parameter(Mandatory = $False)][switch]$getMgAscSecureScore,
+        [Parameter(Mandatory = $False)][switch]$getRoleAssignmentSchedules,
+        [Parameter(Mandatory = $False)][switch]$getDiagnosticSettingsMg,
+        [Parameter(Mandatory = $False)][switch]$validateAccess,
+        [Parameter(Mandatory = $False)][switch]$getMDfC,
+        [Parameter(Mandatory = $False)][switch]$noPaging
     )
 
     #Region AzAPICall
@@ -109,37 +109,15 @@
     }
 
     do {
-        if ($uri -like "*management.azure.*") {
-            $targetEndpoint = "ARM"
-            if (-not $htBearerAccessToken.$targetEndpoint) {
-                CreateBearerToken -targetEndPoint $targetEndpoint
-            }
-            $bearerToUse = $htBearerAccessToken.$targetEndpoint
-        }
-        elseif ($uri -like "*graph.microsoft*") {
-            $targetEndpoint = "MicrosoftGraph"
-            if (-not $htBearerAccessToken.$targetEndpoint) {
-                CreateBearerToken -targetEndPoint $targetEndpoint
-            }
-            $bearerToUse = $htBearerAccessToken.$targetEndpoint
-        }
-        elseif ($uri -like "*vault.azure*") {
-            $targetEndpoint = "KeyVault"
-            if (-not $htBearerAccessToken.$targetEndpoint) {
-                CreateBearerToken -targetEndPoint $targetEndpoint
-            }
-            $bearerToUse = $htBearerAccessToken.$targetEndpoint
-        }
-        elseif ($uri -like "*api.powerbi*") {
-            $targetEndpoint = "PowerBI"
-            if (-not $htBearerAccessToken.$targetEndpoint) {
-                CreateBearerToken -targetEndPoint $targetEndpoint
-            }
-            $bearerToUse = $htBearerAccessToken.$targetEndpoint
-        }
-        else {
+        if (-not ($htAzureEnvironmentRelatedTargetEndpoints).($checkContext.Environment.Name).($uri.split("/")[2])) {
             Throw "Error - Unknown targetEndpoint which couldn't be found in `$uri '$uri'"
         }
+        $targetEndpoint = ($htAzureEnvironmentRelatedTargetEndpoints).($checkContext.Environment.Name).($uri.split("/")[2])
+
+        if (-not $htBearerAccessToken.$targetEndpoint) {
+            CreateBearerToken -targetEndPoint $targetEndpoint
+        }
+        $bearerToUse = $htBearerAccessToken.$targetEndpoint
 
         $unexpectedError = $false
 
@@ -266,12 +244,12 @@
                     if (($getPolicyCompliance -and $catchResult.error.code -like "*ResponseTooLarge*") -or ($getPolicyCompliance -and -not $catchResult.error.code)) {
                         if ($getPolicyCompliance -and $catchResult.error.code -like "*ResponseTooLarge*") {
                             Write-Host "Info: $currentTask - (StatusCode: '$($azAPIRequest.StatusCode)') Response too large, skipping this scope."
-                            return "ResponseTooLarge"
+                            return [string]"ResponseTooLarge"
                         }
                         if ($getPolicyCompliance -and -not $catchResult.error.code) {
                             #seems API now returns null instead of 'ResponseTooLarge'
                             Write-Host "Info: $currentTask - (StatusCode: '$($azAPIRequest.StatusCode)') Response empty - handle like 'Response too large', skipping this scope."
-                            return "ResponseTooLarge"
+                            return [string]"ResponseTooLarge"
                         }
                     }
 
@@ -288,7 +266,7 @@
                     if ($catchResult.error.code -like "*AuthorizationFailed*") {
                         if ($validateAccess) {
                             #Write-Host "$currentTask failed ('$($catchResult.error.code)' | '$($catchResult.error.message)')" -ForegroundColor DarkRed
-                            return "failed"
+                            return [string]"failed"
                         }
                         else {
                             if ($retryAuthorizationFailedCounter -gt $retryAuthorizationFailed) {
@@ -331,56 +309,56 @@
                     ) {
                         if ($getConsumption -and $catchResult.error.code -eq 404) {
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems Subscriptions was created only recently - skipping"
-                            return $apiCallResultsCollection
+                            return [PSCustomObject]$apiCallResultsCollection
                         }
 
                         if ($getConsumption -and $catchResult.error.code -eq "AccountCostDisabled") {
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems Access to cost data has been disabled for this Account - skipping CostManagement"
-                            return "AccountCostDisabled"
+                            return [string]"AccountCostDisabled"
                         }
 
                         if ($getConsumption -and $catchResult.error.message -like "*does not have any valid subscriptions*") {
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems there are no valid Subscriptions present - skipping CostManagement"
-                            return "NoValidSubscriptions"
+                            return [string]"NoValidSubscriptions"
                         }
 
                         if ($getConsumption -and $catchResult.error.code -eq "Unauthorized") {
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) Unauthorized - handling as exception"
-                            return "Unauthorized"
+                            return [string]"Unauthorized"
                         }
 
                         if ($getConsumption -and $catchResult.error.code -eq "BadRequest" -and $catchResult.error.message -like "*The offer*is not supported*" -and $catchResult.error.message -notlike "*The offer MS-AZR-0110P is not supported*") {
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) Unauthorized - handling as exception"
-                            return "OfferNotSupported"
+                            return [string]"OfferNotSupported"
                         }
 
                         if ($getConsumption -and $catchResult.error.code -eq "BadRequest" -and $catchResult.error.message -like "Invalid query definition*") {
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) Unauthorized - handling as exception"
-                            return "InvalidQueryDefinition"
+                            return [string]"InvalidQueryDefinition"
                         }
 
                         if ($getConsumption -and $catchResult.error.code -eq "NotFound" -and $catchResult.error.message -like "*have valid WebDirect/AIRS offer type*") {
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) Unauthorized - handling as exception"
-                            return "NonValidWebDirectAIRSOfferType"
+                            return [string]"NonValidWebDirectAIRSOfferType"
                         }
 
                         if ($getConsumption -and $catchResult.error.code -eq "NotFound" -and $catchResult.error.message -like "Cost management data is not supported for subscription(s)*") {
-                            return "NotFoundNotSupported"
+                            return [string]"NotFoundNotSupported"
                         }
 
                         if ($getConsumption -and $catchResult.error.code -eq "IndirectCostDisabled") {
-                            return "IndirectCostDisabled"
+                            return [string]"IndirectCostDisabled"
                         }
                     }
 
                     if (($getGroup) -and $catchResult.error.code -like "*Request_ResourceNotFound*") {
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) uncertain Group status - skipping for now :)"
-                        return "Request_ResourceNotFound"
+                        return [string]"Request_ResourceNotFound"
                     }
 
                     if (($getGroupMembersCount) -and $catchResult.error.code -like "*Request_ResourceNotFound*") {
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) uncertain Group status - skipping for now :)"
-                        return "Request_ResourceNotFound"
+                        return [string]"Request_ResourceNotFound"
                     }
 
                     if ($getGroupMembersCount -and $catchResult.error.message -like "*count is not currently supported*") {
@@ -396,18 +374,18 @@
 
                     if (($getApp -or $getSP) -and $catchResult.error.code -like "*Request_ResourceNotFound*") {
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) uncertain ServicePrincipal status - skipping for now :)"
-                        return "Request_ResourceNotFound"
+                        return [string]"Request_ResourceNotFound"
                     }
 
                     if ($currentTask -eq "Checking AAD UserType" -and $catchResult.error.code -like "*Authorization_RequestDenied*") {
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) cannot get the executing user´s userType information (member/guest) - proceeding as 'unknown'"
-                        return "unknown"
+                        return [string]"unknown"
                     }
 
                     if ((($getApp -or $getSP) -and $catchResult.error.code -like "*Authorization_RequestDenied*") -or ($getGuests -and $catchResult.error.code -like "*Authorization_RequestDenied*")) {
                         if ($htParameters.userType -eq "Guest") {
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - skip Application (Secrets & Certificates)"
-                            return "skipApplications"
+                            return [string]"skipApplications"
                         }
                         if ($userType -eq "Guest" -or $userType -eq "unknown") {
                             Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult)"
@@ -434,7 +412,7 @@
 
                     if ($catchResult.error.code -like "*BlueprintNotFound*") {
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems Blueprint definition is gone - skipping for now :)"
-                        return "BlueprintNotFound"
+                        return [string]"BlueprintNotFound"
                     }
                     if ($catchResult.error.code -eq "ResourceRequestsThrottled" -or $catchResult.error.code -eq "429") {
                         $sleepSeconds = 11
@@ -457,7 +435,7 @@
                         $maxTries = 15
                         if ($tryCounter -gt $maxTries) {
                             Write-Host " $currentTask - capitulation after $maxTries attempts"
-                            return "capitulation"
+                            return [string]"capitulation"
                         }
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again (trying $maxTries times) in $sleepSec second(s)"
                         Start-Sleep -Seconds $sleepSec
@@ -465,24 +443,24 @@
 
                     if (($getRoleAssignmentSchedules -and $catchResult.error.code -eq "ResourceNotOnboarded") -or ($getRoleAssignmentSchedules -and $catchResult.error.code -eq "TenantNotOnboarded") -or ($getRoleAssignmentSchedules -and $catchResult.error.code -eq "InvalidResourceType") -or ($getRoleAssignmentSchedules -and $catchResult.error.code -eq "InvalidResource") -or ($getRoleAssignmentScheduledInstances -and $catchResult.error.code -eq "InvalidResource")) {
                         if ($getRoleAssignmentSchedules -and $catchResult.error.code -eq "ResourceNotOnboarded") {
-                            return "ResourceNotOnboarded"
+                            return [string]"ResourceNotOnboarded"
                         }
                         if ($getRoleAssignmentSchedules -and $catchResult.error.code -eq "TenantNotOnboarded") {
-                            return "TenantNotOnboarded"
+                            return [string]"TenantNotOnboarded"
                         }
                         if ($getRoleAssignmentSchedules -and $catchResult.error.code -eq "InvalidResourceType") {
-                            return "InvalidResourceType"
+                            return [string]"InvalidResourceType"
                         }
                         if ($getRoleAssignmentSchedules -and $catchResult.error.code -eq "InvalidResource") {
-                            return "InvalidResource"
+                            return [string]"InvalidResource"
                         }
                         if ($getRoleAssignmentScheduledInstances -and $catchResult.error.code -eq "InvalidResource") {
-                            return "InvalidResource"
+                            return [string]"InvalidResource"
                         }
                     }
 
                     if ($getDiagnosticSettingsMg -and $catchResult.error.code -eq "InvalidResourceType") {
-                        return "InvalidResourceType"
+                        return [string]"InvalidResourceType"
                     }
 
                     if ($catchResult.error.code -eq "InsufficientPermissions" -or $catchResult.error.code -eq "ClientCertificateValidationFailure" -or $catchResult.error.code -eq "GatewayAuthenticationFailed" -or $catchResult.message -eq "An error has occurred." -or $catchResult.error.code -eq "GeneralError") {
@@ -498,7 +476,7 @@
 
                     if ($validateAccess -and $catchResult.error.code -eq "Authorization_RequestDenied") {
                         #Write-Host "$currentTask failed ('$($catchResult.error.code)' | '$($catchResult.error.message)')" -ForegroundColor DarkRed
-                        return "failed"
+                        return [string]"failed"
                     }
 
 
@@ -512,7 +490,7 @@
 
                     if ($getMDfC -and $catchResult.error.code -eq "Subscription Not Registered") {
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' skipping Subscription"
-                        return "SubScriptionNotRegistered"
+                        return [string]"SubScriptionNotRegistered"
                     }
 
                     if ($catchResult.error.code -eq "Request_UnsupportedQuery") {
@@ -520,7 +498,7 @@
                         $maxTries = 5
                         if ($tryCounter -gt $maxTries) {
                             Write-Host " $currentTask - capitulation after $maxTries attempts"
-                            return "Request_UnsupportedQuery"
+                            return [string]"Request_UnsupportedQuery"
                         }
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again (trying $maxTries times) in $sleepSec second(s)"
                         Start-Sleep -Seconds $sleepSec
@@ -530,7 +508,7 @@
                 else {
                     if (-not $catchResult.code -and -not $catchResult.error.code -and -not $catchResult.message -and -not $catchResult.error.message -and -not $catchResult -and $tryCounter -lt 6) {
                         if ($azAPIRequest.StatusCode -eq 204 -and $getConsumption) {
-                            return $apiCallResultsCollection
+                            return [PSCustomObject]$apiCallResultsCollection
                         }
                         else {
                             $sleepSec = @(3, 7, 12, 20, 30, 45, 60)[$tryCounter]
@@ -728,6 +706,6 @@
         }
     }
     until(($azAPIRequest.StatusCode -in 200..204 -and -not $isMore ) -or ($Method -eq "HEAD" -and $azAPIRequest.StatusCode -eq 404))
-    return $apiCallResultsCollection
+    return [PSCustomObject]$apiCallResultsCollection
     #EndRegion AzAPICall
 }

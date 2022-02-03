@@ -16,7 +16,7 @@
     General notes
     #>
     param (
-        [Parameter(Mandatory = $true, ValueFromPipeline = $true, Position = 0)][string]$token
+        [Parameter(Mandatory = $true)][string]$token
     )
     #JWTDetails https://www.powershellgallery.com/packages/JWTDetails/1.0.2
     #Region getJWTDetails
