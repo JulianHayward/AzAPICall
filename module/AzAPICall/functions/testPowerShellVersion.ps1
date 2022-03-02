@@ -1,6 +1,6 @@
-﻿#Region Test-PowerShellVersion
-if($PsParallelization) {
-    Write-Host "Checking powershell edition and version"
+﻿function testPowerShellVersion {
+    
+    Write-Host " Checking PowerShell edition and version"
     $requiredPSVersion = "7.0.3"
     $splitRequiredPSVersion = $requiredPSVersion.split('.')
     $splitRequiredPSVersionMajor = $splitRequiredPSVersion[0]
@@ -36,16 +36,14 @@ if($PsParallelization) {
     }
 
     if ($psVersionCheckResult -eq "passed") {
-        Write-Host " PS check $psVersionCheckResult : $($psVersionCheck); (minimum supported version '$requiredPSVersion')"
-        Write-Host " PS Edition: $($PSVersionTable.PSEdition)"
-        Write-Host " PS Version: $($PSVersionTable.PSVersion)"
+        Write-Host "  PS check $psVersionCheckResult : $($psVersionCheck); (minimum supported version '$requiredPSVersion')"
+        Write-Host "  PS Edition: $($PSVersionTable.PSEdition); PS Version: $($PSVersionTable.PSVersion)"
+        Write-Host "  PS Version check succeeded" -ForegroundColor Green
     }
     else {
-        Write-Host " PS check $psVersionCheckResult : $($psVersionCheck)"
-        Write-Host " PS Edition: $($PSVersionTable.PSEdition)"
-        Write-Host " PS Version: $($PSVersionTable.PSVersion)"
-        Write-Host " This script version only supports Powershell 'Core' version '$($requiredPSVersion)' or higher"
+        Write-Host "  PS check $psVersionCheckResult : $($psVersionCheck)"
+        Write-Host "  PS Edition: $($PSVersionTable.PSEdition); PS Version: $($PSVersionTable.PSVersion)"
+        Write-Host "  Parallelization ($PsParallelization) requires Powershell 'Core' version '$($requiredPSVersion)' or higher"
         Throw "Error - check the last console output for details"
     }
 }
-#EndRegion Test-PowerShellVersion

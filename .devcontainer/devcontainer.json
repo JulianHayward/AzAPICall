@@ -5,9 +5,7 @@
 		"terminal.integrated.defaultProfile.linux": "pwsh"
 	},
 	"extensions": [
-		"ms-vscode.powershell",
-		"analytic-signal.preview-html"
+		"ms-vscode.powershell"
 	],
-	"forwardPorts": [],
-	"postCreateCommand": "chmod +x ./.devcontainer/profile.sh && ./.devcontainer/profile.sh"
+	"forwardPorts": []
 }

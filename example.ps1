@@ -1,62 +1,38 @@
-﻿# https://github.com/JulianHayward/AzAPICall
+# https://github.com/JulianHayward/AzAPICall
 
 [CmdletBinding()]
 Param
 (
     [Parameter(Mandatory = $False)][switch]$DebugAzAPICall,
-    [Parameter(Mandatory = $False)][string]$SubscriptionId4AzContext = "undefined",
     [Parameter(Mandatory = $False)][switch]$PsParallelization,
+    [Parameter(Mandatory = $False)][string]$SubscriptionId4AzContext = 'undefined',
+    [Parameter(Mandatory = $False)][string]$GithubRepository = 'aka.ms/fake',
     [Parameter(Mandatory = $False)][int]$ThrottleLimitMicrosoftGraph = 20,
     [Parameter(Mandatory = $False)][int]$ThrottleLimitARM = 10
 )
 
-#Region Prerequisites
-#Region ErrorActionPreference
+#Region preferences
 # https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_preference_variables?view=powershell-7.2#erroractionpreference
 $ErrorActionPreference = "Stop"
-#EndRegion ErrorActionPreference
-
-#Region DisableBreakingChangeWarningMessages
 # https://docs.microsoft.com/de-de/powershell/azure/faq?view=azps-7.1.0#how-do-i-disable-breaking-change-warning-messages-in-azure-powershell-
 $ProgressPreference = 'SilentlyContinue'
 Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
-#EndRegion DisableBreakingChangeWarningMessages
+#EndRegion preferences
 
-#Region Functions
-#Region getJWTDetails
-. .\functions\getJWTDetails.ps1
-$funcGetJWTDetails = $function:getJWTDetails.ToString()
-#EndRegion getJWTDetails
-
-#Region createBearerToken
-. .\functions\createBearerToken.ps1
-$funcCreateBearerToken = $function:createBearerToken.ToString()
-#EndRegion createBearerToken
-
-#Region AzAPICall
-. .\functions\AzAPICall.ps1
-$funcAzAPICall = $function:AzAPICall.ToString()
-#EndRegion AzAPICall
-#EndRegion Functions
-
-#Region Variables
-if ($PsParallelization) {
-    $arrayAPICallTracking = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
-    $htBearerAccessToken = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
+#Region initAZAPICall
+Write-Host "Initialize 'AzAPICall'"
+Write-Host " Import PS module 'AzAPICall'"
+Import-Module .\module\AzAPICall\AzAPICall.psd1 -Force -ErrorAction Stop
+Write-Host "  Import PS module 'AzAPICall' succeeded" -ForegroundColor Green
+$parameters4AzAPICallModule = @{
+    DebugAzAPICall           = $DebugAzAPICall
+    PsParallelization        = $PsParallelization
+    SubscriptionId4AzContext = $SubscriptionId4AzContext
+    GithubRepository         = $GithubRepository
 }
-else {
-    $arrayAPICallTracking = [System.Collections.ArrayList]@()
-    $htBearerAccessToken = @{}
-}
-#EndRegion Variables
-
-. .\prerequisites\Test-HashtableParameter.ps1
-. .\prerequisites\Test-PowerShellVersion.ps1
-. .\prerequisites\Test-AzModules.ps1
-. .\prerequisites\Test-AzContext.ps1
-. .\prerequisites\Test-Environment.ps1
-. .\prerequisites\Test-UserType.ps1
-#EndRegion Prerequisites
+initAzAPICall @parameters4AzAPICallModule
+Write-Host "Initialize 'AzAPICall' succeeded" -ForegroundColor Green
+#EndRegion initAZAPICall
 
 #Region Main
 # Example calls
@@ -65,7 +41,8 @@ else {
 # GET /groups
 Write-Host "----------------------------------------------------------"
 Write-Host "Processing example call: Microsoft Graph API: Get - Groups"
-$uri = ($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MicrosoftGraph + "/v1.0/groups?`$top=999&`$filter=(mailEnabled eq false and securityEnabled eq true)&`$select=id,createdDateTime,displayName,description&`$orderby=displayName asc&`$count=true" # https://graph.microsoft.com/v1.0/groups
+$uri = ($htAzureEnvironmentRelatedUrls).MicrosoftGraph + "/v1.0/groups?`$top=999&`$filter=(mailEnabled eq false and securityEnabled eq true)&`$select=id,createdDateTime,displayName,description&`$orderby=displayName asc&`$count=true" # https://graph.microsoft.com/v1.0/groups
+$uri
 $listenOn = "Value" #Default
 $currentTask = " 'Microsoft Graph API: Get - Groups'"
 Write-Host $currentTask
@@ -108,7 +85,8 @@ if ($PsParallelization) {
 
         # https://docs.microsoft.com/en-us/graph/api/group-list-members?view=graph-rest-1.0&tabs=http
         # GET /groups/{id}/members
-        $uri = ($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MicrosoftGraph + "/v1.0/groups/$($group.id)/members" # https://graph.microsoft.com/v1.0/groups/<GroupId>/members
+        $uri = ($htAzureEnvironmentRelatedUrls).MicrosoftGraph + "/v1.0/groups/$($group.id)/members" # https://graph.microsoft.com/v1.0/groups/<GroupId>/members
+        Write-Host "uri:" $uri -ForegroundColor magenta
         $listenOn = "Value" #Default
         $currentTask = " 'Microsoft Graph API: Get - Group List Members (id: $($group.id))'"
         Write-Host $currentTask
@@ -143,7 +121,8 @@ else {
 
         # https://docs.microsoft.com/en-us/graph/api/group-list-members?view=graph-rest-1.0&tabs=http
         # GET /groups/{id}/members
-        $uri = ($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).MicrosoftGraph + "/v1.0/groups/$($group.id)/members" # https://graph.microsoft.com/v1.0/groups/<GroupId>/members
+        $uri = ($htAzureEnvironmentRelatedUrls).MicrosoftGraph + "/v1.0/groups/$($group.id)/members" # https://graph.microsoft.com/v1.0/groups/<GroupId>/members
+        $uri
         $listenOn = "Value" #Default
         $currentTask = " 'Microsoft Graph API: Get - Group List Members (id: $($group.id))'"
         Write-Host $currentTask
@@ -175,12 +154,12 @@ else {
 Write-Host "----------------------------------------------------------"
 Write-Host "Processing example call: Microsoft Resource Manager API: List - Subscriptions"
 Write-Host " 'ARM API: List - Subscriptions'"
-$uri = ($htAzureEnvironmentRelatedUrls).($checkContext.Environment.Name).ARM + "subscriptions?api-version=2020-01-01"
+$uri = ($htAzureEnvironmentRelatedUrls).ARM + "subscriptions?api-version=2020-01-01"
 $subscriptions = AzAPICall -uri $uri `
                            -method "GET" `
                            -currentTask "ARM API: List - Subscriptions"
 
-Write-Host " 'ARM API: List - Subscriptions' returned results:" $aadgroups.Count
+Write-Host " 'ARM API: List - Subscriptions' returned results:" $subscriptions.Count
 Write-Host " 'ARM API: List - Subscriptions' first result:" $subscriptions[0].displayName $subscriptions[0].subscriptionId
 #EndRegion MicrosoftResourceManagerSubscriptions
 #EndRegion Main

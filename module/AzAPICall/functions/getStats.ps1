@@ -1,0 +1,3 @@
+function getStats {
+    return $arrayAPICallTracking
+}
