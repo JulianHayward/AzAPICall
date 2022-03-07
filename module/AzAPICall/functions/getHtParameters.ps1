@@ -1,3 +1,0 @@
-function getHtParameters {
-    return $htParameters
-}

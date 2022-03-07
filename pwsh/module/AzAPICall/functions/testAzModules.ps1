@@ -2,11 +2,11 @@
     $testCommands = @('Get-AzContext')
     $azModules = @('Az.Accounts')
 
-    Write-Host " Check required Az modules cmdlets"
+    Write-Host ' Check required Az modules cmdlets'
     foreach ($testCommand in $testCommands) {
         if (-not (Get-Command $testCommand -ErrorAction Ignore)) {
-            Write-Host "  AzModule test failed: cmdlet $testCommand not available - make sure the modules $($azModules -join ", ") are installed" -ForegroundColor Red
-            Throw "Error - check the last console output for details"
+            Write-Host "  AzModule test failed: cmdlet $testCommand not available - make sure the modules $($azModules -join ', ') are installed" -ForegroundColor Red
+            Throw 'Error - check the last console output for details'
         }
         else {
             Write-Host "  Az PS module supporting cmdlet '$testCommand' installed"
@@ -24,5 +24,5 @@
         }
     }
 
-    Write-Host "  Required Az modules cmdlets check succeeded" -ForegroundColor Green
+    Write-Host '  Required Az modules cmdlets check succeeded' -ForegroundColor Green
 }

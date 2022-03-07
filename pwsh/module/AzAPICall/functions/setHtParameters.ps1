@@ -1,47 +1,46 @@
-﻿function createHtParameters {
-    Write-Host " Create htParameters"
+﻿function setHtParameters {
+    Write-Host ' Create htParameters'
     #region codeRunPlatform
     $onAzureDevOps = $false
     $onAzureDevOpsOrGitHubActions = $false
     if ($env:GITHUB_SERVER_URL -and $env:CODESPACES) {
-        $codeRunPlatform = "GitHubCodespaces"
+        $codeRunPlatform = 'GitHubCodespaces'
     }
     elseif ($env:REMOTE_CONTAINERS) {
-        $codeRunPlatform = "RemoteContainers"
+        $codeRunPlatform = 'RemoteContainers'
     }
     elseif ($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) {
-        $codeRunPlatform = "AzureDevOps"
+        $codeRunPlatform = 'AzureDevOps'
         $onAzureDevOps = $true
         $onAzureDevOpsOrGitHubActions = $true
     }
     elseif ($PSPrivateMetadata) {
-        $codeRunPlatform = "AzureAutomation"
+        $codeRunPlatform = 'AzureAutomation'
     }
     elseif ($env:GITHUB_ACTIONS) {
-        $codeRunPlatform = "GitHubActions"
+        $codeRunPlatform = 'GitHubActions'
         $onGitHubActions = $true
         $onAzureDevOpsOrGitHubActions = $true
     }
     elseif ($env:ACC_IDLE_TIME_LIMIT -and $env:AZURE_HTTP_USER_AGENT -and $env:AZUREPS_HOST_ENVIRONMENT) {
-        $codeRunPlatform = "CloudShell"
+        $codeRunPlatform = 'CloudShell'
     }
     else {
-        $codeRunPlatform = "Console"
+        $codeRunPlatform = 'Console'
     }
-    Write-Host "  CodeRunPlatform:" $codeRunPlatform
+    Write-Host '  CodeRunPlatform:' $codeRunPlatform
     #endregion codeRunPlatform
 
 
     if ($DebugAzAPICall) {
-        write-host "  AzAPICall debug enabled" -ForegroundColor Cyan
+        write-host '  AzAPICall debug enabled' -ForegroundColor Cyan
     }
     else {
-        write-host "  AzAPICall debug disabled" -ForegroundColor Cyan
+        write-host '  AzAPICall debug disabled' -ForegroundColor Cyan
     }
 
     #Region Test-HashtableParameter
-    Write-Host "  Create htParameters succeeded" -ForegroundColor Green
-    return $htParameters = @{
+    return $htParameters = [ordered]@{
         DebugAzAPICall               = $DebugAzAPICall
         GithubRepository             = $GithubRepository
         CodeRunPlatform              = $codeRunPlatform
