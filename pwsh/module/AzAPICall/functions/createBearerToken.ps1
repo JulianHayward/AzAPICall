@@ -1,32 +1,23 @@
 ﻿function createBearerToken {
-    <#
-    .SYNOPSIS
-    Short description
 
-    .DESCRIPTION
-    Long description
-
-    .PARAMETER targetEndPoint
-    MicrosoftGraph, ARM, KeyVault, LogAnalytics
-
-    .EXAMPLE
-    PS C:\> createBearerToken -targetEndPoint "MicrosoftGraph"
-
-    .NOTES
-    General notes
-    #>
     param (
-        [Parameter(Mandatory = $true)][string]$targetEndPoint
+        [Parameter(Mandatory = $true)]
+        [string]
+        $targetEndPoint,
+
+        [Parameter(Mandatory = $True)]
+        [object]
+        $AzAPICallConfiguration
     )
 
-    Write-Host " +Processing new bearer token request ($targetEndPoint)" -ForegroundColor Cyan
+    Write-Host " +Processing new bearer token request '$targetEndPoint' ($($AzApiCallConfiguration['htAzureEnvironmentRelatedUrls'].$targetEndPoint))" -ForegroundColor Cyan
 
-    if (($htAzureEnvironmentRelatedUrls).$targetEndPoint) {
+    if (($AzApiCallConfiguration['htAzureEnvironmentRelatedUrls']).$targetEndPoint) {
 
-        $contextForToken = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile.DefaultContext
+        $azContext = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile.DefaultContext
         $catchResult = 'letscheck'
         try {
-            $newBearerAccessTokenRequest = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($contextForToken.Account, $contextForToken.Environment, $contextForToken.Tenant.id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "$(($htAzureEnvironmentRelatedUrls).$targetEndPoint)")
+            $newBearerAccessTokenRequest = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($azContext.Account, $azContext.Environment, $azContext.Tenant.id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "$(($AzApiCallConfiguration['htAzureEnvironmentRelatedUrls']).$targetEndPoint)")
         }
         catch {
             $catchResult = $_
@@ -41,7 +32,7 @@
 
         $dateTimeTokenCreated = (get-date -format 'MM/dd/yyyy HH:mm:ss')
 
-        ($global:htBearerAccessToken).$targetEndPoint = $newBearerAccessTokenRequest.AccessToken
+        ($AzApiCallConfiguration['htBearerAccessToken']).$targetEndPoint = $newBearerAccessTokenRequest.AccessToken
 
         $bearerDetails = getJWTDetails -token $newBearerAccessTokenRequest.AccessToken
         $bearerAccessTokenExpiryDateTime = $bearerDetails.expiryDateTime

@@ -49,93 +49,6 @@ By default, 4 endpoint URI`s are available within the script:
 | https://vault.azure.net        | `$uriKeyVault`       | KeyVault       |
 | https://api.loganalytics.io/v1 | `$uriLogAnalytics`   | LogAnalytics   |
 
-[List groups - HTTP request](https://docs.microsoft.com/en-us/graph/api/group-list?view=graph-rest-1.0&tabs=http#http-request)
-
-```POWERSHELL
-$uri = $uriMicrosoftGraph + "/v1.0/groups"
-```
-
-If you don't feel comfortable using the predfined variables *(e.g: "$uriMicrosoftGraph")* you can directly use the full uri path by yourself:
-
-```POWERSHELL
-Write-Output $uri
-https://graph.microsoft.com/v1.0/groups
-
-$uri = "https://graph.microsoft.com/v1.0/groups"
-```
-
-#### METHOD
-
-The `method` is documented by Microsoft:
-
-[List groups - HTTP request](https://docs.microsoft.com/en-us/graph/api/group-list?view=graph-rest-1.0&tabs=http#http-request)
-
-```POWERSHELL
-$method = "GET"
-```
-
-#### CURRENT TASK
-
-If the script will call multiple times the `AzAPICall`-function and might doing it also in parallel, it is useful to see where the script is.
-Regarding to this, the `currentTask` will be included in the output.
-
-```POWERSHELL
-$currentTask = "Microsoft Graph API: Get - Group List"
-```
-
-## AzAPICall Function
-
-*(main.ps1)*:
-
-Make sure you are authenticated to Azure otherwise implement it to your script:
-
-```POWERSHELL
-Clear-AzContext -Force
-Connect-AzAccount -Tenant "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" `
-                  -SubscriptionId "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" 
-```
-
-*(main.ps1)*:
-
-Import the AzAPICall module and pass on required parameters
-```POWERSHELL
-Import-Module .\module\AzAPICall\AzAPICall.psd1 -Force -ErrorAction Stop
-$parameters4AzAPICallModule = @{
-    DebugAzAPICall           = $DebugAzAPICall
-    PsParallelization        = $PsParallelization
-    SubscriptionId4AzContext = $SubscriptionId4AzContext
-    GithubRepository         = $GithubRepository
-}
-initAzAPICall @parameters4AzAPICallModule
-```
-
-Let's start with an easy example.
-
-In this case:
-- we would like to receive the first 999 the AzureAD groups
-`$top=999`
-- only get the security enabled  and NOT the mail enabled groups 
-`$filter=(mailEnabled eq false and securityEnabled eq true)` 
-- get only some properties as result 
-`$select=id,createdDateTime,displayName,description`
-- order the results by the displayname ascending 
-`orderby=displayName asc`
-
-To escape the `$` in the `URI` you need to set a tick \` before the `$`
-
-```POWERSHELL
-$uri = ($htAzureEnvironmentRelatedUrls).MicrosoftGraph + "/v1.0/groups?`$top=999&`$filter=(mailEnabled eq false and securityEnabled eq true)&`$select=id,createdDateTime,displayName,description&`$orderby=displayName asc&`$count=true" # https://graph.microsoft.com/v1.0/groups
-$listenOn = "Value" #Default
-$currentTask = " 'Microsoft Graph API: Get - Groups'"
-Write-Host $currentTask
-$method = "GET"
-$aadgroups = AzAPICall -uri $uri `
-                       -method $method `
-                       -currentTask $currentTask `
-                       -listenOn $listenOn `
-                       -consistencyLevel "eventual" `
-                       -noPaging $true #$top in url + paging=$true will iterate further https://docs.microsoft.com/en-us/graph/paging 
-```
 
 ### AzAPICall Tracking
 
@@ -203,8 +116,8 @@ If you would like to do this, you need to use the `consistencyLevel`-paramenter 
 ### Versions
 | PowerShell Version | Description									                                        |
 | ------------------ | ------------------------------------------------------------------------------------ |
-| 7.0.3 			 | If you would like to use [PowerShell parallelization](https://devblogs.microsoft.com/powershell/powershell-foreach-object-parallel-feature/), you need to set the parameter `PsParallelization`. |
-| 5.x.x			     | If you don't have many data to collect, you can use the `AzAPICall` without parallelization.                    |
+| 7.0.3| default |
+| 5.x.x|[PowerShell parallelization](https://devblogs.microsoft.com/powershell/powershell-foreach-object-parallel-feature/) requires PS 7.0.3 or higher. If running PS 5.x you need to set the `bool` parameter `NoPsParallelization` to `true`.|
 
 ### Modules
 | PowerShell Module |
@@ -222,14 +135,14 @@ If you would like to do this, you need to use the `consistencyLevel`-paramenter 
 | testAzModules.ps1 | Check if predefined command `Get-AzContext` can be executed within the executed PowerShell session. Addtionally, check if the needed module `Az.Accounts` is installed and write the version to the output. |
 | setAzureEnvironment.ps1 | Get the environment information of the actual context and predefine the [URI endpoint as variable](#uri). |
 | createHtParameters.ps1 | Check where the code is running *(e.g.: GitHub Actions, GitHub Codespaces, Azure DevOps, Azure Automation, Azure CloudShell, Console)*. |
-| testPowerShellVersion.ps1 | If switch parameter `-PsParallelization` is used ([PowerShell ForEach-Object Parallel Feature](https://devblogs.microsoft.com/powershell/powershell-foreach-object-parallel-feature/)) then PowerShell version must be >= `7.0.3`. |
+| testPowerShellVersion.ps1 | If `bool` parameter `-NoPsParallelization` = `false` is used then PowerShell version must be >= `7.0.3`. ([PowerShell ForEach-Object Parallel Feature](https://devblogs.microsoft.com/powershell/powershell-foreach-object-parallel-feature/)) |
 | testUserType.ps1 | If the executing principal is a user then check if the user is a member of a guest |
 
 ## General Parameters
 | Field					   		| Type		| Description									                                        | Required |
 | ----------------------------- | :-------: | ------------------------------------------------------------------------------------- | :------: |
-| DebugAzAPICall			    | `switch`	| Set to `True` to enable the debugging and get further detailed output.                | 		   |
+| DebugAzAPICall			    | `bool`	| Set to `True` to enable the debugging and get further detailed output.                | 		   |
 | SubscriptionId4AzContext		| `string`	| If you would like to use a specific subscription as AzContext. Otherwise, if the `SubscriptionId4AzContext`-parameter value is `undefined`, the standard subscription with the Connect-AzAccount will be used. | 		   |
-| PsParallelization			    | `switch`	| `True` or `False` if parallelization should be used. If it should be used PowerShell version >= 7.0.,3 is required. If set to `False` you can use it also with PowerShell verion >= 5.1. | 	 	   |
-| ThrottleLimitMicrosoftGraph	| `int`	    | Only if `PsParallelization` is set to `true`. Set the ThrottelLimit for the Microsoft Graph API call for parallelization. Default and recommended value is `20`. |  		   |
-| ThrottleLimitARM			    | `int`	    | Only if `PsParallelization` is set to `true`. Set the ThrottelLimit for the ARM (Azure Resource Manager) API call for parallelization. Default and recommended value is `10`. |  		   |
+| NoPsParallelization			    | `bool`	| If `bool` parameter `-NoPsParallelization` = `false` is used then PowerShell version must be >= `7.0.3`. ([PowerShell ForEach-Object Parallel Feature](https://devblogs.microsoft.com/powershell/powershell-foreach-object-parallel-feature/)) | 	 	   |
+| ThrottleLimitMicrosoftGraph	| `int`	    | Relevant if `NoPsParallelization` is set to `false`. Set the ThrottelLimit for the Microsoft Graph API call for parallelization. Default and recommended value is `20`. |  		   |
+| ThrottleLimitARM			    | `int`	    | Relevant if `NoPsParallelization` is set to `false`. Set the ThrottelLimit for the ARM (Azure Resource Manager) API call for parallelization. Default and recommended value is `10`. |  		   |

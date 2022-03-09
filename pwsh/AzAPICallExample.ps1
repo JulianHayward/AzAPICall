@@ -33,7 +33,11 @@ $parameters4AzAPICallModule = @{
     SubscriptionId4AzContext = $SubscriptionId4AzContext
     GithubRepository         = $GithubRepository
 }
-initAzAPICall @parameters4AzAPICallModule
+$Configuration = initAzAPICall @parameters4AzAPICallModule
+
+if (-not $NoPsParallelization) {
+    $functions = getFunctions
+}
 Write-Host "Initialize 'AzAPICall' succeeded" -ForegroundColor Green
 #EndRegion initAZAPICall
 
@@ -41,7 +45,7 @@ Write-Host "Initialize 'AzAPICall' succeeded" -ForegroundColor Green
 # Example calls
 
 #Region ValidateAccess
-$apiEndPoint = $htAzureEnvironmentRelatedUrls.MicrosoftGraph
+$apiEndPoint = $Configuration['htAzureEnvironmentRelatedUrls'].MicrosoftGraph
 $apiEndPointVersion = '/v1.0'
 $api = '/groups'
 $optionalQueryParameters = '?$count=true&$top=1'
@@ -50,12 +54,13 @@ $optionalQueryParameters = '?$count=true&$top=1'
 $uri = $apiEndPoint + $apiEndPointVersion + $api + $optionalQueryParameters
 
 $azAPICallPayload = @{
-    uri              = $uri
-    method           = 'GET'
-    currentTask      = "$($htAzureEnvironmentRelatedTargetEndpoints.($apiEndPoint.split('/')[2])) API: Validate Access for Groups Read permission"
-    consistencyLevel = 'eventual'
-    validateAccess   = $true
-    noPaging         = $true
+    uri                    = $uri
+    method                 = 'GET'
+    currentTask            = "$($Configuration['htAzureEnvironmentRelatedTargetEndpoints'].($apiEndPoint.split('/')[2])) API: Validate Access for Groups Read permission"
+    consistencyLevel       = 'eventual'
+    validateAccess         = $true
+    noPaging               = $true
+    AzApiCallConfiguration = $Configuration
 }
 Write-Host $azAPICallPayload.currentTask
 
@@ -76,20 +81,21 @@ else {
 Write-Host '----------------------------------------------------------'
 Write-Host 'Processing example call: Microsoft Graph API: Get - Groups'
 
-$apiEndPoint = $htAzureEnvironmentRelatedUrls.MicrosoftGraph
+$apiEndPoint = $Configuration['htAzureEnvironmentRelatedUrls'].MicrosoftGraph
 $apiEndPointVersion = '/v1.0'
 $api = '/groups'
-$optionalQueryParameters = '?$top=50&$filter=(mailEnabled eq false and securityEnabled eq true)&$select=id,createdDateTime,displayName,description&$orderby=displayName asc&$count=true'
+$optionalQueryParameters = '?$top=888&$filter=(mailEnabled eq false and securityEnabled eq true)&$select=id,createdDateTime,displayName,description&$orderby=displayName asc&$count=true'
 
 #$uri = 'https://graph.microsoft.com/v1.0/groups?$top=888&$filter=(mailEnabled eq false and securityEnabled eq true)&$select=id,createdDateTime,displayName,description&$orderby=displayName asc&$count=true'
 $uri = $apiEndPoint + $apiEndPointVersion + $api + $optionalQueryParameters
 
 $azAPICallPayload = @{
-    uri              = $uri
-    method           = 'GET'
-    currentTask      = "'$($htAzureEnvironmentRelatedTargetEndpoints.($apiEndPoint.split('/')[2])) API: Get - Groups'"
-    consistencyLevel = 'eventual'
-    noPaging         = $true #$top in $uri + parameter 'noPaging=$false' (not using 'noPaging' in the splat) will iterate further https://docs.microsoft.com/en-us/graph/paging
+    uri                    = $uri
+    method                 = 'GET'
+    currentTask            = "'$($Configuration['htAzureEnvironmentRelatedTargetEndpoints'].($apiEndPoint.split('/')[2])) API: Get - Groups'"
+    consistencyLevel       = 'eventual'
+    noPaging               = $true #$top in $uri + parameter 'noPaging=$false' (not using 'noPaging' in the splat) will iterate further https://docs.microsoft.com/en-us/graph/paging
+    AzAPICallConfiguration = $Configuration
 }
 Write-Host $azAPICallPayload.currentTask
 
@@ -105,19 +111,14 @@ if (-not $NoPsParallelization) {
     $htAzureAdGroupDetails = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
     $arrayGroupMembers = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $startTime = get-date
-
     $aadgroups | ForEach-Object -Parallel {
         #general hashTables and arrays
-        $checkContext = $using:checkContext
-        $htAzureEnvironmentRelatedUrls = $using:htAzureEnvironmentRelatedUrls
-        $htAzureEnvironmentRelatedTargetEndpoints = $using:htAzureEnvironmentRelatedTargetEndpoints
-        $htParameters = $using:htParameters
-        $htBearerAccessToken = $using:htBearerAccessToken
-        $arrayAPICallTracking = $using:arrayAPICallTracking
+        $Configuration = $using:Configuration
         #general functions
-        $function:AzAPICall = $using:funcAzAPICall
-        $function:createBearerToken = $using:funcCreateBearerToken
-        $function:GetJWTDetails = $using:funcGetJWTDetails
+        $function:AzAPICall = $using:functions.funcAzAPICall
+        $function:createBearerToken = $using:functions.funcCreateBearerToken
+        $function:GetJWTDetails = $using:functions.funcGetJWTDetails
+        #Import-Module .\pwsh\module\AzAPICall\AzAPICall.psd1 -Force -ErrorAction Stop
         #specific for this operation
         $htAzureAdGroupDetails = $using:htAzureAdGroupDetails
         $arrayGroupMembers = $using:arrayGroupMembers
@@ -126,7 +127,7 @@ if (-not $NoPsParallelization) {
 
         # https://docs.microsoft.com/en-us/graph/api/group-list-members?view=graph-rest-1.0&tabs=http
         # GET /groups/{id}/members
-        $apiEndPoint = $htAzureEnvironmentRelatedUrls.MicrosoftGraph
+        $apiEndPoint = $Configuration['htAzureEnvironmentRelatedUrls'].MicrosoftGraph
         $apiEndPointVersion = '/v1.0'
         $api = "/groups/$($group.id)/members"
         $optionalQueryParameters = ''
@@ -135,9 +136,10 @@ if (-not $NoPsParallelization) {
         $uri = $apiEndPoint + $apiEndPointVersion + $api + $optionalQueryParameters
 
         $azAPICallPayload = @{
-            uri         = $uri
-            method      = 'GET'
-            currentTask = " '$($htAzureEnvironmentRelatedTargetEndpoints.($apiEndPoint.split('/')[2])) API: Get - Group List Members (id: $($group.id))'"
+            uri                    = $uri
+            method                 = 'GET'
+            currentTask            = " '$($Configuration['htAzureEnvironmentRelatedTargetEndpoints'].($apiEndPoint.split('/')[2])) API: Get - Group List Members (id: $($group.id))'"
+            AzAPICallConfiguration = $Configuration
         }
         Write-Host $azAPICallPayload.currentTask
 
@@ -158,8 +160,8 @@ if (-not $NoPsParallelization) {
     Write-Host 'returned members hashTable:' $htAzureAdGroupDetails.Values.Id.Count
     Write-Host 'returned members arrayList:' $arrayGroupMembers.Count
 
-    Write-Host 'AzAPICall statistics:'
-    ($arrayAPICallTracking.Duration | Measure-Object -Average -Maximum -Minimum) | Out-String | ForEach-Object { Write-Host $_ }
+    Write-Host 'statistics:'
+    ($arrayAPICallTracking.Duration | Measure-Object -Average -Maximum -Minimum)
 }
 else {
     $htAzureAdGroupDetails = @{}
@@ -171,7 +173,7 @@ else {
 
         # https://docs.microsoft.com/en-us/graph/api/group-list-members?view=graph-rest-1.0&tabs=http
         # GET /groups/{id}/members
-        $apiEndPoint = $htAzureEnvironmentRelatedUrls.MicrosoftGraph
+        $apiEndPoint = $Configuration['htAzureEnvironmentRelatedUrls'].MicrosoftGraph
         $apiEndPointVersion = '/v1.0'
         $api = "/groups/$($group.id)/members"
         $optionalQueryParameters = ''
@@ -180,9 +182,10 @@ else {
         $uri = $apiEndPoint + $apiEndPointVersion + $api + $optionalQueryParameters
 
         $azAPICallPayload = @{
-            uri         = $uri
-            method      = 'GET'
-            currentTask = "'$($htAzureEnvironmentRelatedTargetEndpoints.($apiEndPoint.split('/')[2])) API: Get - Group List Members (id: $($group.id))'"
+            uri                    = $uri
+            method                 = 'GET'
+            currentTask            = "'$($Configuration['htAzureEnvironmentRelatedTargetEndpoints'].($apiEndPoint.split('/')[2])) API: Get - Group List Members (id: $($group.id))'"
+            AzAPICallConfiguration = $Configuration
         }
         Write-Host $azAPICallPayload.currentTask
 
@@ -202,8 +205,8 @@ else {
     Write-Host 'returned members:' $htAzureAdGroupDetails.Values.Id.Count
     Write-Host 'returned members arrayList:' $arrayGroupMembers.Count
 
-    Write-Host 'AzAPICall statistics:'
-    ($arrayAPICallTracking.Duration | Measure-Object -Average -Maximum -Minimum) | Out-String | ForEach-Object { Write-Host $_ }
+    Write-Host 'API call statistics:'
+    ($arrayAPICallTracking.Duration | Measure-Object -Average -Maximum -Minimum)
 }
 #EndRegion MicrosoftGraphGroupMemberList
 
@@ -213,7 +216,7 @@ else {
 Write-Host '----------------------------------------------------------'
 Write-Host 'Processing example call: Microsoft Resource Manager (ARM) API: List - Subscriptions'
 
-$apiEndPoint = $htAzureEnvironmentRelatedUrls.ARM
+$apiEndPoint = $Configuration['htAzureEnvironmentRelatedUrls'].ARM
 $apiVersion = '?api-version=2020-01-01'
 $api = '/subscriptions'
 $uriParameter = ''
@@ -222,9 +225,10 @@ $uriParameter = ''
 $uri = $apiEndPoint + $api + $apiVersion + $uriParameter
 
 $azAPICallPayload = @{
-    uri         = $uri
-    method      = 'GET'
-    currentTask = " '$($htAzureEnvironmentRelatedTargetEndpoints.($apiEndPoint.split('/')[2])) API: List - Subscriptions'"
+    uri                    = $uri
+    method                 = 'GET'
+    currentTask            = " '$($Configuration['htAzureEnvironmentRelatedTargetEndpoints'].($apiEndPoint.split('/')[2])) API: List - Subscriptions'"
+    AzAPICallConfiguration = $Configuration
 }
 Write-Host $azAPICallPayload.currentTask
 
@@ -245,16 +249,12 @@ if (-not $NoPsParallelization) {
 
     $subscriptions.where( { $_.state -eq 'enabled' -and $_.subscriptionPolicies.quotaId -notlike 'AAD*' } )[0..($subsToProcess - 1)] | ForEach-Object -Parallel {
         #general hashTables and arrays
-        $checkContext = $using:checkContext
-        $htAzureEnvironmentRelatedUrls = $using:htAzureEnvironmentRelatedUrls
-        $htAzureEnvironmentRelatedTargetEndpoints = $using:htAzureEnvironmentRelatedTargetEndpoints
-        $htParameters = $using:htParameters
-        $htBearerAccessToken = $using:htBearerAccessToken
-        $arrayAPICallTracking = $using:arrayAPICallTracking
+        $Configuration = $using:Configuration
         #general functions
-        $function:AzAPICall = $using:funcAzAPICall
-        $function:createBearerToken = $using:funcCreateBearerToken
-        $function:GetJWTDetails = $using:funcGetJWTDetails
+        $function:AzAPICall = $using:functions.funcAzAPICall
+        $function:createBearerToken = $using:functions.funcCreateBearerToken
+        $function:GetJWTDetails = $using:functions.funcGetJWTDetails
+        #Import-Module .\pwsh\module\AzAPICall\AzAPICall.psd1 -Force -ErrorAction Stop
         #specific for this operation
         $htAzureResources = $using:htAzureResources
         $arrayAzureResources = $using:arrayAzureResources
@@ -263,7 +263,7 @@ if (-not $NoPsParallelization) {
 
         # https://docs.microsoft.com/en-us/rest/api/resources/resources/list
         # GET https://management.azure.com/subscriptions/{subscriptionId}/resources?$filter={$filter}&$expand={$expand}&$top={$top}&api-version=2021-04-01
-        $apiEndPoint = $htAzureEnvironmentRelatedUrls.ARM
+        $apiEndPoint = $Configuration['htAzureEnvironmentRelatedUrls'].ARM
         $apiVersion = '?api-version=2021-04-01'
         $api = "/subscriptions/$($subscription.subscriptionId)/resources"
         $uriParameter = "&`$filter=resourceType eq 'Microsoft.Network/virtualNetworks' or resourceType eq 'Microsoft.Compute/virtualMachines'"
@@ -272,9 +272,10 @@ if (-not $NoPsParallelization) {
         $uri = $apiEndPoint + $api + $apiVersion + $uriParameter
 
         $azAPICallPayload = @{
-            uri         = $uri
-            method      = 'GET'
-            currentTask = " '$($htAzureEnvironmentRelatedTargetEndpoints.($apiEndPoint.split('/')[2])) API: Get - Resources for Subscription (name: $($subscription.displayName); id: $($subscription.subscriptionId))'"
+            uri                    = $uri
+            method                 = 'GET'
+            currentTask            = " '$($Configuration['htAzureEnvironmentRelatedTargetEndpoints'].($apiEndPoint.split('/')[2])) API: Get - Resources for Subscription (name: $($subscription.displayName); id: $($subscription.subscriptionId))'"
+            AzAPICallConfiguration = $Configuration
         }
         Write-Host $azAPICallPayload.currentTask
 
@@ -295,8 +296,8 @@ if (-not $NoPsParallelization) {
     Write-Host 'returned resources hashTable:' $htAzureResources.Values.Id.Count
     Write-Host 'returned resources arrayList:' $arrayAzureResources.Count
 
-    Write-Host 'AzAPICall statistics:'
-    ($arrayAPICallTracking.Duration | Measure-Object -Average -Maximum -Minimum) | Out-String | ForEach-Object { Write-Host $_ }
+    Write-Host 'statistics:'
+    ($arrayAPICallTracking.Duration | Measure-Object -Average -Maximum -Minimum)
 }
 else {
     $htAzureResources = @{}
@@ -308,7 +309,7 @@ else {
 
         # https://docs.microsoft.com/en-us/rest/api/resources/resources/list
         # GET https://management.azure.com/subscriptions/{subscriptionId}/resources?$filter={$filter}&$expand={$expand}&$top={$top}&api-version=2021-04-01
-        $apiEndPoint = $htAzureEnvironmentRelatedUrls.ARM
+        $apiEndPoint = $Configuration['htAzureEnvironmentRelatedUrls'].ARM
         $apiVersion = '?api-version=2021-04-01'
         $api = "/subscriptions/$($subscription.subscriptionId)/resources"
         $uriParameter = "&`$filter=resourceType eq 'Microsoft.Network/virtualNetworks' or resourceType eq 'Microsoft.Compute/virtualMachines'"
@@ -317,9 +318,10 @@ else {
         $uri = $apiEndPoint + $api + $apiVersion + $uriParameter
 
         $azAPICallPayload = @{
-            uri         = $uri
-            method      = 'GET'
-            currentTask = " '$($htAzureEnvironmentRelatedTargetEndpoints.($apiEndPoint.split('/')[2])) API: Get - Resources for Subscription (name: $($subscription.displayName); id: $($subscription.subscriptionId))'"
+            uri                    = $uri
+            method                 = 'GET'
+            currentTask            = " '$($Configuration['htAzureEnvironmentRelatedTargetEndpoints'].($apiEndPoint.split('/')[2])) API: Get - Resources for Subscription (name: $($subscription.displayName); id: $($subscription.subscriptionId))'"
+            AzAPICallConfiguration = $Configuration
         }
         Write-Host $azAPICallPayload.currentTask
 
@@ -339,8 +341,8 @@ else {
     Write-Host 'returned resources hashTable:' $htAzureResources.Values.Id.Count
     Write-Host 'returned resources arrayList:' $arrayAzureResources.Count
 
-    Write-Host 'AzAPICall statistics:'
-    ($arrayAPICallTracking.Duration | Measure-Object -Average -Maximum -Minimum) | Out-String | ForEach-Object { Write-Host $_ }
+    Write-Host 'API call statistics:'
+    ($arrayAPICallTracking.Duration | Measure-Object -Average -Maximum -Minimum)
 }
 #EndRegion MicrosoftResourceManagerResources
 #EndRegion Main
