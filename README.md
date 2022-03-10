@@ -5,24 +5,25 @@
 You want to have easy way to sent requests to the Microsoft endpoints without getting headache of taking care of valid bearer token and error handling?
 
 ## Table of content
-- [Example](#azapicall-example)
+- [AzAPICall example](#azapicall-example)
 - [Supported endpoints](#supported-endpoints)
 - [AzAPICall Parameter](#azapicall-parameter)
 - [AzAPICall Tracking](#azapicall-tracking)
+- [General Parameters](#general-parameters)
 - [Prerequisites](#prerequisites)
-    - [Powershell](powershell)
-        - [Modules](#modules)
-        - [Files](#files)
-        - [General Parameters](#general-parameters)
+    - [Powershell Modules](powershell-modules)
 
 ## AzAPICall example
 [AzAPICallExample.ps1](pwsh/AzAPICallExample.ps1)
 
 ## Supported endpoints
-- [Microsoft Graph](https://docs.microsoft.com/en-us/graph/api/overview?view=graph-rest-1.0)
-- [Azure Resource Management](https://docs.microsoft.com/en-us/rest/api/resources/)
-- [Azure Key Vault](https://docs.microsoft.com/en-us/rest/api/keyvault/)
-- [Log Analytics](https://docs.microsoft.com/en-us/rest/api/loganalytics/)
+
+| Endpoint | Endpoint URL		   		     | Variable		        |
+| ------------------------------ | -------------------- | -------------- |
+| [Microsoft Graph](https://docs.microsoft.com/en-us/graph/api/overview?view=graph-rest-1.0) | https://graph.microsoft.com	 | `$Configuration['htAzureEnvironmentRelatedUrls'].MicrosoftGraph` |
+| [ARM (Azure Resource Management)](https://docs.microsoft.com/en-us/rest/api/resources/) | https://management.azure.com  | `$Configuration['htAzureEnvironmentRelatedUrls'].ARM`            |
+| [Azure Key Vault](https://docs.microsoft.com/en-us/rest/api/keyvault/) | https://vault.azure.net        | `$Configuration['htAzureEnvironmentRelatedUrls'].KeyVault`       |
+| [Log Analytics](https://docs.microsoft.com/en-us/rest/api/loganalytics/) | https://api.loganalytics.io/v1 | `$Configuration['htAzureEnvironmentRelatedUrls'].LogAnalytics`   |
 
 Add a new endpoint -> setAzureEnvironment.ps1
 
@@ -40,21 +41,9 @@ Add a new endpoint -> setAzureEnvironment.ps1
 | getMgAscSecureScore           | `switch`    | endpoint 'providers/Microsoft.ResourceGraph/resources' may return 'BadRequest' however a retry may be successful - this parameter could be generalized for ARG queries                                                                                 |          |
 | validateAccess                | `switch`    | use this parameter if you only want to validate that the requester has permissions to the enpoint, if authorization is denied AzAPICall returns 'failed'                                                                                |          |
 
-### Examples: 
-#### URI
-By default, 4 endpoint URI`s are available within the script:
-
-| Endpoint URL		   		     | Variable		        | targetEndPoint |
-| ------------------------------ | -------------------- | -------------- |
-| https://graph.microsoft.com	 | `$uriMicrosoftGraph` | MicrosoftGraph |
-| https://management.azure.com/  | `$uriARM`            | ARM            |
-| https://vault.azure.net        | `$uriKeyVault`       | KeyVault       |
-| https://api.loganalytics.io/v1 | `$uriLogAnalytics`   | LogAnalytics   |
-
-
 ### AzAPICall Tracking
 
-To get some insights about all AzAPIcalls you can use the `$arrayAPICallTracking`-ArrayList.
+To get some insights about all AzAPIcalls you can use the `$Configuration['arrayAPICallTracking']` (synchronized ArrayList).
 
 ```POWERSHELL
 $Configuration['arrayAPICallTracking'][0] | ConvertTo-Json
@@ -89,39 +78,18 @@ As well you can see how fast a AzAPICall was responding:
 }
 ```
 
-E.g. the slowest one:
-```POWERSHELL
-$Configuration['arrayAPICallTracking'] | Sort-Object Duration -Descending | Select-Object -First 1 | ConvertTo-Json
-```
-
-```JSON
-{
-  "CurrentTask": "Microsoft Graph API: Get - Group List Members",
-  "TargetEndpoint": "MicrosoftGraph",
-  "Uri": "https://graph.microsoft.com/v1.0/groups/<GroupId>/members",
-  "Method": "GET",
-  "TryCounter": 0,
-  "TryCounterUnexpectedError": 0,
-  "RetryAuthorizationFailedCounter": 0,
-  "RestartDueToDuplicateNextlinkCounter": 0,
-  "TimeStamp": "20220113160421421",
-  "Duration": 2.7991866
-}
-```
-
 ### Good to know
 By default, endPoints return results in batches of e.g. `100`. You can increase the return count defining e.g. `$top=999`.  
 `$top` requires use of `consistencyLevel` = `eventual`
-
-# Prerequisites
-## Powershell
-### Modules
-| PowerShell Module |
-| ----------------- |
-| Az.Accounts       |
 
 ## General Parameters
 | Field					   		| Type		| Description									                                        | Required |
 | ----------------------------- | :-------: | ------------------------------------------------------------------------------------- | :------: |
 | DebugAzAPICall			    | `bool`	| Set to `True` to enable the debugging and get further detailed output.                | 		   |
-| SubscriptionId4AzContext		| `string`	| If you would like to use a specific subscription as AzContext. Otherwise, if the `SubscriptionId4AzContext`-parameter value is `undefined`, the standard subscription with the Connect-AzAccount will be used. | 		   |
+| SubscriptionId4AzContext		| `string`	| Specify if specific subscription should be used for the AzContext. | 		   |
+
+## Prerequisites
+### Powershell Modules
+| PowerShell Module |
+| ----------------- |
+| Az.Accounts       |
