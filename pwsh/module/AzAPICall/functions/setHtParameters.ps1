@@ -1,4 +1,11 @@
 ﻿function setHtParameters {
+    [CmdletBinding()]
+    Param
+    (
+        [Parameter(Mandatory = $True)][string]$AzAccountsVersion,
+        [Parameter(Mandatory = $True)][string]$AzAPICallModuleVersion
+    )
+
     Write-Host ' Create htParameters'
     #region codeRunPlatform
     $onAzureDevOps = $false
@@ -42,7 +49,10 @@
     #Region Test-HashtableParameter
     return $htParameters = [ordered]@{
         DebugAzAPICall               = $DebugAzAPICall
-        GithubRepository             = $GithubRepository
+        GithubRepository             = 'aka.ms/AzAPICall'
+        PSVersion                    = $PSVersionTable.PSVersion
+        AzAccountsVersion            = $AzAccountsVersion
+        AzAPICallModuleVersion       = $AzAPICallModuleVersion
         CodeRunPlatform              = $codeRunPlatform
         onAzureDevOpsOrGitHubActions = [bool]$onAzureDevOpsOrGitHubActions
         onAzureDevOps                = [bool]$onAzureDevOps

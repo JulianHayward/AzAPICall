@@ -5,13 +5,14 @@
     (
         [Parameter(Mandatory = $False)][switch]$DebugAzAPICall,
         [Parameter(Mandatory = $False)][string]$SubscriptionId4AzContext,
-        [Parameter(Mandatory = $False)][switch]$NoPsParallelization,
-        [Parameter(Mandatory = $False)][string]$GithubRepository
+        [Parameter(Mandatory = $False)]$AzAPICallModuleVersion
     )
+
+    $AzAccountsVersion = testAzModules
 
     $AzAPICallConfiguration = @{}
     $AzAPICallConfiguration['htParameters'] = $null
-    $AzAPICallConfiguration['htParameters'] = setHtParameters
+    $AzAPICallConfiguration['htParameters'] = setHtParameters -AzAccountsVersion $AzAccountsVersion -AzAPICallModuleVersion $AzAPICallModuleVersion
     Write-Host '  AzAPICall htParameters:'
     Write-Host ($AzAPICallConfiguration['htParameters'] | format-table -AutoSize | Out-String)
     Write-Host '  Create htParameters succeeded' -ForegroundColor Green
@@ -19,26 +20,9 @@
     $AzAPICallConfiguration['arrayAPICallTracking'] = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $AzAPICallConfiguration['htBearerAccessToken'] = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
 
-    if ($NoPsParallelization) {
-        Write-Host ' PowerShell parallelization: false' -ForegroundColor Yellow
-        # $AzAPICallConfiguration['arrayAPICallTracking'] = [System.Collections.ArrayList]@()
-    }
-    else {
-        Write-Host ' PowerShell parallelization: true' -ForegroundColor Yellow
-
-        # $AzAPICallConfiguration['funcAzAPICall'] = $function:AzAPICall.ToString()
-        # $AzAPICallConfiguration['funcCreateBearerToken'] = $function:createBearerToken.ToString()
-        # $AzAPICallConfiguration['funcGetJWTDetails'] = $function:getJWTDetails.ToString()
-
-        testPowerShellVersion
-    }
-
-    testAzModules
-
     Write-Host ' Get Az context'
     try {
         $AzAPICallConfiguration['checkContext'] = Get-AzContext -ErrorAction Stop
-        # $checkContext = Get-AzContext -ErrorAction Stop
     }
     catch {
         $_

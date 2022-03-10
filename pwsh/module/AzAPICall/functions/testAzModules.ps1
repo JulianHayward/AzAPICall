@@ -18,11 +18,13 @@
         $azModuleVersion = (Get-InstalledModule -name "$azModule" -ErrorAction Ignore).Version
         if ($azModuleVersion) {
             Write-Host "  Az Module $azModule Version: $azModuleVersion"
+            Write-Host '  Required Az modules cmdlets check succeeded' -ForegroundColor Green
+            return $azModuleVersion
         }
         else {
             Write-Host "  Az Module $azModule Version: could not be assessed"
+            Write-Host '  Required Az modules cmdlets check succeeded' -ForegroundColor Green
+            return 'n/a'
         }
     }
-
-    Write-Host '  Required Az modules cmdlets check succeeded' -ForegroundColor Green
 }

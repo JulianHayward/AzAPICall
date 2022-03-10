@@ -1,50 +1,102 @@
 # https://github.com/JulianHayward/AzAPICall
 
-[CmdletBinding()]
 Param
 (
     [Parameter(Mandatory = $False)][bool]$DebugAzAPICall,
-    [Parameter(Mandatory = $False)][bool]$NoPsParallelization,
-    [Parameter(Mandatory = $False)][string]$SubscriptionId4AzContext = 'undefined',
-    [Parameter(Mandatory = $False)][string]$GithubRepository = 'aka.ms/AzAPICall',
-    [Parameter(Mandatory = $False)][int]$ThrottleLimitMicrosoftGraph = 20,
-    [Parameter(Mandatory = $False)][int]$ThrottleLimitARM = 10
+    [Parameter(Mandatory = $False)][string]$SubscriptionId4AzContext = 'undefined'
 )
 
-#Region preferences
+#region parallelization
+$NoPsParallelization = $false
+
+if (-not $NoPsParallelization) {
+    function testPowerShellVersion {
+
+        Write-Host ' Checking PowerShell edition and version'
+        $requiredPSVersion = '7.0.3'
+        $splitRequiredPSVersion = $requiredPSVersion.split('.')
+        $splitRequiredPSVersionMajor = $splitRequiredPSVersion[0]
+        $splitRequiredPSVersionMinor = $splitRequiredPSVersion[1]
+        $splitRequiredPSVersionPatch = $splitRequiredPSVersion[2]
+    
+        $thisPSVersion = ($PSVersionTable.PSVersion)
+        $thisPSVersionMajor = ($thisPSVersion).Major
+        $thisPSVersionMinor = ($thisPSVersion).Minor
+        $thisPSVersionPatch = ($thisPSVersion).Patch
+    
+        $psVersionCheckResult = 'letsCheck'
+    
+        if ($PSVersionTable.PSEdition -eq 'Core' -and $thisPSVersionMajor -eq $splitRequiredPSVersionMajor) {
+            if ($thisPSVersionMinor -gt $splitRequiredPSVersionMinor) {
+                $psVersionCheckResult = 'passed'
+                $psVersionCheck = "(Major[$splitRequiredPSVersionMajor]; Minor[$thisPSVersionMinor] gt $($splitRequiredPSVersionMinor))"
+            }
+            else {
+                if ($thisPSVersionPatch -ge $splitRequiredPSVersionPatch) {
+                    $psVersionCheckResult = 'passed'
+                    $psVersionCheck = "(Major[$splitRequiredPSVersionMajor]; Minor[$splitRequiredPSVersionMinor]; Patch[$thisPSVersionPatch] gt $($splitRequiredPSVersionPatch))"
+                }
+                else {
+                    $psVersionCheckResult = 'failed'
+                    $psVersionCheck = "(Major[$splitRequiredPSVersionMajor]; Minor[$splitRequiredPSVersionMinor]; Patch[$thisPSVersionPatch] lt $($splitRequiredPSVersionPatch))"
+                }
+            }
+        }
+        else {
+            $psVersionCheckResult = 'failed'
+            $psVersionCheck = "(Major[$splitRequiredPSVersionMajor] ne $($splitRequiredPSVersionMajor))"
+        }
+    
+        if ($psVersionCheckResult -eq 'passed') {
+            Write-Host "  PS check $psVersionCheckResult : $($psVersionCheck); (minimum supported version '$requiredPSVersion')"
+            Write-Host "  PS Edition: $($PSVersionTable.PSEdition); PS Version: $($PSVersionTable.PSVersion)"
+            Write-Host '  PS Version check succeeded' -ForegroundColor Green
+        }
+        else {
+            Write-Host "  PS check $psVersionCheckResult : $($psVersionCheck)"
+            Write-Host "  PS Edition: $($PSVersionTable.PSEdition); PS Version: $($PSVersionTable.PSVersion)"
+            Write-Host "  Parallelization requires Powershell 'Core' version '$($requiredPSVersion)' or higher"
+            Throw 'Error - check the last console output for details'
+        }
+    }
+    testPowerShellVersion
+    $ThrottleLimitMicrosoftGraph = 20
+    $ThrottleLimitARM = 10
+}
+#endregion parallelization
+
+#region preferences
 # https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_preference_variables?view=powershell-7.2#erroractionpreference
 $ErrorActionPreference = 'Stop'
 # https://docs.microsoft.com/de-de/powershell/azure/faq?view=azps-7.1.0#how-do-i-disable-breaking-change-warning-messages-in-azure-powershell-
 $ProgressPreference = 'SilentlyContinue'
 Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings 'true'
-#EndRegion preferences
+#endregion preferences
 
 #Connect
 #connect-azaccount -identity
 
-#Region initAZAPICall
+#region initAZAPICall
 Write-Host "Initialize 'AzAPICall'"
 Write-Host " Import PS module 'AzAPICall'"
 Import-Module .\pwsh\module\AzAPICall\AzAPICall.psd1 -Force -ErrorAction Stop
+$AzAPICallModuleVersion = (Get-Module -Name AzAPICall).Version
 Write-Host "  Import PS module 'AzAPICall' succeeded" -ForegroundColor Green
 $parameters4AzAPICallModule = @{
     DebugAzAPICall           = $DebugAzAPICall
-    NoPsParallelization      = $NoPsParallelization
     SubscriptionId4AzContext = $SubscriptionId4AzContext
-    GithubRepository         = $GithubRepository
+    AzAPICallModuleVersion   = "$($AzAPICallModuleVersion.Major).$($AzAPICallModuleVersion.Minor).$($AzAPICallModuleVersion.Build)"
 }
 $Configuration = initAzAPICall @parameters4AzAPICallModule
+Write-Host "Initialize 'AzAPICall' ($($parameters4AzAPICallModule.AzAPICallModuleVersion)) succeeded" -ForegroundColor Green
+#endregion initAZAPICall
 
-if (-not $NoPsParallelization) {
-    $functions = getAzAPICallFunctions
-}
-Write-Host "Initialize 'AzAPICall' succeeded" -ForegroundColor Green
-#EndRegion initAZAPICall
+$AzAPICallFunctions = getAzAPICallFunctions
 
-#Region Main
+#region Main
 # Example calls
 
-#Region ValidateAccess
+#region ValidateAccess
 $apiEndPoint = $Configuration['htAzureEnvironmentRelatedUrls'].MicrosoftGraph
 $apiEndPointVersion = '/v1.0'
 $api = '/groups'
@@ -73,9 +125,9 @@ if ($res -eq 'failed') {
 else {
     Write-Host " $($azAPICallPayload.currentTask) - check PASSED"
 }
-#Endregion ValidateAccess
+#endregion ValidateAccess
 
-#Region MicrosoftGraphGroupList
+#region MicrosoftGraphGroupList
 # https://docs.microsoft.com/en-us/graph/api/group-list?view=graph-rest-1.0&tabs=http
 # GET /groups
 Write-Host '----------------------------------------------------------'
@@ -102,9 +154,9 @@ Write-Host $azAPICallPayload.currentTask
 $aadgroups = AzAPICall @azAPICallPayload
 
 Write-Host " $($azAPICallPayload.currentTask) returned results:" $aadgroups.Count
-#EndRegion MicrosoftGraphGroupList
+#endregion MicrosoftGraphGroupList
 
-#Region MicrosoftGraphGroupMemberList
+#region MicrosoftGraphGroupMemberList
 Write-Host '----------------------------------------------------------'
 Write-Host "Processing example call: Getting all members for $($aadgroups.Count) AAD Groups (NoPsParallelization:$($NoPsParallelization))"
 if (-not $NoPsParallelization) {
@@ -115,9 +167,9 @@ if (-not $NoPsParallelization) {
         #general hashTables and arrays
         $Configuration = $using:Configuration
         #general functions
-        $function:AzAPICall = $using:functions.funcAzAPICall
-        $function:createBearerToken = $using:functions.funcCreateBearerToken
-        $function:GetJWTDetails = $using:functions.funcGetJWTDetails
+        $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
+        $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
+        $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
         #Import-Module .\pwsh\module\AzAPICall\AzAPICall.psd1 -Force -ErrorAction Stop
         #specific for this operation
         $htAzureAdGroupDetails = $using:htAzureAdGroupDetails
@@ -160,8 +212,8 @@ if (-not $NoPsParallelization) {
     Write-Host 'returned members hashTable:' $htAzureAdGroupDetails.Values.Id.Count
     Write-Host 'returned members arrayList:' $arrayGroupMembers.Count
 
-    Write-Host 'statistics:'
-    ($arrayAPICallTracking.Duration | Measure-Object -Average -Maximum -Minimum)
+    Write-Host 'API call statistics::'
+    ($Configuration['arrayAPICallTracking'].Duration | Measure-Object -Average -Maximum -Minimum)
 }
 else {
     $htAzureAdGroupDetails = @{}
@@ -206,11 +258,11 @@ else {
     Write-Host 'returned members arrayList:' $arrayGroupMembers.Count
 
     Write-Host 'API call statistics:'
-    ($arrayAPICallTracking.Duration | Measure-Object -Average -Maximum -Minimum)
+    ($Configuration['arrayAPICallTracking'].Duration | Measure-Object -Average -Maximum -Minimum)
 }
-#EndRegion MicrosoftGraphGroupMemberList
+#endregion MicrosoftGraphGroupMemberList
 
-#Region MicrosoftResourceManagerSubscriptions
+#region MicrosoftResourceManagerSubscriptions
 # https://docs.microsoft.com/en-us/rest/api/resources/subscriptions/list
 # GET https://management.azure.com/subscriptions?api-version=2020-01-01
 Write-Host '----------------------------------------------------------'
@@ -236,9 +288,9 @@ $subscriptions = AzAPICall @azAPICallPayload
 
 Write-Host " 'Subscriptions' returned results:" $subscriptions.Count
 Write-Host " 'List - Subscriptions' first result:" $subscriptions[0].displayName $subscriptions[0].subscriptionId
-#EndRegion MicrosoftResourceManagerSubscriptions
+#endregion MicrosoftResourceManagerSubscriptions
 
-#Region MicrosoftResourceManagerResources
+#region MicrosoftResourceManagerResources
 $subsToProcess = 20
 Write-Host '----------------------------------------------------------'
 Write-Host "Processing example call: Getting resources (VNets and VMs) for the first $($subsToProcess) Subscriptions (NoPsParallelization:$($NoPsParallelization))"
@@ -251,9 +303,9 @@ if (-not $NoPsParallelization) {
         #general hashTables and arrays
         $Configuration = $using:Configuration
         #general functions
-        $function:AzAPICall = $using:functions.funcAzAPICall
-        $function:createBearerToken = $using:functions.funcCreateBearerToken
-        $function:GetJWTDetails = $using:functions.funcGetJWTDetails
+        $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
+        $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
+        $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
         #Import-Module .\pwsh\module\AzAPICall\AzAPICall.psd1 -Force -ErrorAction Stop
         #specific for this operation
         $htAzureResources = $using:htAzureResources
@@ -289,15 +341,15 @@ if (-not $NoPsParallelization) {
             $null = $script:arrayAzureResources.Add($result)
         }
 
-    } -ThrottleLimit $ThrottleLimitMicrosoftGraph
+    } -ThrottleLimit $ThrottleLimitARM
 
-    $parallelElapsedTime = "elapsed time (foreach-parallel loop with ThrottleLimit:$($ThrottleLimitMicrosoftGraph)): " + ((get-date) - $startTime).TotalSeconds + ' seconds'
+    $parallelElapsedTime = "elapsed time (foreach-parallel loop with ThrottleLimit:$($ThrottleLimitARM)): " + ((get-date) - $startTime).TotalSeconds + ' seconds'
     Write-Host $parallelElapsedTime
     Write-Host 'returned resources hashTable:' $htAzureResources.Values.Id.Count
     Write-Host 'returned resources arrayList:' $arrayAzureResources.Count
 
-    Write-Host 'statistics:'
-    ($arrayAPICallTracking.Duration | Measure-Object -Average -Maximum -Minimum)
+    Write-Host 'API call statistics::'
+    ($Configuration['arrayAPICallTracking'].Duration | Measure-Object -Average -Maximum -Minimum)
 }
 else {
     $htAzureResources = @{}
@@ -342,7 +394,7 @@ else {
     Write-Host 'returned resources arrayList:' $arrayAzureResources.Count
 
     Write-Host 'API call statistics:'
-    ($arrayAPICallTracking.Duration | Measure-Object -Average -Maximum -Minimum)
+    ($Configuration['arrayAPICallTracking'].Duration | Measure-Object -Average -Maximum -Minimum)
 }
-#EndRegion MicrosoftResourceManagerResources
-#EndRegion Main
+#endregion MicrosoftResourceManagerResources
+#endregion Main
