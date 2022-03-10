@@ -16,7 +16,7 @@ You want to have easy way to sent requests to the Microsoft endpoints without ge
         - [General Parameters](#general-parameters)
 
 ## AzAPICall example
-[AzApICallExample.ps1](pwsh/AzAPICallExample.ps1)
+[AzAPICallExample.ps1](pwsh/AzAPICallExample.ps1)
 
 ## Supported endpoints
 - [Microsoft Graph](https://docs.microsoft.com/en-us/graph/api/overview?view=graph-rest-1.0)
