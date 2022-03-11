@@ -1,6 +1,6 @@
 function testSubscription {
     [CmdletBinding()]Param(
-        [Parameter(Mandatory = $True)]    
+        [Parameter(Mandatory = $True)]
         [string]
         $SubscriptionId4Test,
 

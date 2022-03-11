@@ -8,7 +8,6 @@ Param
 
 #region parallelization
 $NoPsParallelization = $false
-
 if (-not $NoPsParallelization) {
     function testPowerShellVersion {
 
@@ -18,14 +17,14 @@ if (-not $NoPsParallelization) {
         $splitRequiredPSVersionMajor = $splitRequiredPSVersion[0]
         $splitRequiredPSVersionMinor = $splitRequiredPSVersion[1]
         $splitRequiredPSVersionPatch = $splitRequiredPSVersion[2]
-    
+
         $thisPSVersion = ($PSVersionTable.PSVersion)
         $thisPSVersionMajor = ($thisPSVersion).Major
         $thisPSVersionMinor = ($thisPSVersion).Minor
         $thisPSVersionPatch = ($thisPSVersion).Patch
-    
+
         $psVersionCheckResult = 'letsCheck'
-    
+
         if ($PSVersionTable.PSEdition -eq 'Core' -and $thisPSVersionMajor -eq $splitRequiredPSVersionMajor) {
             if ($thisPSVersionMinor -gt $splitRequiredPSVersionMinor) {
                 $psVersionCheckResult = 'passed'
@@ -46,7 +45,7 @@ if (-not $NoPsParallelization) {
             $psVersionCheckResult = 'failed'
             $psVersionCheck = "(Major[$splitRequiredPSVersionMajor] ne $($splitRequiredPSVersionMajor))"
         }
-    
+
         if ($psVersionCheckResult -eq 'passed') {
             Write-Host "  PS check $psVersionCheckResult : $($psVersionCheck); (minimum supported version '$requiredPSVersion')"
             Write-Host "  PS Edition: $($PSVersionTable.PSEdition); PS Version: $($PSVersionTable.PSVersion)"
@@ -73,15 +72,47 @@ $ProgressPreference = 'SilentlyContinue'
 Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings 'true'
 #endregion preferences
 
-#Connect
-#connect-azaccount -identity
+#Connect | at this stage you should be connected to Azure
+#connect-azaccount
+
+#region verifyAZAPICall
+Write-Host " Verify 'AzAPICall'"
+do {
+    try {
+        Import-Module -Name AzAPICall
+        $importAzAPICallModuleSuccess = $true
+    }
+    catch {
+        Write-Host '  AzAPICall module not found'
+        do {
+            $installAzAPICallModuleUserChoice = Read-Host '  Do you want to install module AzAPICall from the PowerShell Gallery? (y/n)'
+            if ($installAzAPICallModuleUserChoice -eq 'y') {
+                try {
+                    Install-Module -Name AzAPICall
+                }
+                catch {
+                    Write-Host '  Install-Module -Name AzAPICall Failed'
+                    throw
+                }
+            }
+            elseif ($installAzAPICallModuleUserChoice -eq 'n') {
+                Write-Host '  AzAPICall module is required, please visit https://aka.ms/AZAPICall or https://www.powershellgallery.com/packages/AzAPICall'
+                throw
+            }
+            else {
+                Write-Host "  Accepted input 'y' or 'n'; start over.."
+            }
+        }
+        until ($installAzAPICallModuleUserChoice -eq 'y')
+    }
+}
+until ($importAzAPICallModuleSuccess)
+$AzAPICallModuleVersion = (Get-Module -Name AzAPICall).Version
+Write-Host "  Import PS module 'AzAPICall' succeeded" -ForegroundColor Green
+#endregion verifyAZAPICall
 
 #region initAZAPICall
 Write-Host "Initialize 'AzAPICall'"
-Write-Host " Import PS module 'AzAPICall'"
-Import-Module .\pwsh\module\AzAPICall\AzAPICall.psd1 -Force -ErrorAction Stop
-$AzAPICallModuleVersion = (Get-Module -Name AzAPICall).Version
-Write-Host "  Import PS module 'AzAPICall' succeeded" -ForegroundColor Green
 $parameters4AzAPICallModule = @{
     DebugAzAPICall           = $DebugAzAPICall
     SubscriptionId4AzContext = $SubscriptionId4AzContext

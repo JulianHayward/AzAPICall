@@ -3,7 +3,9 @@
     Param
     (
         [Parameter(Mandatory = $True)][string]$AzAccountsVersion,
-        [Parameter(Mandatory = $True)][string]$AzAPICallModuleVersion
+        [Parameter(Mandatory = $True)][string]$AzAPICallModuleVersion,
+        [Parameter(Mandatory = $True)][string]$GithubRepository,
+        [Parameter(Mandatory = $False)][switch]$DebugAzAPICall
     )
 
     Write-Host ' Create htParameters'
@@ -47,9 +49,9 @@
     }
 
     #Region Test-HashtableParameter
-    return $htParameters = [ordered]@{
+    return [ordered]@{
         DebugAzAPICall               = $DebugAzAPICall
-        GithubRepository             = 'aka.ms/AzAPICall'
+        GithubRepository             = $GithubRepository
         PSVersion                    = $PSVersionTable.PSVersion
         AzAccountsVersion            = $AzAccountsVersion
         AzAPICallModuleVersion       = $AzAPICallModuleVersion

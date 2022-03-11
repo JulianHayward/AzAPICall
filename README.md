@@ -79,8 +79,7 @@ As well you can see how fast a AzAPICall was responding:
 ```
 
 ### Good to know
-By default, endPoints return results in batches of e.g. `100`. You can increase the return count defining e.g. `$top=999`.  
-`$top` requires use of `consistencyLevel` = `eventual`
+By default, endPoints return results in batches of e.g. `100`. You can increase the return count defining e.g. `$top=999` (`$top` requires use of `consistencyLevel` = `eventual`)
 
 ## General Parameters
 | Field					   		| Type		| Description									                                        | Required |

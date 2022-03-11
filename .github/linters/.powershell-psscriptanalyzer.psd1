@@ -8,7 +8,10 @@
     #)
     #IncludeDefaultRules=${true}
     ExcludeRules = @(
-        'PSAvoidUsingWriteHost'
+        'PSAvoidUsingWriteHost',
+        'PSUseLiteralInitializerForHashtable',
+        'PSAvoidUsingPositionalParameters',
+        'PSUseOutputTypeCorrectly'
     )
     #IncludeRules = @(
     #    'PSAvoidUsingWriteHost',

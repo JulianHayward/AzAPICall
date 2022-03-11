@@ -5,6 +5,7 @@
     (
         [Parameter(Mandatory = $False)][switch]$DebugAzAPICall,
         [Parameter(Mandatory = $False)][string]$SubscriptionId4AzContext,
+        [Parameter(Mandatory = $False)][string]$GithubRepository = 'aka.ms/AzAPICall',
         [Parameter(Mandatory = $False)]$AzAPICallModuleVersion
     )
 
@@ -12,7 +13,7 @@
 
     $AzAPICallConfiguration = @{}
     $AzAPICallConfiguration['htParameters'] = $null
-    $AzAPICallConfiguration['htParameters'] = setHtParameters -AzAccountsVersion $AzAccountsVersion -AzAPICallModuleVersion $AzAPICallModuleVersion
+    $AzAPICallConfiguration['htParameters'] = setHtParameters -AzAccountsVersion $AzAccountsVersion -AzAPICallModuleVersion $AzAPICallModuleVersion -GithubRepository $GithubRepository -DebugAzAPICall $DebugAzAPICall
     Write-Host '  AzAPICall htParameters:'
     Write-Host ($AzAPICallConfiguration['htParameters'] | format-table -AutoSize | Out-String)
     Write-Host '  Create htParameters succeeded' -ForegroundColor Green
@@ -66,7 +67,7 @@
     }
     else {
         testSubscription -SubscriptionId4Test $AzAPICallConfiguration['checkContext'].Subscription.Id -AzAPICallConfiguration $AzAPICallConfiguration
-    }    
+    }
 
     if (-not $AzAPICallConfiguration['checkContext'].Subscription) {
         $AzAPICallConfiguration['checkContext'] | Format-list | Out-String

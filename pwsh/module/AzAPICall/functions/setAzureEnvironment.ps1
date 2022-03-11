@@ -27,7 +27,7 @@
             }
         }
         else {
-            return ($EndpointUrl -replace '\/$')
+            return [string]($EndpointUrl -replace '\/$')
         }
     }
 
