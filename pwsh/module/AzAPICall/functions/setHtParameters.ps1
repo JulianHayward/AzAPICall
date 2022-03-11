@@ -5,7 +5,7 @@
         [Parameter(Mandatory = $True)][string]$AzAccountsVersion,
         [Parameter(Mandatory = $True)][string]$AzAPICallModuleVersion,
         [Parameter(Mandatory = $True)][string]$GithubRepository,
-        [Parameter(Mandatory = $False)][switch]$DebugAzAPICall
+        [Parameter(Mandatory = $True)][bool]$DebugAzAPICall
     )
 
     Write-Host ' Create htParameters'

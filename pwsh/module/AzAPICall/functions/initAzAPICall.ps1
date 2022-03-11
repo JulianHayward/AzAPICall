@@ -3,7 +3,7 @@
     [CmdletBinding()]
     Param
     (
-        [Parameter(Mandatory = $False)][switch]$DebugAzAPICall,
+        [Parameter(Mandatory = $False)][bool]$DebugAzAPICall,
         [Parameter(Mandatory = $False)][string]$SubscriptionId4AzContext,
         [Parameter(Mandatory = $False)][string]$GithubRepository = 'aka.ms/AzAPICall',
         [Parameter(Mandatory = $False)]$AzAPICallModuleVersion
