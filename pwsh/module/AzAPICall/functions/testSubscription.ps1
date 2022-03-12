@@ -1,17 +1,17 @@
 function testSubscription {
     [CmdletBinding()]Param(
-        [Parameter(Mandatory = $True)]
-        [string]
+        [Parameter(Mandatory)]
+        [guid]
         $SubscriptionId4Test,
 
-        [Parameter(Mandatory = $True)]
+        [Parameter(Mandatory)]
         [object]
         $AzAPICallConfiguration
     )
 
     $currentTask = "Check Subscription: '$SubscriptionId4Test'"
     Write-Host "  $currentTask"
-    $uri = "$(($AzAPICallConfiguration['htAzureEnvironmentRelatedUrls']).ARM)/subscriptions/$($SubscriptionId4Test)?api-version=2020-01-01"
+    $uri = "$(($AzAPICallConfiguration['azAPIEndpointUrls']).ARM)/subscriptions/$($SubscriptionId4Test)?api-version=2020-01-01"
     $method = 'GET'
     $testSubscription = AzAPICall -uri $uri -method $method -currentTask $currentTask -listenOn 'Content' -AzAPICallConfiguration $AzAPICallConfiguration
 

@@ -44,18 +44,66 @@
     #>
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory = $True)][string]$uri,
-        [Parameter(Mandatory = $True)][string]$method,
-        [Parameter(Mandatory = $True)][string]$currentTask,
-        [Parameter(Mandatory = $False)][string]$body,
-        [Parameter(Mandatory = $False)][string]$listenOn,
-        [Parameter(Mandatory = $False)][string]$caller,
-        [Parameter(Mandatory = $False)][string]$consistencyLevel,
-        [Parameter(Mandatory = $False)][switch]$noPaging,
-        [Parameter(Mandatory = $False)][switch]$validateAccess,
-        [Parameter(Mandatory = $False)][switch]$getARMARGMgMDfCSecureScore,
-        [Parameter(Mandatory = $True)][object]$AzAPICallConfiguration
+        [Parameter(Mandatory)]
+        [string]
+        $uri,
+        
+        [Parameter()]
+        [string]
+        $method,
+        
+        [Parameter()]
+        [string]
+        $currentTask,
+        
+        [Parameter()]
+        [string]
+        $body,
+
+        [Parameter()]
+        [string]
+        $listenOn,
+
+        [Parameter()]
+        [string]
+        $caller,
+
+        [Parameter()]
+        [string]
+        $consistencyLevel,
+
+        [Parameter()]
+        [switch]
+        $noPaging,
+
+        [Parameter()]
+        [switch]
+        $validateAccess,
+        
+        [Parameter()]
+        [switch]
+        $getARMARGMgMDfCSecureScore,
+        
+        [Parameter(Mandatory)]
+        [object]
+        $AzAPICallConfiguration
     )
+
+    function debugAzAPICall {
+        param (
+            [Parameter(Mandatory)]
+            [string]
+            $debugMessage
+        )
+
+        if ($doDebugAzAPICall -or $tryCounter -gt 3) {
+            if ($doDebugAzAPICall) { Write-Host "  DEBUGTASK: $debugMessage" -ForegroundColor $debugForeGroundColor }
+            if (-not $doDebugAzAPICall -and $tryCounter -gt 3) { Write-Host "  Forced DEBUG: $debugMessage" -ForegroundColor $debugForeGroundColor }
+        }
+    }
+
+    if (-not $method) { $method = 'Get' }
+    if (-not $currentTask) { $currentTask = $method + ' ' + $uri }
 
     $tryCounter = 0
     $tryCounterUnexpectedError = 0
@@ -64,25 +112,27 @@
     $apiCallResultsCollection = [System.Collections.ArrayList]@()
     $initialUri = $uri
     $restartDueToDuplicateNextlinkCounter = 0
+    
+    $debugForeGroundColor = 'Cyan'
     if ($AzAPICallConfiguration['htParameters'].DebugAzAPICall -eq $true) {
+        $doDebugAzAPICall = $true
         if ($caller -like 'CustomDataCollection*') {
             $debugForeGroundColors = @('DarkBlue', 'DarkGreen', 'DarkCyan', 'Cyan', 'DarkMagenta', 'DarkYellow', 'Blue', 'Magenta', 'Yellow', 'Green')
             $debugForeGroundColorsCount = $debugForeGroundColors.Count
             $randomNumber = Get-Random -Minimum 0 -Maximum ($debugForeGroundColorsCount - 1)
             $debugForeGroundColor = $debugForeGroundColors[$randomNumber]
         }
-        else {
-            $debugForeGroundColor = 'Cyan'
-        }
     }
 
     do {
         $uriSplitted = $uri.split('/')
-        if (-not ($AzApiCallConfiguration['htAzureEnvironmentRelatedTargetEndpoints']).($uriSplitted[2])) {
+        if (-not ($AzApiCallConfiguration['azAPIEndpoints']).($uriSplitted[2])) {
             Throw "Error - Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'"
         }
-        $targetEndpoint = ($AzApiCallConfiguration['htAzureEnvironmentRelatedTargetEndpoints']).($uriSplitted[2])
-        if (-not ($AzAPICallConfiguration['htBearerAccessToken']).$targetEndpoint) {
+        
+        $targetEndpoint = ($AzApiCallConfiguration['azAPIEndpoints']).($uriSplitted[2])
+
+        if (-not $AzAPICallConfiguration['htBearerAccessToken'].($targetEndpoint)) {
             createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
         }
 
@@ -103,19 +153,19 @@
         #needs special handling
         switch ($uri) {
             #ARM
-            { $_ -like "$($AzApiCallConfiguration['htAzureEnvironmentRelatedUrls'].ARM)*/providers/Microsoft.PolicyInsights/policyStates/latest/summarize*" } { $getARMPolicyComplianceStates = $true }
-            { $_ -like "$($AzApiCallConfiguration['htAzureEnvironmentRelatedUrls'].ARM)*/providers/Microsoft.Authorization/roleAssignmentSchedules*" } { $getARMRoleAssignmentSchedules = $true }
-            { $_ -like "$($AzApiCallConfiguration['htAzureEnvironmentRelatedUrls'].ARM)/providers/Microsoft.Management/managementGroups/*/providers/microsoft.insights/diagnosticSettings*" } { $getARMDiagnosticSettingsMg = $true }
-            { $_ -like "$($AzApiCallConfiguration['htAzureEnvironmentRelatedUrls'].ARM)*/providers/microsoft.insights/diagnosticSettingsCategories*" } { $getARMDiagnosticSettingsResource = $true }
-            { $_ -like "$($AzApiCallConfiguration['htAzureEnvironmentRelatedUrls'].ARM)*/providers/Microsoft.CostManagement/query*" } { $getARMCostManagement = $true }
-            { $_ -like "$($AzApiCallConfiguration['htAzureEnvironmentRelatedUrls'].ARM)/subscriptions/*/providers/Microsoft.Security/pricings*" } { $getARMMDfC = $true }
+            { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/Microsoft.PolicyInsights/policyStates/latest/summarize*" } { $getARMPolicyComplianceStates = $true }
+            { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/Microsoft.Authorization/roleAssignmentSchedules*" } { $getARMRoleAssignmentSchedules = $true }
+            { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/*/providers/microsoft.insights/diagnosticSettings*" } { $getARMDiagnosticSettingsMg = $true }
+            { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/microsoft.insights/diagnosticSettingsCategories*" } { $getARMDiagnosticSettingsResource = $true }
+            { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/Microsoft.CostManagement/query*" } { $getARMCostManagement = $true }
+            { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/subscriptions/*/providers/Microsoft.Security/pricings*" } { $getARMMDfC = $true }
             #MicrosoftGraph
-            #{ $_ -like "$($AzApiCallConfiguration['htAzureEnvironmentRelatedUrls'].MicrosoftGraph)/*/groups/*/transitiveMembers" } { $getMicrosoftGraphGroupMembersTransitive = $true }
-            { $_ -like "$($AzApiCallConfiguration['htAzureEnvironmentRelatedUrls'].MicrosoftGraph)/v1.0/applications*" } { $getMicrosoftGraphApplication = $true }
-            #{ $_ -like "$($AzApiCallConfiguration['htAzureEnvironmentRelatedUrls'].MicrosoftGraph)/v1.0/servicePrincipals*" } { $getMicrosoftGraphServicePrincipal = $true }
-            { $_ -like "$($AzApiCallConfiguration['htAzureEnvironmentRelatedUrls'].MicrosoftGraph)/*/roleManagement/directory/roleAssignmentScheduleInstances*" } { $getMicrosoftGraphRoleAssignmentScheduleInstances = $true }
-            { $_ -like "$($AzApiCallConfiguration['htAzureEnvironmentRelatedUrls'].MicrosoftGraph)/*/groups/*/transitiveMembers/`$count" } { $getMicrosoftGraphGroupMembersTransitiveCount = $true }
-            { $_ -like "$($AzApiCallConfiguration['htAzureEnvironmentRelatedUrls'].MicrosoftGraph)/v1.0/servicePrincipals/*/getMemberGroups" } { $getMicrosoftGraphServicePrincipalGetMemberGroups = $true }
+            #{ $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/*/groups/*/transitiveMembers" } { $getMicrosoftGraphGroupMembersTransitive = $true }
+            { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/applications*" } { $getMicrosoftGraphApplication = $true }
+            #{ $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/servicePrincipals*" } { $getMicrosoftGraphServicePrincipal = $true }
+            { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/*/roleManagement/directory/roleAssignmentScheduleInstances*" } { $getMicrosoftGraphRoleAssignmentScheduleInstances = $true }
+            { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/*/groups/*/transitiveMembers/`$count" } { $getMicrosoftGraphGroupMembersTransitiveCount = $true }
+            { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/servicePrincipals/*/getMemberGroups" } { $getMicrosoftGraphServicePrincipalGetMemberGroups = $true }
         }
 
         $startAPICall = Get-Date
@@ -173,21 +223,11 @@
                 Duration                             = $durationAPICall.TotalSeconds
             })
 
-        if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $true -or $tryCounter -gt 3) {
-            if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $true) { Write-Host "  DEBUGTASK: attempt#$($tryCounter) processing: $($currenttask) uri: '$($uri)'" -ForegroundColor $debugForeGroundColor }
-            if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $false -and $tryCounter -gt 3) { Write-Host "  Forced DEBUG: attempt#$($tryCounter) processing: $($currenttask) uri: '$($uri)'" }
-        }
-
+        debugAzAPICall -debugMessage "attempt#$($tryCounter) processing: $($currenttask) uri: '$($uri)'"
         if ($unexpectedError -eq $false) {
-            if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $true -or $tryCounter -gt 3) {
-                if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $true) { Write-Host '   DEBUG: unexpectedError: false' -ForegroundColor $debugForeGroundColor }
-                if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $false -and $tryCounter -gt 3) { Write-Host '   Forced DEBUG: unexpectedError: false' }
-            }
+            debugAzAPICall -debugMessage 'unexpectedError: false'
             if ($azAPIRequest.StatusCode -ne 200) {
-                if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $true -or $tryCounter -gt 3) {
-                    if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $true) { Write-Host "   DEBUG: apiStatusCode: $($azAPIRequest.StatusCode)" -ForegroundColor $debugForeGroundColor }
-                    if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $false -and $tryCounter -gt 3) { Write-Host "   Forced DEBUG: apiStatusCode: $($azAPIRequest.StatusCode)" }
-                }
+                debugAzAPICall -debugMessage "apiStatusCode: '$($azAPIRequest.StatusCode)'"
                 if (
                     $catchResult.error.code -like '*GatewayTimeout*' -or
                     $catchResult.error.code -like '*BadGatewayConnection*' -or
@@ -330,7 +370,7 @@
 
                     if ($catchResult.error.code -like '*ExpiredAuthenticationToken*' -or $catchResult.error.code -like '*Authentication_ExpiredToken*' -or $catchResult.error.code -like '*InvalidAuthenticationToken*') {
                         Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - requesting new bearer token ($targetEndpoint)"
-                        createBearerToken -targetEndPoint $targetEndpoint -checkContext $AzAPICallConfiguration['checkContext']
+                        createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
                     }
 
                     if (
@@ -603,16 +643,10 @@
                 }
             }
             else {
-                if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $true -or $tryCounter -gt 3) {
-                    if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $true) { Write-Host "   DEBUG: apiStatusCode: $($azAPIRequest.StatusCode)" -ForegroundColor $debugForeGroundColor }
-                    if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $false -and $tryCounter -gt 3) { Write-Host "   Forced DEBUG: apiStatusCode: $($azAPIRequest.StatusCode)" }
-                }
+                debugAzAPICall -debugMessage "apiStatusCode: '$($azAPIRequest.StatusCode)'"
                 $azAPIRequestConvertedFromJson = ($azAPIRequest.Content | ConvertFrom-Json)
                 if ($listenOn -eq 'Content') {
-                    if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $true -or $tryCounter -gt 3) {
-                        if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $true) { Write-Host "   DEBUG: listenOn=content ($((($azAPIRequestConvertedFromJson)).count))" -ForegroundColor $debugForeGroundColor }
-                        if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $false -and $tryCounter -gt 3) { Write-Host "   Forced DEBUG: listenOn=content ($((($azAPIRequestConvertedFromJson)).count))" }
-                    }
+                    debugAzAPICall -debugMessage "listenOn=content ($((($azAPIRequestConvertedFromJson)).count))"
                     $null = $apiCallResultsCollection.Add($azAPIRequestConvertedFromJson)
                 }
                 elseif ($listenOn -eq 'ContentProperties') {
@@ -635,19 +669,13 @@
                 }
                 else {
                     if (($azAPIRequestConvertedFromJson).value) {
-                        if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $true -or $tryCounter -gt 3) {
-                            if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $true) { Write-Host "   DEBUG: listenOn=default(value) value exists ($((($azAPIRequestConvertedFromJson).value).count))" -ForegroundColor $debugForeGroundColor }
-                            if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $false -and $tryCounter -gt 3) { Write-Host "   Forced DEBUG: listenOn=default(value) value exists ($((($azAPIRequestConvertedFromJson).value).count))" }
-                        }
+                        debugAzAPICall -debugMessage "listenOn=default(value) value exists ($((($azAPIRequestConvertedFromJson).value).count))"
                         foreach ($entry in $azAPIRequestConvertedFromJson.value) {
                             $null = $apiCallResultsCollection.Add($entry)
                         }
                     }
                     else {
-                        if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $true -or $tryCounter -gt 3) {
-                            if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $true) { Write-Host '   DEBUG: listenOn=default(value) value not exists; return empty array' -ForegroundColor $debugForeGroundColor }
-                            if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $false -and $tryCounter -gt 3) { Write-Host '   Forced DEBUG: listenOn=default(value) value not exists; return empty array' }
-                        }
+                        debugAzAPICall -debugMessage 'listenOn=default(value) value not exists; return empty array'
                     }
                 }
 
@@ -675,10 +703,7 @@
                             $uri = $azAPIRequestConvertedFromJson.nextLink
                             $notTryCounter = $true
                         }
-                        if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $true -or $tryCounter -gt 3) {
-                            if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $true) { Write-Host "   DEBUG: nextLink: $Uri" -ForegroundColor $debugForeGroundColor }
-                            if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $false -and $tryCounter -gt 3) { Write-Host "   Forced DEBUG: nextLink: $Uri" }
-                        }
+                        debugAzAPICall -debugMessage "nextLink: $Uri"
                     }
                     elseif ($azAPIRequestConvertedFromJson.'@oData.nextLink') {
                         $isMore = $true
@@ -702,10 +727,7 @@
                             $uri = $azAPIRequestConvertedFromJson.'@odata.nextLink'
                             $notTryCounter = $true
                         }
-                        if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $true -or $tryCounter -gt 3) {
-                            if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $true) { Write-Host "   DEBUG: @oData.nextLink: $Uri" -ForegroundColor $debugForeGroundColor }
-                            if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $false -and $tryCounter -gt 3) { Write-Host "   Forced DEBUG: @oData.nextLink: $Uri" }
-                        }
+                        debugAzAPICall -debugMessage "@oData.nextLink: $Uri"
                     }
                     elseif ($azAPIRequestConvertedFromJson.properties.nextLink) {
                         $isMore = $true
@@ -729,25 +751,16 @@
                             $uri = $azAPIRequestConvertedFromJson.properties.nextLink
                             $notTryCounter = $true
                         }
-                        if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $true -or $tryCounter -gt 3) {
-                            if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $true) { Write-Host "   DEBUG: nextLink: $Uri" -ForegroundColor $debugForeGroundColor }
-                            if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $false -and $tryCounter -gt 3) { Write-Host "   Forced DEBUG: nextLink: $Uri" }
-                        }
+                        debugAzAPICall -debugMessage "nextLink: $Uri"
                     }
                     else {
-                        if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $true -or $tryCounter -gt 3) {
-                            if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $true) { Write-Host '   DEBUG: NextLink: none' -ForegroundColor $debugForeGroundColor }
-                            if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $false -and $tryCounter -gt 3) { Write-Host '   Forced DEBUG: NextLink: none' }
-                        }
+                        debugAzAPICall -debugMessage 'NextLink: none'
                     }
                 }
             }
         }
         else {
-            if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $true -or $tryCounter -gt 3) {
-                if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $true) { Write-Host '   DEBUG: unexpectedError: notFalse' -ForegroundColor $debugForeGroundColor }
-                if ($AzApiCallConfiguration['htParameters'].DebugAzAPICall -eq $false -and $tryCounter -gt 3) { Write-Host '   Forced DEBUG: unexpectedError: notFalse' }
-            }
+            debugAzAPICall -debugMessage 'unexpectedError: true'
             if ($tryCounterUnexpectedError -lt 13) {
                 $sleepSec = @(1, 2, 3, 5, 7, 10, 13, 17, 20, 30, 40, 50, , 55, 60)[$tryCounterUnexpectedError]
                 Write-Host " $currentTask #$tryCounterUnexpectedError 'Unexpected Error' occurred (trying 10 times); sleep $sleepSec seconds"

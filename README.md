@@ -14,16 +14,19 @@ You want to have easy way to sent requests to the Microsoft endpoints without ge
     - [Powershell Modules](powershell-modules)
 
 ## AzAPICall example
+```POWERSHELL
+azapiCall -uri "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/groups" -method get -currentTask 'test' -AzAPICallConfiguration $azAPICallConf
+```
 [AzAPICallExample.ps1](pwsh/AzAPICallExample.ps1)
 
 ## Supported endpoints
 
 | Endpoint | Endpoint URL		   		     | Variable		        |
 | ------------------------------ | -------------------- | -------------- |
-| [Microsoft Graph](https://docs.microsoft.com/en-us/graph/api/overview?view=graph-rest-1.0) | https://graph.microsoft.com	 | `$Configuration['htAzureEnvironmentRelatedUrls'].MicrosoftGraph` |
-| [ARM (Azure Resource Management)](https://docs.microsoft.com/en-us/rest/api/resources/) | https://management.azure.com  | `$Configuration['htAzureEnvironmentRelatedUrls'].ARM`            |
-| [Azure Key Vault](https://docs.microsoft.com/en-us/rest/api/keyvault/) | https://vault.azure.net        | `$Configuration['htAzureEnvironmentRelatedUrls'].KeyVault`       |
-| [Log Analytics](https://docs.microsoft.com/en-us/rest/api/loganalytics/) | https://api.loganalytics.io/v1 | `$Configuration['htAzureEnvironmentRelatedUrls'].LogAnalytics`   |
+| [Microsoft Graph](https://docs.microsoft.com/en-us/graph/api/overview?view=graph-rest-1.0) | https://graph.microsoft.com	 | `$azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph` |
+| [ARM (Azure Resource Management)](https://docs.microsoft.com/en-us/rest/api/resources/) | https://management.azure.com  | `$azAPICallConf['azAPIEndpointUrls'].ARM`            |
+| [Azure Key Vault](https://docs.microsoft.com/en-us/rest/api/keyvault/) | https://vault.azure.net        | `$azAPICallConf['azAPIEndpointUrls'].KeyVault`       |
+| [Log Analytics](https://docs.microsoft.com/en-us/rest/api/loganalytics/) | https://api.loganalytics.io/v1 | `$azAPICallConf['azAPIEndpointUrls'].LogAnalytics`   |
 
 Add a new endpoint -> setAzureEnvironment.ps1
 
@@ -43,10 +46,10 @@ Add a new endpoint -> setAzureEnvironment.ps1
 
 ### AzAPICall Tracking
 
-To get some insights about all AzAPIcalls you can use the `$Configuration['arrayAPICallTracking']` (synchronized ArrayList).
+To get some insights about all AzAPIcalls you can use the `$azAPICallConf['arrayAPICallTracking']` (synchronized ArrayList).
 
 ```POWERSHELL
-$Configuration['arrayAPICallTracking'][0] | ConvertTo-Json
+$azAPICallConf['arrayAPICallTracking'][0] | ConvertTo-Json
 ```
 ```JSON
 {
@@ -64,7 +67,7 @@ $Configuration['arrayAPICallTracking'][0] | ConvertTo-Json
 ```
 As well you can see how fast a AzAPICall was responding:
 ```POWERSHELL
-($Configuration['arrayAPICallTracking'].Duration | Measure-Object -Average -Maximum -Minimum) | ConvertTo-Json
+($azAPICallConf['arrayAPICallTracking'].Duration | Measure-Object -Average -Maximum -Minimum) | ConvertTo-Json
 ```
 ```JSON
 {

@@ -1,23 +1,23 @@
 ﻿function createBearerToken {
 
     param (
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory)]
         [string]
         $targetEndPoint,
 
-        [Parameter(Mandatory = $True)]
+        [Parameter(Mandatory)]
         [object]
         $AzAPICallConfiguration
     )
 
-    Write-Host " +Processing new bearer token request '$targetEndPoint' ($($AzApiCallConfiguration['htAzureEnvironmentRelatedUrls'].$targetEndPoint))" -ForegroundColor Cyan
+    Write-Host " +Processing new bearer token request '$targetEndPoint' ($($AzApiCallConfiguration['azAPIEndpointUrls'].$targetEndPoint))" -ForegroundColor DarkGray
 
-    if (($AzApiCallConfiguration['htAzureEnvironmentRelatedUrls']).$targetEndPoint) {
+    if (($AzApiCallConfiguration['azAPIEndpointUrls']).$targetEndPoint) {
 
         $azContext = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile.DefaultContext
         $catchResult = 'letscheck'
         try {
-            $newBearerAccessTokenRequest = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($azContext.Account, $azContext.Environment, $azContext.Tenant.id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "$(($AzApiCallConfiguration['htAzureEnvironmentRelatedUrls']).$targetEndPoint)")
+            $newBearerAccessTokenRequest = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($azContext.Account, $azContext.Environment, $azContext.Tenant.id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "$(($AzApiCallConfiguration['azAPIEndpointUrls']).$targetEndPoint)")
         }
         catch {
             $catchResult = $_
@@ -37,7 +37,7 @@
         $bearerDetails = getJWTDetails -token $newBearerAccessTokenRequest.AccessToken
         $bearerAccessTokenExpiryDateTime = $bearerDetails.expiryDateTime
         $bearerAccessTokenTimeToExpiry = $bearerDetails.timeToExpiry
-        Write-Host " +Bearer token ($targetEndPoint): [tokenRequestProcessed: '$dateTimeTokenCreated']; [expiryDateTime: '$bearerAccessTokenExpiryDateTime']; [timeUntilExpiry: '$bearerAccessTokenTimeToExpiry']" -ForegroundColor Cyan
+        Write-Host " +Bearer token ($targetEndPoint): [tokenRequestProcessed: '$dateTimeTokenCreated']; [expiryDateTime: '$bearerAccessTokenExpiryDateTime']; [timeUntilExpiry: '$bearerAccessTokenTimeToExpiry']" -ForegroundColor DarkGray
     }
     else {
         Write-Host "targetEndPoint: '$targetEndPoint' unknown"

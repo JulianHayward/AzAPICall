@@ -16,7 +16,7 @@
     General notes
     #>
     param (
-        [Parameter(Mandatory = $true)][string]$token
+        [Parameter(Mandatory)][string]$token
     )
     #JWTDetails https://www.powershellgallery.com/packages/JWTDetails/1.0.2
     if (!$token -contains ('.') -or !$token.StartsWith('eyJ')) { Write-Error 'Invalid token' -ErrorAction Stop }

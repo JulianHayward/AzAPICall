@@ -2,10 +2,9 @@
     [CmdletBinding()]
     Param
     (
-        [Parameter(Mandatory = $True)][string]$AzAccountsVersion,
-        [Parameter(Mandatory = $True)][string]$AzAPICallModuleVersion,
-        [Parameter(Mandatory = $True)][string]$GithubRepository,
-        [Parameter(Mandatory = $True)][bool]$DebugAzAPICall
+        [Parameter(Mandatory)][string]$AzAccountsVersion,
+        [Parameter(Mandatory)][string]$GithubRepository,
+        [Parameter(Mandatory)][bool]$DebugAzAPICall
     )
 
     Write-Host ' Create htParameters'
@@ -54,7 +53,7 @@
         GithubRepository             = $GithubRepository
         PSVersion                    = $PSVersionTable.PSVersion
         AzAccountsVersion            = $AzAccountsVersion
-        AzAPICallModuleVersion       = $AzAPICallModuleVersion
+        AzAPICallModuleVersion       = ((Get-Module -Name AzAPICall).Version).ToString()
         CodeRunPlatform              = $codeRunPlatform
         onAzureDevOpsOrGitHubActions = [bool]$onAzureDevOpsOrGitHubActions
         onAzureDevOps                = [bool]$onAzureDevOps

@@ -3,17 +3,24 @@
     [CmdletBinding()]
     Param
     (
-        [Parameter(Mandatory = $False)][bool]$DebugAzAPICall,
-        [Parameter(Mandatory = $False)][string]$SubscriptionId4AzContext,
-        [Parameter(Mandatory = $False)][string]$GithubRepository = 'aka.ms/AzAPICall',
-        [Parameter(Mandatory = $False)]$AzAPICallModuleVersion
+        [Parameter()]
+        [bool]
+        $DebugAzAPICall,
+
+        [Parameter()]
+        [guid]
+        $SubscriptionId4AzContext,
+
+        [Parameter()]
+        [string]
+        $GithubRepository = 'aka.ms/AzAPICall'
     )
 
     $AzAccountsVersion = testAzModules
 
     $AzAPICallConfiguration = @{}
     $AzAPICallConfiguration['htParameters'] = $null
-    $AzAPICallConfiguration['htParameters'] = setHtParameters -AzAccountsVersion $AzAccountsVersion -AzAPICallModuleVersion $AzAPICallModuleVersion -GithubRepository $GithubRepository -DebugAzAPICall $DebugAzAPICall
+    $AzAPICallConfiguration['htParameters'] = setHtParameters -AzAccountsVersion $AzAccountsVersion -GithubRepository $GithubRepository -DebugAzAPICall $DebugAzAPICall
     Write-Host '  AzAPICall htParameters:'
     Write-Host ($AzAPICallConfiguration['htParameters'] | format-table -AutoSize | Out-String)
     Write-Host '  Create htParameters succeeded' -ForegroundColor Green
@@ -44,8 +51,9 @@
     Write-Host "  Az context AccountId: '$($AzAPICallConfiguration['accountId'] )'" -ForegroundColor Yellow
     Write-Host "  Az context AccountType: '$($AzAPICallConfiguration['accountType'])'" -ForegroundColor Yellow
 
-    Write-Host "  Parameter -SubscriptionId4AzContext: '$SubscriptionId4AzContext'"
-    if ($SubscriptionId4AzContext -ne 'undefined') {
+    
+    if ($SubscriptionId4AzContext) {
+        Write-Host "  Parameter -SubscriptionId4AzContext: '$SubscriptionId4AzContext'"
         if ($AzAPICallConfiguration['checkContext'].Subscription.Id -ne $SubscriptionId4AzContext) {
 
             testSubscription -SubscriptionId4Test $SubscriptionId4AzContext -AzAPICallConfiguration $AzAPICallConfiguration

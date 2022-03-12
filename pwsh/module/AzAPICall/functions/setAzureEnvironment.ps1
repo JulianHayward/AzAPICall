@@ -1,6 +1,6 @@
 ﻿function setAzureEnvironment {
     param(
-        [Parameter(Mandatory = $True)]
+        [Parameter(Mandatory)]
         [object]
         $AzAPICallConfiguration
     )
@@ -32,18 +32,18 @@
     }
 
     #AzureEnvironmentRelatedUrls
-    $AzAPICallConfiguration['htAzureEnvironmentRelatedUrls'] = @{ }
-    $AzAPICallConfiguration['htAzureEnvironmentRelatedUrls'].ARM = (testAvailable -Endpoint 'ARM' -EnvironmentKey 'ResourceManagerUrl' -EndpointUrl $AzApiCallConfiguration['checkContext'].Environment.ResourceManagerUrl)
-    $AzAPICallConfiguration['htAzureEnvironmentRelatedUrls'].KeyVault = (testAvailable -Endpoint 'KeyVault' -EnvironmentKey 'AzureKeyVaultServiceEndpointResourceId' -EndpointUrl $AzApiCallConfiguration['checkContext'].Environment.AzureKeyVaultServiceEndpointResourceId)
-    $AzAPICallConfiguration['htAzureEnvironmentRelatedUrls'].LogAnalytics = (testAvailable -Endpoint 'LogAnalytics' -EnvironmentKey 'AzureOperationalInsightsEndpointResourceId' -EndpointUrl $AzApiCallConfiguration['checkContext'].Environment.AzureOperationalInsightsEndpointResourceId)
-    $AzAPICallConfiguration['htAzureEnvironmentRelatedUrls'].MicrosoftGraph = (testAvailable -Endpoint 'MicrosoftGraph' -EnvironmentKey 'ExtendedProperties.MicrosoftGraphUrl' -EndpointUrl $AzApiCallConfiguration['checkContext'].Environment.ExtendedProperties.MicrosoftGraphUrl)
+    $AzAPICallConfiguration['azAPIEndpointUrls'] = @{ }
+    $AzAPICallConfiguration['azAPIEndpointUrls'].ARM = (testAvailable -Endpoint 'ARM' -EnvironmentKey 'ResourceManagerUrl' -EndpointUrl $AzApiCallConfiguration['checkContext'].Environment.ResourceManagerUrl)
+    $AzAPICallConfiguration['azAPIEndpointUrls'].KeyVault = (testAvailable -Endpoint 'KeyVault' -EnvironmentKey 'AzureKeyVaultServiceEndpointResourceId' -EndpointUrl $AzApiCallConfiguration['checkContext'].Environment.AzureKeyVaultServiceEndpointResourceId)
+    $AzAPICallConfiguration['azAPIEndpointUrls'].LogAnalytics = (testAvailable -Endpoint 'LogAnalytics' -EnvironmentKey 'AzureOperationalInsightsEndpointResourceId' -EndpointUrl $AzApiCallConfiguration['checkContext'].Environment.AzureOperationalInsightsEndpointResourceId)
+    $AzAPICallConfiguration['azAPIEndpointUrls'].MicrosoftGraph = (testAvailable -Endpoint 'MicrosoftGraph' -EnvironmentKey 'ExtendedProperties.MicrosoftGraphUrl' -EndpointUrl $AzApiCallConfiguration['checkContext'].Environment.ExtendedProperties.MicrosoftGraphUrl)
 
     #AzureEnvironmentRelatedTargetEndpoints
-    $AzAPICallConfiguration['htAzureEnvironmentRelatedTargetEndpoints'] = @{ }
-    $AzAPICallConfiguration['htAzureEnvironmentRelatedTargetEndpoints'].(($AzApiCallConfiguration['htAzureEnvironmentRelatedUrls'].ARM -split '/')[2]) = 'ARM'
-    $AzAPICallConfiguration['htAzureEnvironmentRelatedTargetEndpoints'].(($AzApiCallConfiguration['htAzureEnvironmentRelatedUrls'].KeyVault -split '/')[2]) = 'KeyVault'
-    $AzAPICallConfiguration['htAzureEnvironmentRelatedTargetEndpoints'].(($AzApiCallConfiguration['htAzureEnvironmentRelatedUrls'].LogAnalytics -split '/')[2]) = 'LogAnalytics'
-    $AzAPICallConfiguration['htAzureEnvironmentRelatedTargetEndpoints'].(($AzApiCallConfiguration['htAzureEnvironmentRelatedUrls'].MicrosoftGraph -split '/')[2]) = 'MicrosoftGraph'
+    $AzAPICallConfiguration['azAPIEndpoints'] = @{ }
+    $AzAPICallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].ARM -split '/')[2]) = 'ARM'
+    $AzAPICallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].KeyVault -split '/')[2]) = 'KeyVault'
+    $AzAPICallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].LogAnalytics -split '/')[2]) = 'LogAnalytics'
+    $AzAPICallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph -split '/')[2]) = 'MicrosoftGraph'
 
     Write-Host '  Set environment endPoint url mapping succeeded' -ForegroundColor Green
     Write-Output $AzApiCallConfiguration
