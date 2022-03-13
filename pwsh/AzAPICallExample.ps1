@@ -80,7 +80,8 @@ Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings 'true'
 #Connect | at this stage you should be connected to Azure
 #connect-azaccount
 
-#region verifyAZAPICall
+<#
+#region verifyAzAPICall
 if ($azAPICallVersion) {
     Write-Host " Verify 'AzAPICall' ($azAPICallVersion)"
 }
@@ -192,7 +193,14 @@ do {
     }
 }
 until ($importAzAPICallModuleSuccess)
-#endregion verifyAZAPICall
+#endregion verifyAzAPICall
+#>
+
+#testing
+Write-Host "Initialize 'AzAPICall'"
+Write-Host " Import PS module 'AzAPICall'"
+Import-Module .\pwsh\module\build\AzAPICall\AzAPICall.psd1 -Force -ErrorAction Stop
+Write-Host "  Import PS module 'AzAPICall' succeeded" -ForegroundColor Green
 
 #region initAZAPICall
 Write-Host "Initialize 'AzAPICall'"
@@ -280,10 +288,11 @@ if (-not $NoPsParallelization) {
         #general hashTables and arrays
         $azAPICallConf = $using:azAPICallConf
         #general functions
-        $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
-        $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
-        $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
+        # $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
+        # $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
+        # $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
         #Import-Module .\pwsh\module\AzAPICall\AzAPICall.psd1 -Force -ErrorAction Stop
+        Import-Module .\pwsh\module\build\AzAPICall\AzAPICall.psd1 -Force -ErrorAction Stop
         #specific for this operation
         $htAzureAdGroupDetails = $using:htAzureAdGroupDetails
         $arrayGroupMembers = $using:arrayGroupMembers
@@ -306,7 +315,7 @@ if (-not $NoPsParallelization) {
             currentTask            = " '$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: Get - Group List Members (id: $($group.id))'"
             AzAPICallConfiguration = $azAPICallConf
         }
-        Write-Host $azAPICallPayload.currentTask
+        #Write-Host $azAPICallPayload.currentTask
 
         $AzApiCallResult = AzAPICall @azAPICallPayload
 
@@ -374,6 +383,7 @@ else {
     ($azAPICallConf['arrayAPICallTracking'].Duration | Measure-Object -Average -Maximum -Minimum)
 }
 #endregion MicrosoftGraphGroupMemberList
+pause
 
 #region MicrosoftResourceManagerSubscriptions
 # https://docs.microsoft.com/en-us/rest/api/resources/subscriptions/list
