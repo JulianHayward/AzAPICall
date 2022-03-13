@@ -80,7 +80,6 @@ Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings 'true'
 #Connect | at this stage you should be connected to Azure
 #connect-azaccount
 
-#
 #region verifyAZAPICall
 if ($azAPICallVersion) {
     Write-Host " Verify 'AzAPICall' ($azAPICallVersion)"
@@ -194,20 +193,12 @@ do {
 }
 until ($importAzAPICallModuleSuccess)
 #endregion verifyAZAPICall
-#>
-
-<#
-Write-Host "Initialize 'AzAPICall'"
-Write-Host " Import PS module 'AzAPICall'"
-Import-Module .\pwsh\module\AzAPICall\AzAPICall.psd1 -Force -ErrorAction Stop
-Write-Host "  Import PS module 'AzAPICall' succeeded" -ForegroundColor Green
-#>
 
 #region initAZAPICall
 Write-Host "Initialize 'AzAPICall'"
 $parameters4AzAPICallModule = @{
     #SubscriptionId4AzContext = $null #enter subscriptionId for AzContext
-    DebugAzAPICall = $true
+    DebugAzAPICall = $false
 }
 $azAPICallConf = initAzAPICall @parameters4AzAPICallModule
 Write-Host "Initialize 'AzAPICall' ($(((Get-Module -Name AzAPICall).Version).ToString())) succeeded" -ForegroundColor Green
