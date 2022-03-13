@@ -2,7 +2,13 @@
 
 Param
 (
-    [Parameter()][switch]$NoPsParallelization
+    [Parameter()]
+    [switch]
+    $NoPsParallelization,
+
+    [Parameter()]
+    [string]
+    $azAPICallVersion #set target version e.g. '1.0.5'
 )
 
 #region parallelization
@@ -74,48 +80,118 @@ Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings 'true'
 #Connect | at this stage you should be connected to Azure
 #connect-azaccount
 
-<#
+#
 #region verifyAZAPICall
-Write-Host " Verify 'AzAPICall'"
+if ($azAPICallVersion) {
+    Write-Host " Verify 'AzAPICall' ($azAPICallVersion)"
+}
+else {
+    Write-Host " Verify 'AzAPICall' (latest)"
+}
+
 do {
+    $importAzAPICallModuleSuccess = $false
     try {
-        Import-Module -Name AzAPICall
-        $importAzAPICallModuleSuccess = $true
-    }
-    catch {
-        Write-Host '  AzAPICall module not found'
-        do {
-            $installAzAPICallModuleUserChoice = Read-Host '  Do you want to install module AzAPICall from the PowerShell Gallery? (y/n)'
-            if ($installAzAPICallModuleUserChoice -eq 'y') {
+        
+        if (-not $azAPICallVersion) {
+            Write-Host '  Check latest module version'
+            try {
+                $azAPICallVersion = (Find-Module -name AzAPICall).Version
+                Write-Host "  Latest module version: $azAPICallVersion"
+            }
+            catch {
+                Write-Host '  Check latest module version failed'
+                throw
+            }
+        }
+
+        try {
+            $azAPICallModuleVersionLoaded = ((Get-Module -name AzAPICall).Version).toString()
+            if ($azAPICallModuleVersionLoaded -ne $azAPICallVersion) {
+                Write-Host "  Deviating loaded version found ('$($azAPICallModuleVersionLoaded)' != '$($azAPICallVersion)')"
                 try {
-                    Install-Module -Name AzAPICall
+                    Write-Host '  Remove-Module AzAPICall'
+                    Remove-Module -Name AzAPICall
                 }
                 catch {
-                    Write-Host '  Install-Module -Name AzAPICall Failed'
+                    Write-Host '  Remove-Module AzAPICall failed'
                     throw
                 }
             }
-            elseif ($installAzAPICallModuleUserChoice -eq 'n') {
-                Write-Host '  AzAPICall module is required, please visit https://aka.ms/AZAPICall or https://www.powershellgallery.com/packages/AzAPICall'
-                throw
-            }
             else {
-                Write-Host "  Accepted input 'y' or 'n'; start over.."
+                Write-Host "  AzAPICall module ($($azAPICallVersion)) is already loaded" -ForegroundColor Green
+                $importAzAPICallModuleSuccess = $true
             }
         }
-        until ($installAzAPICallModuleUserChoice -eq 'y')
+        catch {
+            #Write-Host '  AzAPICall module is not loaded'
+        }
+
+        if (-not $importAzAPICallModuleSuccess) {
+            Write-Host "  Try importing AzAPICall module ($azAPICallVersion)"
+            if (($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) -or $env:GITHUB_ACTIONS) {
+                Import-Module ".\AzAPICallModule\AzAPICall\$($azAPICallVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
+                Write-Host "  Import PS module 'AzAPICall' ($($azAPICallVersion)) succeeded" -ForegroundColor Green
+            }
+            else {
+                Import-Module -Name AzAPICall -RequiredVersion $azAPICallVersion -Force
+                Write-Host "  Import PS module 'AzAPICall' ($($azAPICallVersion)) succeeded" -ForegroundColor Green
+            }
+            $importAzAPICallModuleSuccess = $true
+        }
+    }
+    catch {
+        Write-Host '  Importing AzAPICall module failed'
+        if (($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) -or $env:GITHUB_ACTIONS) {
+            Write-Host "  Saving AzAPICall module ($($azAPICallVersion))"
+            try {
+                $params = @{
+                    Name            = 'AzAPICall'
+                    Path            = '.\AzAPICallModule'
+                    Force           = $true
+                    RequiredVersion = $azAPICallVersion
+                }
+                Save-Module @params
+            }
+            catch {
+                Write-Host "  Saving AzAPICall module ($($azAPICallVersion)) failed"
+                throw
+            }
+        }
+        else {
+            do {
+                $installAzAPICallModuleUserChoice = Read-Host "  Do you want to install AzAPICall module ($($azAPICallVersion)) from the PowerShell Gallery? (y/n)"
+                if ($installAzAPICallModuleUserChoice -eq 'y') {
+                    try {
+                        Install-Module -Name AzAPICall -RequiredVersion $azAPICallVersion
+                    }
+                    catch {
+                        Write-Host "  Install-Module AzAPICall ($($azAPICallVersion)) Failed"
+                        throw
+                    }
+                }
+                elseif ($installAzAPICallModuleUserChoice -eq 'n') {
+                    Write-Host '  AzAPICall module is required, please visit https://aka.ms/AZAPICall or https://www.powershellgallery.com/packages/AzAPICall'
+                    throw '  AzAPICall module is required' 
+                }
+                else {
+                    Write-Host "  Accepted input 'y' or 'n'; start over.."
+                }
+            }
+            until ($installAzAPICallModuleUserChoice -eq 'y')
+        }
     }
 }
 until ($importAzAPICallModuleSuccess)
-$AzAPICallModuleVersion = (Get-Module -Name AzAPICall).Version
-Write-Host "  Import PS module 'AzAPICall' succeeded" -ForegroundColor Green
 #endregion verifyAZAPICall
 #>
 
+<#
 Write-Host "Initialize 'AzAPICall'"
 Write-Host " Import PS module 'AzAPICall'"
 Import-Module .\pwsh\module\AzAPICall\AzAPICall.psd1 -Force -ErrorAction Stop
 Write-Host "  Import PS module 'AzAPICall' succeeded" -ForegroundColor Green
+#>
 
 #region initAZAPICall
 Write-Host "Initialize 'AzAPICall'"

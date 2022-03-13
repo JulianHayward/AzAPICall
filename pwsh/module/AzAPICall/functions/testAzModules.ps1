@@ -5,7 +5,7 @@
     Write-Host ' Check required Az modules cmdlets'
     foreach ($testCommand in $testCommands) {
         if (-not (Get-Command $testCommand -ErrorAction Ignore)) {
-            Write-Host "  AzModule test failed: cmdlet $testCommand not available - make sure the modules $($azModules -join ', ') are installed" -ForegroundColor Red
+            Write-Host "  AzModule test failed: cmdlet '$testCommand' not available - install module(s): '$($azModules -join ', ')'" -ForegroundColor Red
             Throw 'Error - check the last console output for details'
         }
         else {

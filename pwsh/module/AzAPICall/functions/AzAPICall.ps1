@@ -27,9 +27,6 @@
     .PARAMETER consistencyLevel
     Parameter description
 
-    .PARAMETER getARMARGMgMDfCSecureScore
-    Parameter description
-
     .PARAMETER validateAccess
     Parameter description
 
@@ -79,10 +76,6 @@
         [Parameter()]
         [switch]
         $validateAccess,
-        
-        [Parameter()]
-        [switch]
-        $getARMARGMgMDfCSecureScore,
         
         [Parameter(Mandatory)]
         [object]
@@ -159,6 +152,7 @@
             { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/microsoft.insights/diagnosticSettingsCategories*" } { $getARMDiagnosticSettingsResource = $true }
             { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/Microsoft.CostManagement/query*" } { $getARMCostManagement = $true }
             { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/subscriptions/*/providers/Microsoft.Security/pricings*" } { $getARMMDfC = $true }
+            { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/providers/Microsoft.ResourceGraph/*" } { $getARMARG = $true }
             #MicrosoftGraph
             #{ $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/*/groups/*/transitiveMembers" } { $getMicrosoftGraphGroupMembersTransitive = $true }
             { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/applications*" } { $getMicrosoftGraphApplication = $true }
@@ -278,7 +272,7 @@
                     ($targetEndpoint -eq 'MicrosoftGraph' -and $catchResult.error.code -like '*Request_ResourceNotFound*') -or
                     (($getMicrosoftGraphApplication) -and $catchResult.error.code -like '*Authorization_RequestDenied*') -or
                     ($getMicrosoftGraphGroupMembersTransitiveCount -and $catchResult.error.message -like '*count is not currently supported*') -or
-                    ($getARMARGMgMDfCSecureScore -and $catchResult.error.code -eq 'BadRequest') -or
+                    ($getARMARG -and $catchResult.error.code -eq 'BadRequest') -or
                     (
                         $getARMRoleAssignmentSchedules -and (
                             ($catchResult.error.code -eq 'ResourceNotOnboarded') -or
@@ -516,7 +510,7 @@
 
                     }
 
-                    if ($getARMARGMgMDfCSecureScore -and $catchResult.error.code -eq 'BadRequest') {
+                    if ($getARMARG -and $catchResult.error.code -eq 'BadRequest') {
                         $sleepSec = @(1, 1, 2, 3, 5, 7, 9, 10, 13, 15, 20, 25, 30, 45, 60, 60, 60, 60)[$tryCounter]
                         $maxTries = 15
                         if ($tryCounter -gt $maxTries) {
@@ -651,6 +645,7 @@
                 }
                 elseif ($listenOn -eq 'ContentProperties') {
                     if (($azAPIRequestConvertedFromJson.properties.rows).Count -gt 0) {
+                        <#
                         foreach ($consumptionline in $azAPIRequestConvertedFromJson.properties.rows) {
                             $hlper = $htSubscriptionsMgPath.($consumptionline[1])
                             $null = $apiCallResultsCollection.Add([PSCustomObject]@{
@@ -665,6 +660,8 @@
                                     "$($azAPIRequestConvertedFromJson.properties.columns.name[6])" = $consumptionline[6]
                                 })
                         }
+                        #>
+                        $apiCallResultsCollection.Add($azAPIRequestConvertedFromJson)
                     }
                 }
                 else {
