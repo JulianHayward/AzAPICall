@@ -106,21 +106,31 @@ do {
         }
 
         try {
-            $azAPICallModuleVersionLoaded = ((Get-Module -name AzAPICall).Version).toString()
-            if ($azAPICallModuleVersionLoaded -ne $azAPICallVersion) {
-                Write-Host "  Deviating loaded version found ('$($azAPICallModuleVersionLoaded)' != '$($azAPICallVersion)')"
+            $azAPICallModuleDeviation = $false
+            $azAPICallModuleVersionLoaded = ((Get-Module -name AzAPICall).Version)
+            foreach ($moduleLoaded in $azAPICallModuleVersionLoaded) {
+                if ($moduleLoaded.toString() -ne $azAPICallVersion) {
+                    Write-Host "  Deviating loaded version found ('$($moduleLoaded.toString())' != '$($azAPICallVersion)')"
+                    $azAPICallModuleDeviation = $true
+                }
+                else {
+                    if ($azAPICallModuleVersionLoaded.count -eq 1) {
+                        Write-Host "  AzAPICall module ($($moduleLoaded.toString())) is already loaded" -ForegroundColor Green
+                        $importAzAPICallModuleSuccess = $true
+                    }
+                }
+            }
+
+            if ($azAPICallModuleDeviation) {
+                $importAzAPICallModuleSuccess = $false
                 try {
-                    Write-Host '  Remove-Module AzAPICall'
-                    Remove-Module -Name AzAPICall
+                    Write-Host "  Remove-Module AzAPICall ($(($azAPICallModuleVersionLoaded -join ', ').ToString()))"
+                    Remove-Module -Name AzAPICall -Force
                 }
                 catch {
                     Write-Host '  Remove-Module AzAPICall failed'
                     throw
                 }
-            }
-            else {
-                Write-Host "  AzAPICall module ($($azAPICallVersion)) is already loaded" -ForegroundColor Green
-                $importAzAPICallModuleSuccess = $true
             }
         }
         catch {
