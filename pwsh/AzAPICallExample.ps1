@@ -80,7 +80,6 @@ Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings 'true'
 #Connect | at this stage you should be connected to Azure
 #connect-azaccount
 
-<#
 #region verifyAzAPICall
 if ($azAPICallVersion) {
     Write-Host " Verify 'AzAPICall' ($azAPICallVersion)"
@@ -194,13 +193,13 @@ do {
 }
 until ($importAzAPICallModuleSuccess)
 #endregion verifyAzAPICall
-#>
 
-#testing
+<#module_testing
 Write-Host "Initialize 'AzAPICall'"
 Write-Host " Import PS module 'AzAPICall'"
 Import-Module .\pwsh\module\build\AzAPICall\AzAPICall.psd1 -Force -ErrorAction Stop
 Write-Host "  Import PS module 'AzAPICall' succeeded" -ForegroundColor Green
+#>
 
 #region initAZAPICall
 Write-Host "Initialize 'AzAPICall'"
@@ -291,8 +290,8 @@ if (-not $NoPsParallelization) {
         # $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
         # $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
         # $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
-        #Import-Module .\pwsh\module\AzAPICall\AzAPICall.psd1 -Force -ErrorAction Stop
-        Import-Module .\pwsh\module\build\AzAPICall\AzAPICall.psd1 -Force -ErrorAction Stop
+        Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].AzAPICallModuleVersion -Force
+        #Import-Module .\pwsh\module\build\AzAPICall\AzAPICall.psd1 -Force -ErrorAction Stop
         #specific for this operation
         $htAzureAdGroupDetails = $using:htAzureAdGroupDetails
         $arrayGroupMembers = $using:arrayGroupMembers
@@ -383,7 +382,6 @@ else {
     ($azAPICallConf['arrayAPICallTracking'].Duration | Measure-Object -Average -Maximum -Minimum)
 }
 #endregion MicrosoftGraphGroupMemberList
-pause
 
 #region MicrosoftResourceManagerSubscriptions
 # https://docs.microsoft.com/en-us/rest/api/resources/subscriptions/list
