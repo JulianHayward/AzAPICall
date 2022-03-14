@@ -12,7 +12,6 @@ Param
 )
 
 #region parallelization
-$NoPsParallelization = $false
 if (-not $NoPsParallelization) {
     function testPowerShellVersion {
 
@@ -317,7 +316,7 @@ if (-not $NoPsParallelization) {
             currentTask            = " '$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: Get - Group List Members (id: $($group.id))'"
             AzAPICallConfiguration = $azAPICallConf
         }
-        #Write-Host $azAPICallPayload.currentTask
+        Write-Host $azAPICallPayload.currentTask
 
         $AzApiCallResult = AzAPICall @azAPICallPayload
 
