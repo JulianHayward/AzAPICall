@@ -8,7 +8,7 @@ Param
 
     [Parameter()]
     [string]
-    $azAPICallVersion #set target version e.g. '1.0.5'
+    $azAPICallVersion #set target version e.g. '1.0.7'
 )
 
 #region parallelization
@@ -80,6 +80,7 @@ Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings 'true'
 #Connect | at this stage you should be connected to Azure
 #connect-azaccount
 
+#
 #region verifyAzAPICall
 if ($azAPICallVersion) {
     Write-Host " Verify 'AzAPICall' ($azAPICallVersion)"
@@ -193,6 +194,7 @@ do {
 }
 until ($importAzAPICallModuleSuccess)
 #endregion verifyAzAPICall
+#>
 
 <#module_testing
 Write-Host "Initialize 'AzAPICall'"
@@ -205,12 +207,13 @@ Write-Host "  Import PS module 'AzAPICall' succeeded" -ForegroundColor Green
 Write-Host "Initialize 'AzAPICall'"
 $parameters4AzAPICallModule = @{
     #SubscriptionId4AzContext = $null #enter subscriptionId for AzContext
-    DebugAzAPICall = $false
+    #DebugAzAPICall = $true
 }
 $azAPICallConf = initAzAPICall @parameters4AzAPICallModule
 Write-Host "Initialize 'AzAPICall' ($(((Get-Module -Name AzAPICall).Version).ToString())) succeeded" -ForegroundColor Green
 #endregion initAZAPICall
 
+#getting some functions for foreach-parallel (using:) - currently measuring performance ':using' vs 'Import-Module' 
 $AzAPICallFunctions = getAzAPICallFunctions
 
 #region Main
@@ -414,7 +417,8 @@ Write-Host " 'List - Subscriptions' first result:" $subscriptions[0].displayName
 #region MicrosoftResourceManagerResources
 $subsToProcess = 20
 Write-Host '----------------------------------------------------------'
-Write-Host "Processing example call: Getting resources (VNets and VMs) for the first $($subsToProcess) Subscriptions (NoPsParallelization:$($NoPsParallelization))"
+Write-Host "Processing example call: Getting resources (virtualNetworks, virtualMachines and storageAccounts) for the first $($subsToProcess) Subscriptions (NoPsParallelization:$($NoPsParallelization))"
+#yes - Azure Resource Graph (ARG) might be the better performing option, however this is just an example
 if (-not $NoPsParallelization) {
     $htAzureResources = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
     $arrayAzureResources = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
@@ -439,7 +443,7 @@ if (-not $NoPsParallelization) {
         $apiEndPoint = $azAPICallConf['azAPIEndpointUrls'].ARM
         $apiVersion = '?api-version=2021-04-01'
         $api = "/subscriptions/$($subscription.subscriptionId)/resources"
-        $uriParameter = "&`$filter=resourceType eq 'Microsoft.Network/virtualNetworks' or resourceType eq 'Microsoft.Compute/virtualMachines'"
+        $uriParameter = "&`$filter=resourceType eq 'Microsoft.Network/virtualNetworks' or resourceType eq 'Microsoft.Compute/virtualMachines' or resourceType eq 'Microsoft.Storage/storageAccounts'"
 
         #$uri = 'https://graph.microsoft.com/v1.0/groups/<GUID>/members'
         $uri = $apiEndPoint + $api + $apiVersion + $uriParameter
@@ -485,7 +489,7 @@ else {
         $apiEndPoint = $azAPICallConf['azAPIEndpointUrls'].ARM
         $apiVersion = '?api-version=2021-04-01'
         $api = "/subscriptions/$($subscription.subscriptionId)/resources"
-        $uriParameter = "&`$filter=resourceType eq 'Microsoft.Network/virtualNetworks' or resourceType eq 'Microsoft.Compute/virtualMachines'"
+        $uriParameter = "&`$filter=resourceType eq 'Microsoft.Network/virtualNetworks' or resourceType eq 'Microsoft.Compute/virtualMachines' or resourceType eq 'Microsoft.Storage/storageAccounts'"
 
         #$uri = 'https://graph.microsoft.com/v1.0/groups/<GUID>/members'
         $uri = $apiEndPoint + $api + $apiVersion + $uriParameter

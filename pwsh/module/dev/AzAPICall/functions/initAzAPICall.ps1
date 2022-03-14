@@ -5,7 +5,7 @@
     (
         [Parameter()]
         [bool]
-        $DebugAzAPICall,
+        $DebugAzAPICall = $false,
 
         [Parameter()]
         [guid]

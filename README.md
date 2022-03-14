@@ -14,6 +14,19 @@ You want to have easy way to sent requests to the Microsoft endpoints without ge
     - [Powershell Modules](powershell-modules)
 
 ## AzAPICall example
+
+Initialize AzAPICall
+
+```POWERSHELL
+$parameters4AzAPICallModule = @{
+    #SubscriptionId4AzContext = $null #enter subscriptionId for AzContext
+    #DebugAzAPICall = $true
+}
+$azAPICallConf = initAzAPICall @parameters4AzAPICallModule
+```
+
+Use AzAPICall
+
 ```POWERSHELL
 azapiCall -uri "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/groups" -method get -currentTask 'test' -AzAPICallConfiguration $azAPICallConf
 ```
