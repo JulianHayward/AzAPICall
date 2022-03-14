@@ -292,7 +292,13 @@ if (-not $NoPsParallelization) {
         # $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
         # $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
         # $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
-        Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].AzAPICallModuleVersion -Force
+        if (($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) -or $env:GITHUB_ACTIONS) {
+            Import-Module ".\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].AzAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
+        }
+        else {
+            Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].AzAPICallModuleVersion -Force -ErrorAction Stop
+        }
+        
         #Import-Module .\pwsh\module\build\AzAPICall\AzAPICall.psd1 -Force -ErrorAction Stop
         #specific for this operation
         $htAzureAdGroupDetails = $using:htAzureAdGroupDetails
