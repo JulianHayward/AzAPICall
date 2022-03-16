@@ -7,9 +7,9 @@ You want to have easy way to sent requests to the Microsoft endpoints without ge
 ## Table of content
 - [AzAPICall example](#azapicall-example)
 - [Supported endpoints](#supported-endpoints)
-- [AzAPICall Parameter](#azapicall-parameter)
-- [AzAPICall Tracking](#azapicall-tracking)
+- [AzAPICall Parameters](#azapicall-parameters)
 - [General Parameters](#general-parameters)
+- [AzAPICall Tracking](#azapicall-tracking)
 - [Prerequisites](#prerequisites)
     - [Powershell Modules](powershell-modules)
 
@@ -19,7 +19,7 @@ Initialize AzAPICall
 
 ```POWERSHELL
 $parameters4AzAPICallModule = @{
-    #SubscriptionId4AzContext = $null #enter subscriptionId for AzContext
+    #SubscriptionId4AzContext = $null #specify Subscription Id
     #DebugAzAPICall = $true
 }
 $azAPICallConf = initAzAPICall @parameters4AzAPICallModule
@@ -28,7 +28,7 @@ $azAPICallConf = initAzAPICall @parameters4AzAPICallModule
 Use AzAPICall
 
 ```POWERSHELL
-azapiCall -uri "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/groups" -method get -currentTask 'test' -AzAPICallConfiguration $azAPICallConf
+AzAPICall -uri "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/groups" -AzAPICallConfiguration $azAPICallConf
 ```
 [AzAPICallExample.ps1](pwsh/AzAPICallExample.ps1)
 
@@ -43,23 +43,32 @@ azapiCall -uri "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/group
 
 Add a new endpoint -> setAzureEnvironment.ps1
 
-## AzAPICall Parameter
+## AzAPICall Parameters
 | Field					   		| Type		| Description									                                        | Required |
 | ----------------------------- | :-------: | ------------------------------------------------------------------------------------- | :------: |
-| uri				    	    | `string`	| URI of the API request                                                                | ✅		  |
-| method					    | `string`	| Method for the API request *(e.g. GET, POST, ..)*                                     | ✅		  |
-| currentTask		            | `string`	| Free text field for further output details		                                    | ✅		  |
+| uri				    	    | `string`	| `$azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/groups` which translates to: `https://graph.microsoft.com/v1.0/groups`                                                             | ✅		  |
+| AzAPICallConfiguration				    	    | `object`	| Set of prebuilt (`$azAPICallConf = initAzAPICall`) variables required for AzAPICall operations (`-AzAPICallConfiguration $azAPICallConf`)                                                                | ✅		  |
+| method					    | `string`	| Method for the API request *(e.g. GET, POST, ..)*                                     | default is 'GET', else define it	  |
+| currentTask		            | `string`	| Free text field; in case of error or enabled `-DebugAzAPICall` currentTask will be output to console		                                    | 		  |
 | body	                        | `string`	| Request Body for the API request - [Example](https://docs.microsoft.com/en-us/graph/api/group-post-owners?view=graph-rest-1.0&tabs=http#request-body)	| 		   |
 | caller                        | `string`  | Set the value to `CustomDataCollection` for parallelization to have different font colors for the debug output |          |
 | consistencyLevel              | `string`  | For several [OData query parameters](https://docs.microsoft.com/en-us/graph/query-parameters) the `consistencyLevel`-header need to be set to `eventual` |          |
-| listenOn                      | `string`  | Default is `Value`. Depending to the expacted result of the API call the following values are accepted: `Content`, `ContentProperties` |          |
-| noPaging                      | `switch`    | If value is `true` paging will be deactivated and you will only get the defined number of `$top` results or [Resource Graph limits any query to returning only `100` records](https://docs.microsoft.com/en-us/azure/governance/resource-graph/concepts/work-with-data). Otherwise, you can use `$top` to increase the result batches from default `100` up to `999` for the `AzAPICall`. `$top`-value must be between 1 and 999 inclusive. |          |
-| getMgAscSecureScore           | `switch`    | endpoint 'providers/Microsoft.ResourceGraph/resources' may return 'BadRequest' however a retry may be successful - this parameter could be generalized for ARG queries                                                                                 |          |
-| validateAccess                | `switch`    | use this parameter if you only want to validate that the requester has permissions to the enpoint, if authorization is denied AzAPICall returns 'failed'                                                                                |          |
+| listenOn                      | `string`  | Default is `Value`. Depending to the expected response of the API call the following values are accepted: `Content`, `ContentProperties` |          |
+| noPaging                      | `switch`    | If value is `true` paging will be deactivated and you will only get the defined number of `$top` results or [Resource Graph limits any query to returning only `100` records](https://docs.microsoft.com/en-us/azure/governance/resource-graph/concepts/work-with-data). Otherwise, you can use `$top` to increase the result batches from default `100` up to `999` for the `AzAPICall`. Value for `$top` must range from 1 to 999 |          |
+| validateAccess                | `switch`    | Use this parameter if you only want to validate that the requester has permissions to the enpoint, if authorization is denied AzAPICall returns 'failed'. (Using `-validateAccess` will set `noPaging` to `true`)                                                                                |          |
+
+### Good to know
+By default, endPoints return results in batches of e.g. `100`. You can increase the return count defining e.g. `$top=999` (`$top` requires use of `consistencyLevel` = `eventual`)
+
+## General Parameters
+| Field					   		| Type		| Description									                                        | Required |
+| ----------------------------- | :-------: | ------------------------------------------------------------------------------------- | :------: |
+| DebugAzAPICall			    | `bool`	| Set to `true` to enable debug output                | 		   |
+| SubscriptionId4AzContext		| `string`	| Specify if specific subscription should be used for the AzContext (Subscription Id / GUID) | 		   |
 
 ### AzAPICall Tracking
 
-To get some insights about all AzAPIcalls you can use the `$azAPICallConf['arrayAPICallTracking']` (synchronized ArrayList).
+To get some insights on all API calls you can check the `$azAPICallConf['arrayAPICallTracking']` object (synchronized ArrayList)
 
 ```POWERSHELL
 $azAPICallConf['arrayAPICallTracking'][0] | ConvertTo-Json
@@ -93,15 +102,6 @@ As well you can see how fast a AzAPICall was responding:
   "Property": null
 }
 ```
-
-### Good to know
-By default, endPoints return results in batches of e.g. `100`. You can increase the return count defining e.g. `$top=999` (`$top` requires use of `consistencyLevel` = `eventual`)
-
-## General Parameters
-| Field					   		| Type		| Description									                                        | Required |
-| ----------------------------- | :-------: | ------------------------------------------------------------------------------------- | :------: |
-| DebugAzAPICall			    | `bool`	| Set to `True` to enable the debugging and get further detailed output.                | 		   |
-| SubscriptionId4AzContext		| `string`	| Specify if specific subscription should be used for the AzContext. | 		   |
 
 ## Prerequisites
 ### Powershell Modules

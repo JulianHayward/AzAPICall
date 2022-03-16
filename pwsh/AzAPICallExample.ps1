@@ -8,7 +8,7 @@ Param
 
     [Parameter()]
     [string]
-    $azAPICallVersion #set target version e.g. '1.0.7'
+    $azAPICallVersion #specify target version e.g. '1.0.8'
 )
 
 #region parallelization
@@ -77,7 +77,7 @@ Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings 'true'
 #endregion preferences
 
 #Connect | at this stage you should be connected to Azure
-#connect-azaccount
+#Connect-AzAccount -UseDeviceAuthentication
 
 #
 #region verifyAzAPICall
@@ -292,11 +292,11 @@ if (-not $NoPsParallelization) {
         # $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
         # $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
         # $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
-        if (($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) -or $env:GITHUB_ACTIONS) {
-            Import-Module ".\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].AzAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
+        if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
+            Import-Module ".\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
         }
         else {
-            Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].AzAPICallModuleVersion -Force -ErrorAction Stop
+            Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].azAPICallModuleVersion -Force -ErrorAction Stop
         }
         
         #Import-Module .\pwsh\module\build\AzAPICall\AzAPICall.psd1 -Force -ErrorAction Stop

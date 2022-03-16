@@ -6,7 +6,7 @@ function testUserType {
     )
 
     $userType = 'n/a'
-    if ($AzAPICallConfiguration['accountType'] -eq 'User') {
+    if ($AzAPICallConfiguration['checkContext'].Account.Type -eq 'User') {
         $currentTask = 'Check AAD UserType'
         Write-Host " $currentTask"
         $uri = $AzAPICallConfiguration['azAPIEndpointUrls'].MicrosoftGraph + '/v1.0/me?$select=userType'

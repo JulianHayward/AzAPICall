@@ -95,8 +95,10 @@ function AzAPICall {
         }
     }
 
-    if (-not $method) { $method = 'Get' }
+    #Set defaults
+    if (-not $method) { $method = 'GET' }
     if (-not $currentTask) { $currentTask = $method + ' ' + $uri }
+    if ($validateAccess) { $noPaging = $true }
 
     $tryCounter = 0
     $tryCounterUnexpectedError = 0
@@ -107,7 +109,7 @@ function AzAPICall {
     $restartDueToDuplicateNextlinkCounter = 0
     
     $debugForeGroundColor = 'Cyan'
-    if ($AzAPICallConfiguration['htParameters'].DebugAzAPICall -eq $true) {
+    if ($AzAPICallConfiguration['htParameters'].debugAzAPICall -eq $true) {
         $doDebugAzAPICall = $true
         if ($caller -like 'CustomDataCollection*') {
             $debugForeGroundColors = @('DarkBlue', 'DarkGreen', 'DarkCyan', 'Cyan', 'DarkMagenta', 'DarkYellow', 'Blue', 'Magenta', 'Yellow', 'Green')
@@ -157,15 +159,16 @@ function AzAPICall {
             #{ $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/*/groups/*/transitiveMembers" } { $getMicrosoftGraphGroupMembersTransitive = $true }
             { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/applications*" } { $getMicrosoftGraphApplication = $true }
             #{ $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/servicePrincipals*" } { $getMicrosoftGraphServicePrincipal = $true }
-            { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/*/roleManagement/directory/roleAssignmentScheduleInstances*" } { $getMicrosoftGraphRoleAssignmentScheduleInstances = $true }
             { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/*/groups/*/transitiveMembers/`$count" } { $getMicrosoftGraphGroupMembersTransitiveCount = $true }
             { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/servicePrincipals/*/getMemberGroups" } { $getMicrosoftGraphServicePrincipalGetMemberGroups = $true }
+            { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/*/roleManagement/directory/roleAssignmentSchedules*" } { $getMicrosoftGraphRoleAssignmentSchedules = $true }
+            { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/*/roleManagement/directory/roleAssignmentScheduleInstances*" } { $getMicrosoftGraphRoleAssignmentScheduleInstances = $true }
         }
 
         $startAPICall = Get-Date
         try {
             if ($body) {
-                if ($AzApiCallConfiguration['htParameters'].CodeRunPlatform -eq 'AzureAutomation') {
+                if ($AzApiCallConfiguration['htParameters'].codeRunPlatform -eq 'AzureAutomation') {
                     $azAPIRequest = Invoke-WebRequest -Uri $uri -Method $method -body $body -Headers $Header -UseBasicParsing
                 }
                 else {
@@ -173,7 +176,7 @@ function AzAPICall {
                 }
             }
             else {
-                if ($AzApiCallConfiguration['htParameters'].CodeRunPlatform -eq 'AzureAutomation') {
+                if ($AzApiCallConfiguration['htParameters'].codeRunPlatform -eq 'AzureAutomation') {
                     $azAPIRequest = Invoke-WebRequest -Uri $uri -Method $method -Headers $Header -UseBasicParsing
                 }
                 else {
@@ -274,7 +277,7 @@ function AzAPICall {
                     ($getMicrosoftGraphGroupMembersTransitiveCount -and $catchResult.error.message -like '*count is not currently supported*') -or
                     ($getARMARG -and $catchResult.error.code -eq 'BadRequest') -or
                     (
-                        $getARMRoleAssignmentSchedules -and (
+                        ($getARMRoleAssignmentSchedules -or $getMicrosoftGraphRoleAssignmentSchedules) -and (
                             ($catchResult.error.code -eq 'ResourceNotOnboarded') -or
                             ($catchResult.error.code -eq 'TenantNotOnboarded') -or
                             ($catchResult.error.code -eq 'InvalidResourceType') -or
@@ -340,7 +343,7 @@ function AzAPICall {
                         else {
                             if ($retryAuthorizationFailedCounter -gt $retryAuthorizationFailed) {
                                 Write-Host '- - - - - - - - - - - - - - - - - - - - '
-                                Write-Host "!Please report at $($AzApiCallConfiguration['htParameters'].GithubRepository) and provide the following dump" -ForegroundColor Yellow
+                                Write-Host "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository) and provide the following dump" -ForegroundColor Yellow
                                 Write-Host "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - $retryAuthorizationFailed retries failed - EXIT"
                                 Write-Host ''
                                 Write-Host 'Parameters:'
@@ -465,7 +468,7 @@ function AzAPICall {
                         }#>
                         else {
                             Write-Host '- - - - - - - - - - - - - - - - - - - - '
-                            Write-Host "!Please report at $($AzApiCallConfiguration['htParameters'].GithubRepository) and provide the following dump" -ForegroundColor Yellow
+                            Write-Host "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository) and provide the following dump" -ForegroundColor Yellow
                             Write-Host "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - EXIT"
                             Write-Host ''
                             Write-Host 'Parameters:'
@@ -522,7 +525,7 @@ function AzAPICall {
                     }
 
                     if (
-                        ($getARMRoleAssignmentSchedules -and (
+                        (($getARMRoleAssignmentSchedules -or $getMicrosoftGraphRoleAssignmentSchedules) -and (
                         ($catchResult.error.code -eq 'ResourceNotOnboarded') -or
                         ($catchResult.error.code -eq 'TenantNotOnboarded') -or
                         ($catchResult.error.code -eq 'InvalidResourceType') -or
@@ -622,7 +625,7 @@ function AzAPICall {
                     }
                     else {
                         Write-Host '- - - - - - - - - - - - - - - - - - - - '
-                        Write-Host "!Please report at $($AzApiCallConfiguration['htParameters'].GithubRepository) and provide the following dump" -ForegroundColor Yellow
+                        Write-Host "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository) and provide the following dump" -ForegroundColor Yellow
                         Write-Host "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - EXIT"
                         Write-Host ''
                         Write-Host 'Parameters:'
@@ -907,14 +910,14 @@ function initAzAPICall {
 
         [Parameter()]
         [string]
-        $GithubRepository = 'aka.ms/AzAPICall'
+        $gitHubRepository = 'aka.ms/AzAPICall'
     )
 
     $AzAccountsVersion = testAzModules
 
     $AzAPICallConfiguration = @{}
     $AzAPICallConfiguration['htParameters'] = $null
-    $AzAPICallConfiguration['htParameters'] = setHtParameters -AzAccountsVersion $AzAccountsVersion -GithubRepository $GithubRepository -DebugAzAPICall $DebugAzAPICall
+    $AzAPICallConfiguration['htParameters'] = setHtParameters -AzAccountsVersion $AzAccountsVersion -gitHubRepository $gitHubRepository -DebugAzAPICall $DebugAzAPICall
     Write-Host '  AzAPICall htParameters:'
     Write-Host ($AzAPICallConfiguration['htParameters'] | format-table -AutoSize | Out-String)
     Write-Host '  Create htParameters succeeded' -ForegroundColor Green
@@ -940,12 +943,10 @@ function initAzAPICall {
     $AzAPICallConfiguration = setAzureEnvironment -AzAPICallConfiguration $AzAPICallConfiguration
 
     Write-Host ' Check Az context'
-    $AzAPICallConfiguration['accountId'] = $AzAPICallConfiguration['checkContext'].Account.Id
-    $AzAPICallConfiguration['accountType'] = $AzAPICallConfiguration['checkContext'].Account.Type
-    Write-Host "  Az context AccountId: '$($AzAPICallConfiguration['accountId'] )'" -ForegroundColor Yellow
-    Write-Host "  Az context AccountType: '$($AzAPICallConfiguration['accountType'])'" -ForegroundColor Yellow
+    Write-Host "  Az context AccountId: '$($AzAPICallConfiguration['checkContext'].Account.Id)'" -ForegroundColor Yellow
+    Write-Host "  Az context AccountType: '$($AzAPICallConfiguration['checkContext'].Account.Type)'" -ForegroundColor Yellow
+    $AzApiCallConfiguration['htParameters'].accountType = $($AzAPICallConfiguration['checkContext'].Account.Type)
 
-    
     if ($SubscriptionId4AzContext) {
         Write-Host "  Parameter -SubscriptionId4AzContext: '$SubscriptionId4AzContext'"
         if ($AzAPICallConfiguration['checkContext'].Subscription.Id -ne $SubscriptionId4AzContext) {
@@ -980,10 +981,12 @@ function initAzAPICall {
         Throw 'Error - check the last console output for details'
     }
     else {
+        Write-Host "   Az context Tenant: '$($AzAPICallConfiguration['checkContext'].Tenant.Id)'" -ForegroundColor Yellow
+        Write-Host "   Az context Subscription: $($AzAPICallConfiguration['checkContext'].Subscription.Name) [$($AzAPICallConfiguration['checkContext'].Subscription.Id)] (state: $($AzAPICallConfiguration['checkContext'].Subscription.State))" -ForegroundColor Yellow
         Write-Host '  Az context check succeeded' -ForegroundColor Green
     }
 
-    $AzAPICallConfiguration['htParameters'].userType = testUserType -AzApiCallConfiguration $AzAPICallConfiguration
+    $AzApiCallConfiguration['htParameters'].userType = testUserType -AzApiCallConfiguration $AzAPICallConfiguration
 
     Write-Output $AzAPICallConfiguration
 }
@@ -1043,7 +1046,7 @@ function setHtParameters {
     Param
     (
         [Parameter(Mandatory)][string]$AzAccountsVersion,
-        [Parameter(Mandatory)][string]$GithubRepository,
+        [Parameter(Mandatory)][string]$gitHubRepository,
         [Parameter(Mandatory)][bool]$DebugAzAPICall
     )
 
@@ -1076,7 +1079,7 @@ function setHtParameters {
     else {
         $codeRunPlatform = 'Console'
     }
-    Write-Host '  CodeRunPlatform:' $codeRunPlatform
+    Write-Host '  codeRunPlatform:' $codeRunPlatform
     #endregion codeRunPlatform
 
 
@@ -1089,12 +1092,12 @@ function setHtParameters {
 
     #Region Test-HashtableParameter
     return [ordered]@{
-        DebugAzAPICall               = $DebugAzAPICall
-        GithubRepository             = $GithubRepository
-        PSVersion                    = $PSVersionTable.PSVersion
-        AzAccountsVersion            = $AzAccountsVersion
-        AzAPICallModuleVersion       = ((Get-Module -Name AzAPICall).Version).ToString()
-        CodeRunPlatform              = $codeRunPlatform
+        debugAzAPICall               = $DebugAzAPICall
+        gitHubRepository             = $gitHubRepository
+        psVersion                    = $PSVersionTable.PSVersion
+        azAccountsVersion            = $AzAccountsVersion
+        azAPICallModuleVersion       = ((Get-Module -Name AzAPICall).Version).ToString()
+        codeRunPlatform              = $codeRunPlatform
         onAzureDevOpsOrGitHubActions = [bool]$onAzureDevOpsOrGitHubActions
         onAzureDevOps                = [bool]$onAzureDevOps
         onGitHubActions              = [bool]$onGitHubActions
@@ -1159,7 +1162,8 @@ function testSubscription {
         Throw 'Error - check the last console output for details'
     }
     else {
-        Write-Host "   Subscription check succeeded ('$SubscriptionId4Test' quotaId: '$($testSubscription.subscriptionPolicies.quotaId)'; state: '$($testSubscription.state)')" -ForegroundColor Green
+        $AzApiCallConfiguration['htParameters'].subscriptionQuotaId = $testSubscription.subscriptionPolicies.quotaId
+        Write-Host "   Subscription check succeeded (quotaId: '$($testSubscription.subscriptionPolicies.quotaId)')" -ForegroundColor Green
     }
 }
 function testUserType {
@@ -1170,7 +1174,7 @@ function testUserType {
     )
 
     $userType = 'n/a'
-    if ($AzAPICallConfiguration['accountType'] -eq 'User') {
+    if ($AzAPICallConfiguration['checkContext'].Account.Type -eq 'User') {
         $currentTask = 'Check AAD UserType'
         Write-Host " $currentTask"
         $uri = $AzAPICallConfiguration['azAPIEndpointUrls'].MicrosoftGraph + '/v1.0/me?$select=userType'

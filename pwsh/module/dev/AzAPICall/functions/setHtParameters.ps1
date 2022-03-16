@@ -3,7 +3,7 @@
     Param
     (
         [Parameter(Mandatory)][string]$AzAccountsVersion,
-        [Parameter(Mandatory)][string]$GithubRepository,
+        [Parameter(Mandatory)][string]$gitHubRepository,
         [Parameter(Mandatory)][bool]$DebugAzAPICall
     )
 
@@ -36,7 +36,7 @@
     else {
         $codeRunPlatform = 'Console'
     }
-    Write-Host '  CodeRunPlatform:' $codeRunPlatform
+    Write-Host '  codeRunPlatform:' $codeRunPlatform
     #endregion codeRunPlatform
 
 
@@ -49,12 +49,12 @@
 
     #Region Test-HashtableParameter
     return [ordered]@{
-        DebugAzAPICall               = $DebugAzAPICall
-        GithubRepository             = $GithubRepository
-        PSVersion                    = $PSVersionTable.PSVersion
-        AzAccountsVersion            = $AzAccountsVersion
-        AzAPICallModuleVersion       = ((Get-Module -Name AzAPICall).Version).ToString()
-        CodeRunPlatform              = $codeRunPlatform
+        debugAzAPICall               = $DebugAzAPICall
+        gitHubRepository             = $gitHubRepository
+        psVersion                    = $PSVersionTable.PSVersion
+        azAccountsVersion            = $AzAccountsVersion
+        azAPICallModuleVersion       = ((Get-Module -Name AzAPICall).Version).ToString()
+        codeRunPlatform              = $codeRunPlatform
         onAzureDevOpsOrGitHubActions = [bool]$onAzureDevOpsOrGitHubActions
         onAzureDevOps                = [bool]$onAzureDevOps
         onGitHubActions              = [bool]$onGitHubActions

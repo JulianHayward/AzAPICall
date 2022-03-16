@@ -13,14 +13,14 @@
 
         [Parameter()]
         [string]
-        $GithubRepository = 'aka.ms/AzAPICall'
+        $gitHubRepository = 'aka.ms/AzAPICall'
     )
 
     $AzAccountsVersion = testAzModules
 
     $AzAPICallConfiguration = @{}
     $AzAPICallConfiguration['htParameters'] = $null
-    $AzAPICallConfiguration['htParameters'] = setHtParameters -AzAccountsVersion $AzAccountsVersion -GithubRepository $GithubRepository -DebugAzAPICall $DebugAzAPICall
+    $AzAPICallConfiguration['htParameters'] = setHtParameters -AzAccountsVersion $AzAccountsVersion -gitHubRepository $gitHubRepository -DebugAzAPICall $DebugAzAPICall
     Write-Host '  AzAPICall htParameters:'
     Write-Host ($AzAPICallConfiguration['htParameters'] | format-table -AutoSize | Out-String)
     Write-Host '  Create htParameters succeeded' -ForegroundColor Green
@@ -46,12 +46,10 @@
     $AzAPICallConfiguration = setAzureEnvironment -AzAPICallConfiguration $AzAPICallConfiguration
 
     Write-Host ' Check Az context'
-    $AzAPICallConfiguration['accountId'] = $AzAPICallConfiguration['checkContext'].Account.Id
-    $AzAPICallConfiguration['accountType'] = $AzAPICallConfiguration['checkContext'].Account.Type
-    Write-Host "  Az context AccountId: '$($AzAPICallConfiguration['accountId'] )'" -ForegroundColor Yellow
-    Write-Host "  Az context AccountType: '$($AzAPICallConfiguration['accountType'])'" -ForegroundColor Yellow
+    Write-Host "  Az context AccountId: '$($AzAPICallConfiguration['checkContext'].Account.Id)'" -ForegroundColor Yellow
+    Write-Host "  Az context AccountType: '$($AzAPICallConfiguration['checkContext'].Account.Type)'" -ForegroundColor Yellow
+    $AzApiCallConfiguration['htParameters'].accountType = $($AzAPICallConfiguration['checkContext'].Account.Type)
 
-    
     if ($SubscriptionId4AzContext) {
         Write-Host "  Parameter -SubscriptionId4AzContext: '$SubscriptionId4AzContext'"
         if ($AzAPICallConfiguration['checkContext'].Subscription.Id -ne $SubscriptionId4AzContext) {
@@ -86,10 +84,12 @@
         Throw 'Error - check the last console output for details'
     }
     else {
+        Write-Host "   Az context Tenant: '$($AzAPICallConfiguration['checkContext'].Tenant.Id)'" -ForegroundColor Yellow
+        Write-Host "   Az context Subscription: $($AzAPICallConfiguration['checkContext'].Subscription.Name) [$($AzAPICallConfiguration['checkContext'].Subscription.Id)] (state: $($AzAPICallConfiguration['checkContext'].Subscription.State))" -ForegroundColor Yellow
         Write-Host '  Az context check succeeded' -ForegroundColor Green
     }
 
-    $AzAPICallConfiguration['htParameters'].userType = testUserType -AzApiCallConfiguration $AzAPICallConfiguration
+    $AzApiCallConfiguration['htParameters'].userType = testUserType -AzApiCallConfiguration $AzAPICallConfiguration
 
     Write-Output $AzAPICallConfiguration
 }

@@ -95,8 +95,10 @@
         }
     }
 
-    if (-not $method) { $method = 'Get' }
+    #Set defaults
+    if (-not $method) { $method = 'GET' }
     if (-not $currentTask) { $currentTask = $method + ' ' + $uri }
+    if ($validateAccess) { $noPaging = $true }
 
     $tryCounter = 0
     $tryCounterUnexpectedError = 0
@@ -107,7 +109,7 @@
     $restartDueToDuplicateNextlinkCounter = 0
     
     $debugForeGroundColor = 'Cyan'
-    if ($AzAPICallConfiguration['htParameters'].DebugAzAPICall -eq $true) {
+    if ($AzAPICallConfiguration['htParameters'].debugAzAPICall -eq $true) {
         $doDebugAzAPICall = $true
         if ($caller -like 'CustomDataCollection*') {
             $debugForeGroundColors = @('DarkBlue', 'DarkGreen', 'DarkCyan', 'Cyan', 'DarkMagenta', 'DarkYellow', 'Blue', 'Magenta', 'Yellow', 'Green')
@@ -157,15 +159,16 @@
             #{ $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/*/groups/*/transitiveMembers" } { $getMicrosoftGraphGroupMembersTransitive = $true }
             { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/applications*" } { $getMicrosoftGraphApplication = $true }
             #{ $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/servicePrincipals*" } { $getMicrosoftGraphServicePrincipal = $true }
-            { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/*/roleManagement/directory/roleAssignmentScheduleInstances*" } { $getMicrosoftGraphRoleAssignmentScheduleInstances = $true }
             { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/*/groups/*/transitiveMembers/`$count" } { $getMicrosoftGraphGroupMembersTransitiveCount = $true }
             { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/servicePrincipals/*/getMemberGroups" } { $getMicrosoftGraphServicePrincipalGetMemberGroups = $true }
+            { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/*/roleManagement/directory/roleAssignmentSchedules*" } { $getMicrosoftGraphRoleAssignmentSchedules = $true }
+            { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/*/roleManagement/directory/roleAssignmentScheduleInstances*" } { $getMicrosoftGraphRoleAssignmentScheduleInstances = $true }
         }
 
         $startAPICall = Get-Date
         try {
             if ($body) {
-                if ($AzApiCallConfiguration['htParameters'].CodeRunPlatform -eq 'AzureAutomation') {
+                if ($AzApiCallConfiguration['htParameters'].codeRunPlatform -eq 'AzureAutomation') {
                     $azAPIRequest = Invoke-WebRequest -Uri $uri -Method $method -body $body -Headers $Header -UseBasicParsing
                 }
                 else {
@@ -173,7 +176,7 @@
                 }
             }
             else {
-                if ($AzApiCallConfiguration['htParameters'].CodeRunPlatform -eq 'AzureAutomation') {
+                if ($AzApiCallConfiguration['htParameters'].codeRunPlatform -eq 'AzureAutomation') {
                     $azAPIRequest = Invoke-WebRequest -Uri $uri -Method $method -Headers $Header -UseBasicParsing
                 }
                 else {
@@ -274,7 +277,7 @@
                     ($getMicrosoftGraphGroupMembersTransitiveCount -and $catchResult.error.message -like '*count is not currently supported*') -or
                     ($getARMARG -and $catchResult.error.code -eq 'BadRequest') -or
                     (
-                        $getARMRoleAssignmentSchedules -and (
+                        ($getARMRoleAssignmentSchedules -or $getMicrosoftGraphRoleAssignmentSchedules) -and (
                             ($catchResult.error.code -eq 'ResourceNotOnboarded') -or
                             ($catchResult.error.code -eq 'TenantNotOnboarded') -or
                             ($catchResult.error.code -eq 'InvalidResourceType') -or
@@ -340,7 +343,7 @@
                         else {
                             if ($retryAuthorizationFailedCounter -gt $retryAuthorizationFailed) {
                                 Write-Host '- - - - - - - - - - - - - - - - - - - - '
-                                Write-Host "!Please report at $($AzApiCallConfiguration['htParameters'].GithubRepository) and provide the following dump" -ForegroundColor Yellow
+                                Write-Host "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository) and provide the following dump" -ForegroundColor Yellow
                                 Write-Host "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - $retryAuthorizationFailed retries failed - EXIT"
                                 Write-Host ''
                                 Write-Host 'Parameters:'
@@ -465,7 +468,7 @@
                         }#>
                         else {
                             Write-Host '- - - - - - - - - - - - - - - - - - - - '
-                            Write-Host "!Please report at $($AzApiCallConfiguration['htParameters'].GithubRepository) and provide the following dump" -ForegroundColor Yellow
+                            Write-Host "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository) and provide the following dump" -ForegroundColor Yellow
                             Write-Host "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - EXIT"
                             Write-Host ''
                             Write-Host 'Parameters:'
@@ -522,7 +525,7 @@
                     }
 
                     if (
-                        ($getARMRoleAssignmentSchedules -and (
+                        (($getARMRoleAssignmentSchedules -or $getMicrosoftGraphRoleAssignmentSchedules) -and (
                         ($catchResult.error.code -eq 'ResourceNotOnboarded') -or
                         ($catchResult.error.code -eq 'TenantNotOnboarded') -or
                         ($catchResult.error.code -eq 'InvalidResourceType') -or
@@ -622,7 +625,7 @@
                     }
                     else {
                         Write-Host '- - - - - - - - - - - - - - - - - - - - '
-                        Write-Host "!Please report at $($AzApiCallConfiguration['htParameters'].GithubRepository) and provide the following dump" -ForegroundColor Yellow
+                        Write-Host "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository) and provide the following dump" -ForegroundColor Yellow
                         Write-Host "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - EXIT"
                         Write-Host ''
                         Write-Host 'Parameters:'

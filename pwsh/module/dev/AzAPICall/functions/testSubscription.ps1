@@ -26,6 +26,7 @@ function testSubscription {
         Throw 'Error - check the last console output for details'
     }
     else {
-        Write-Host "   Subscription check succeeded ('$SubscriptionId4Test' quotaId: '$($testSubscription.subscriptionPolicies.quotaId)'; state: '$($testSubscription.state)')" -ForegroundColor Green
+        $AzApiCallConfiguration['htParameters'].subscriptionQuotaId = $testSubscription.subscriptionPolicies.quotaId
+        Write-Host "   Subscription check succeeded (quotaId: '$($testSubscription.subscriptionPolicies.quotaId)')" -ForegroundColor Green
     }
 }
