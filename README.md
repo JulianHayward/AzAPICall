@@ -15,6 +15,19 @@ You want to have easy way to sent requests to the Microsoft endpoints without ge
 
 ## AzAPICall example
 
+Get & Set AzAPICall PowerShell module
+
+```POWERSHELL
+Install-Module -Name AzAPICall
+Import-Module -Name AzAPICall
+```
+
+Connect to Azure
+
+```POWERSHELL
+Connect-AzAccount
+```
+
 Initialize AzAPICall
 
 ```POWERSHELL
