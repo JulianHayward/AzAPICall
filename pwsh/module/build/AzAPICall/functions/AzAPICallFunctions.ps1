@@ -1010,7 +1010,7 @@ function setAzureEnvironment {
         if ([string]::IsNullOrWhiteSpace($EndpointUrl)) {
             if ($Endpoint -eq 'MicrosoftGraph') {
                 Write-Host "  Older Az.Accounts version in use (`$AzApiCallConfiguration.checkContext.Environment.$($EnvironmentKey) not existing). AzureEnvironmentRelatedUrls -> Setting static Microsoft Graph Url 'https://graph.microsoft.com'"
-                return 'https://graph.microsoft.com'
+                return $legacyAzAccountsEnvironmentMicrosoftGraphUrls.($AzApiCallConfiguration['checkContext'].Environment.Name)
             }
             else {
                 Write-Host "  Cannot read '$($Endpoint)' endpoint from current context (`$AzApiCallConfiguration.checkContext.Environment.$($EnvironmentKey))"
@@ -1023,6 +1023,13 @@ function setAzureEnvironment {
             return [string]($EndpointUrl -replace '\/$')
         }
     }
+
+    #MicrosoftGraph Urls for older Az.Accounts version
+    $legacyAzAccountsEnvironmentMicrosoftGraphUrls = @{}
+    $legacyAzAccountsEnvironmentMicrosoftGraphUrls['AzureCloud'] = 'https://graph.microsoft.com'
+    $legacyAzAccountsEnvironmentMicrosoftGraphUrls['AzureUSGovernment'] = 'https://graph.microsoft.us'
+    $legacyAzAccountsEnvironmentMicrosoftGraphUrls['AzureChinaCloud'] = 'https://microsoftgraph.chinacloudapi.cn'
+    $legacyAzAccountsEnvironmentMicrosoftGraphUrls['AzureGermanCloud'] = 'https://graph.microsoft.de'
 
     #AzureEnvironmentRelatedUrls
     $AzAPICallConfiguration['azAPIEndpointUrls'] = @{ }
