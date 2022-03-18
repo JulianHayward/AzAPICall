@@ -44,15 +44,15 @@ function AzAPICall {
         [Parameter(Mandatory)]
         [string]
         $uri,
-        
+
         [Parameter()]
         [string]
         $method,
-        
+
         [Parameter()]
         [string]
         $currentTask,
-        
+
         [Parameter()]
         [string]
         $body,
@@ -76,7 +76,7 @@ function AzAPICall {
         [Parameter()]
         [switch]
         $validateAccess,
-        
+
         [Parameter(Mandatory)]
         [object]
         $AzAPICallConfiguration
@@ -107,7 +107,7 @@ function AzAPICall {
     $apiCallResultsCollection = [System.Collections.ArrayList]@()
     $initialUri = $uri
     $restartDueToDuplicateNextlinkCounter = 0
-    
+
     $debugForeGroundColor = 'Cyan'
     if ($AzAPICallConfiguration['htParameters'].debugAzAPICall -eq $true) {
         $doDebugAzAPICall = $true
@@ -124,7 +124,7 @@ function AzAPICall {
         if (-not ($AzApiCallConfiguration['azAPIEndpoints']).($uriSplitted[2])) {
             Throw "Error - Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'"
         }
-        
+
         $targetEndpoint = ($AzApiCallConfiguration['azAPIEndpoints']).($uriSplitted[2])
 
         if (-not $AzAPICallConfiguration['htBearerAccessToken'].($targetEndpoint)) {
@@ -223,7 +223,7 @@ function AzAPICall {
         debugAzAPICall -debugMessage "attempt#$($tryCounter) processing: $($currenttask) uri: '$($uri)'"
         if ($unexpectedError -eq $false) {
             debugAzAPICall -debugMessage 'unexpectedError: false'
-            if ($azAPIRequest.StatusCode -ne 200) {
+            if ($azAPIRequest.StatusCode -notin 200..204) {
                 debugAzAPICall -debugMessage "apiStatusCode: '$($azAPIRequest.StatusCode)'"
                 if (
                     $catchResult.error.code -like '*GatewayTimeout*' -or
@@ -1010,7 +1010,7 @@ function setAzureEnvironment {
         if ([string]::IsNullOrWhiteSpace($EndpointUrl)) {
             if ($Endpoint -eq 'MicrosoftGraph') {
                 Write-Host "  Older Az.Accounts version in use (`$AzApiCallConfiguration.checkContext.Environment.$($EnvironmentKey) not existing). AzureEnvironmentRelatedUrls -> Setting static Microsoft Graph Url 'https://graph.microsoft.com'"
-                return 'https://graph.microsoft.com'
+                return $legacyAzAccountsEnvironmentMicrosoftGraphUrls.($AzApiCallConfiguration['checkContext'].Environment.Name)
             }
             else {
                 Write-Host "  Cannot read '$($Endpoint)' endpoint from current context (`$AzApiCallConfiguration.checkContext.Environment.$($EnvironmentKey))"
@@ -1023,6 +1023,13 @@ function setAzureEnvironment {
             return [string]($EndpointUrl -replace '\/$')
         }
     }
+
+    #MicrosoftGraph Urls for older Az.Accounts version
+    $legacyAzAccountsEnvironmentMicrosoftGraphUrls = @{}
+    $legacyAzAccountsEnvironmentMicrosoftGraphUrls['AzureCloud'] = 'https://graph.microsoft.com'
+    $legacyAzAccountsEnvironmentMicrosoftGraphUrls['AzureUSGovernment'] = 'https://graph.microsoft.us'
+    $legacyAzAccountsEnvironmentMicrosoftGraphUrls['AzureChinaCloud'] = 'https://microsoftgraph.chinacloudapi.cn'
+    $legacyAzAccountsEnvironmentMicrosoftGraphUrls['AzureGermanCloud'] = 'https://graph.microsoft.de'
 
     #AzureEnvironmentRelatedUrls
     $AzAPICallConfiguration['azAPIEndpointUrls'] = @{ }
