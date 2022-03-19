@@ -7,3 +7,5 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pwsh -c 'Install-Module -Name Az.Accounts -Scope AllUsers -Repository PSGallery -Force'
+
+RUN pwsh -c 'Install-Module -Name AzAPICall -Scope AllUsers -Repository PSGallery -Force'

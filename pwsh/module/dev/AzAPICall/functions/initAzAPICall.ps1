@@ -13,14 +13,14 @@
 
         [Parameter()]
         [string]
-        $gitHubRepository = 'aka.ms/AzAPICall'
+        $GitHubRepository = 'aka.ms/AzAPICall'
     )
 
     $AzAccountsVersion = testAzModules
 
     $AzAPICallConfiguration = @{}
     $AzAPICallConfiguration['htParameters'] = $null
-    $AzAPICallConfiguration['htParameters'] = setHtParameters -AzAccountsVersion $AzAccountsVersion -gitHubRepository $gitHubRepository -DebugAzAPICall $DebugAzAPICall
+    $AzAPICallConfiguration['htParameters'] = setHtParameters -AzAccountsVersion $AzAccountsVersion -gitHubRepository $GitHubRepository -DebugAzAPICall $DebugAzAPICall
     Write-Host '  AzAPICall htParameters:'
     Write-Host ($AzAPICallConfiguration['htParameters'] | format-table -AutoSize | Out-String)
     Write-Host '  Create htParameters succeeded' -ForegroundColor Green

@@ -139,7 +139,7 @@ do {
         if (-not $importAzAPICallModuleSuccess) {
             Write-Host "  Try importing AzAPICall module ($azAPICallVersion)"
             if (($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) -or $env:GITHUB_ACTIONS) {
-                Import-Module ".\AzAPICallModule\AzAPICall\$($azAPICallVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
+                Import-Module ".\pwsh\AzAPICallModule\AzAPICall\$($azAPICallVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
                 Write-Host "  Import PS module 'AzAPICall' ($($azAPICallVersion)) succeeded" -ForegroundColor Green
             }
             else {
@@ -156,7 +156,7 @@ do {
             try {
                 $params = @{
                     Name            = 'AzAPICall'
-                    Path            = '.\AzAPICallModule'
+                    Path            = '.\pwsh\AzAPICallModule'
                     Force           = $true
                     RequiredVersion = $azAPICallVersion
                 }
@@ -293,7 +293,7 @@ if (-not $NoPsParallelization) {
         # $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
         # $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
         if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
-            Import-Module ".\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
+            Import-Module ".\pwsh\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
         }
         else {
             Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].azAPICallModuleVersion -Force -ErrorAction Stop
