@@ -910,14 +910,14 @@ function initAzAPICall {
 
         [Parameter()]
         [string]
-        $gitHubRepository = 'aka.ms/AzAPICall'
+        $GitHubRepository = 'aka.ms/AzAPICall'
     )
 
     $AzAccountsVersion = testAzModules
 
     $AzAPICallConfiguration = @{}
     $AzAPICallConfiguration['htParameters'] = $null
-    $AzAPICallConfiguration['htParameters'] = setHtParameters -AzAccountsVersion $AzAccountsVersion -gitHubRepository $gitHubRepository -DebugAzAPICall $DebugAzAPICall
+    $AzAPICallConfiguration['htParameters'] = setHtParameters -AzAccountsVersion $AzAccountsVersion -gitHubRepository $GitHubRepository -DebugAzAPICall $DebugAzAPICall
     Write-Host '  AzAPICall htParameters:'
     Write-Host ($AzAPICallConfiguration['htParameters'] | format-table -AutoSize | Out-String)
     Write-Host '  Create htParameters succeeded' -ForegroundColor Green
@@ -1009,7 +1009,7 @@ function setAzureEnvironment {
         Write-Host "  Check endpoint: '$($Endpoint)'; endpoint url: '$($EndpointUrl)'"
         if ([string]::IsNullOrWhiteSpace($EndpointUrl)) {
             if ($Endpoint -eq 'MicrosoftGraph') {
-                Write-Host "  Older Az.Accounts version in use (`$AzApiCallConfiguration.checkContext.Environment.$($EnvironmentKey) not existing). AzureEnvironmentRelatedUrls -> Setting static Microsoft Graph Url 'https://graph.microsoft.com'"
+                Write-Host "  Older Az.Accounts version in use (`$AzApiCallConfiguration.checkContext.Environment.$($EnvironmentKey) not existing). AzureEnvironmentRelatedUrls -> Setting static Microsoft Graph Url '$($legacyAzAccountsEnvironmentMicrosoftGraphUrls.($AzApiCallConfiguration['checkContext'].Environment.Name))'"
                 return $legacyAzAccountsEnvironmentMicrosoftGraphUrls.($AzApiCallConfiguration['checkContext'].Environment.Name)
             }
             else {
@@ -1053,7 +1053,7 @@ function setHtParameters {
     Param
     (
         [Parameter(Mandatory)][string]$AzAccountsVersion,
-        [Parameter(Mandatory)][string]$gitHubRepository,
+        [Parameter(Mandatory)][string]$GitHubRepository,
         [Parameter(Mandatory)][bool]$DebugAzAPICall
     )
 
@@ -1100,7 +1100,7 @@ function setHtParameters {
     #Region Test-HashtableParameter
     return [ordered]@{
         debugAzAPICall               = $DebugAzAPICall
-        gitHubRepository             = $gitHubRepository
+        gitHubRepository             = $GitHubRepository
         psVersion                    = $PSVersionTable.PSVersion
         azAccountsVersion            = $AzAccountsVersion
         azAPICallModuleVersion       = ((Get-Module -Name AzAPICall).Version).ToString()

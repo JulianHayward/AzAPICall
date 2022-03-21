@@ -3,7 +3,7 @@
     Param
     (
         [Parameter(Mandatory)][string]$AzAccountsVersion,
-        [Parameter(Mandatory)][string]$gitHubRepository,
+        [Parameter(Mandatory)][string]$GitHubRepository,
         [Parameter(Mandatory)][bool]$DebugAzAPICall
     )
 
@@ -50,7 +50,7 @@
     #Region Test-HashtableParameter
     return [ordered]@{
         debugAzAPICall               = $DebugAzAPICall
-        gitHubRepository             = $gitHubRepository
+        gitHubRepository             = $GitHubRepository
         psVersion                    = $PSVersionTable.PSVersion
         azAccountsVersion            = $AzAccountsVersion
         azAPICallModuleVersion       = ((Get-Module -Name AzAPICall).Version).ToString()
