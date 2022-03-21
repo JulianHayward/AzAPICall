@@ -302,7 +302,8 @@ function AzAPICall {
                             ($catchResult.code -like '*ResourceNotFound*') -or
                             ($catchResult.error.code -like '*ResourceGroupNotFound*') -or
                             ($catchResult.code -like '*ResourceGroupNotFound*') -or
-                            ($catchResult.code -eq 'ResourceTypeNotSupported')
+                            ($catchResult.code -eq 'ResourceTypeNotSupported') -or
+                            ($catchResult.code -eq 'ResourceProviderNotSupported')
                         )
                     ) -or
                     ($getMicrosoftGraphServicePrincipalGetMemberGroups -and $catchResult.error.code -like '*Directory_ResultSizeLimitExceeded*')
@@ -586,7 +587,8 @@ function AzAPICall {
                         ($catchResult.code -like '*ResourceNotFound*') -or
                         ($catchResult.error.code -like '*ResourceGroupNotFound*') -or
                         ($catchResult.code -like '*ResourceGroupNotFound*') -or
-                        ($catchResult.code -eq 'ResourceTypeNotSupported')
+                        ($catchResult.code -eq 'ResourceTypeNotSupported') -or
+                        ($catchResult.code -eq 'ResourceProviderNotSupported')
                         )
                     ) {
                         if ($catchResult.error.code -like '*ResourceNotFound*' -or $catchResult.code -like '*ResourceNotFound*') {
@@ -597,8 +599,8 @@ function AzAPICall {
                             Write-Host "  ResourceGone | ResourceGroup not found - the resourceId '$($resourceId)' seems meanwhile deleted."
                             return [string]'meanwhile_deleted_ResourceGroupNotFound'
                         }
-                        if ($catchResult.code -eq 'ResourceTypeNotSupported') {
-                            return [string]'ResourceTypeNotSupported'
+                        if ($catchResult.code -eq 'ResourceTypeNotSupported' -or $catchResult.code -eq 'ResourceProviderNotSupported') {
+                            return [string]'ResourceTypeOrResourceProviderNotSupported'
                         }
                     }
 
