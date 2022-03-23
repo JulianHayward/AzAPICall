@@ -1,4 +1,4 @@
-﻿# AzAPICall 
+﻿# AzAPICall
 
 [![PowerShell Gallery Version (including pre-releases)](https://img.shields.io/powershellgallery/v/AzAPICall?include_prereleases&label=PowerShell%20Gallery)](https://www.powershellgallery.com/packages/AzAPICall)
 
@@ -34,6 +34,8 @@ Initialize AzAPICall
 $parameters4AzAPICallModule = @{
     #SubscriptionId4AzContext = $null #specify Subscription Id
     #DebugAzAPICall = $true
+    #writeMethod = 'Output' #Debug, Error, Host, Information, Output, Progress, Verbose, Warning (default: host)
+    #debugWriteMethod = 'Warning' #Debug, Error, Host, Information, Output, Progress, Verbose, Warning (default: host)
 }
 $azAPICallConf = initAzAPICall @parameters4AzAPICallModule
 ```
@@ -78,6 +80,8 @@ By default, endPoints return results in batches of e.g. `100`. You can increase 
 | ----------------------------- | :-------: | ------------------------------------------------------------------------------------- | :------: |
 | DebugAzAPICall			    | `bool`	| Set to `true` to enable debug output                | 		   |
 | SubscriptionId4AzContext		| `string`	| Specify if specific subscription should be used for the AzContext (Subscription Id / GUID) | 		   |
+| writeMethod		| `string`	| Write method. Debug, Error, Host, Information, Output, Progress, Verbose, Warning (default: host) | 		   |
+| debugWriteMethod		| `string`	| Write method in case of wanted or enforced debug. Debug, Error, Host, Information, Output, Progress, Verbose, Warning (default: host) | 		   |
 
 ### AzAPICall Tracking
 

@@ -1,7 +1,11 @@
 param(
     [Parameter()]
     [switch]
-    $test
+    $test,
+
+    [Parameter()]
+    [switch]
+    $zip
 )
 
 $ErrorActionPreference = 'Stop'
@@ -14,6 +18,16 @@ if (-not $test) {
     if ($latestAzAPICallVersionInGallery -eq $latestAzAPICallVersionInDev) {
         Write-Host "Version conflict (Gallery/Dev):  $latestAzAPICallVersionInGallery = $latestAzAPICallVersionInDev"
         Write-Host 'For testing use switch parameter -test'
+        throw
+    }
+}
+
+if (Test-Path .\pwsh\module\build\AzAPICall.zip) {
+    try {
+        Remove-Item -Path .\pwsh\module\build\AzAPICall.zip -Verbose -ErrorAction Stop
+    }
+    catch {
+        Write-Host ' Cleaning build for AzAPICall.zip failed'
         throw
     }
 }
@@ -69,6 +83,14 @@ try {
 }
 catch {
     Write-Host ' Copy AzAPICall.psm1 failed'
+    Throw
+}
+
+try {
+    Compress-Archive -Path .\pwsh\module\build\AzAPICall -DestinationPath .\pwsh\module\build\AzAPICall.zip
+}
+catch {
+    Write-Host ' Compress-Archive of build\AzAPICall failed'
     Throw
 }
 

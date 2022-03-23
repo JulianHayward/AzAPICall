@@ -8,7 +8,7 @@ function testUserType {
     $userType = 'n/a'
     if ($AzAPICallConfiguration['checkContext'].Account.Type -eq 'User') {
         $currentTask = 'Check AAD UserType'
-        Write-Host " $currentTask"
+        Logging -preventWriteOutput $true -logMessage " $currentTask"
         $uri = $AzAPICallConfiguration['azAPIEndpointUrls'].MicrosoftGraph + '/v1.0/me?$select=userType'
         $method = 'GET'
         $checkUserType = AzAPICall -AzAPICallConfiguration $AzAPICallConfiguration -uri $uri -method $method -listenOn 'Content' -currentTask $currentTask
@@ -19,8 +19,8 @@ function testUserType {
         else {
             $userType = $checkUserType.UserType
         }
-        Write-Host "  AAD UserType: $($userType)" -ForegroundColor Yellow
-        Write-Host '  AAD UserType check succeeded' -ForegroundColor Green
+        Logging -preventWriteOutput $true -logMessage "  AAD UserType: $($userType)" -logMessageForegroundColor 'Yellow'
+        Logging -preventWriteOutput $true -logMessage '  AAD UserType check succeeded' -logMessageForegroundColor 'Green'
     }
-    Write-Output $userType
+    return $userType
 }

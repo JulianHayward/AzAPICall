@@ -2,12 +2,28 @@
     [CmdletBinding()]
     Param
     (
-        [Parameter(Mandatory)][string]$AzAccountsVersion,
-        [Parameter(Mandatory)][string]$GitHubRepository,
-        [Parameter(Mandatory)][bool]$DebugAzAPICall
+        [Parameter(Mandatory)]
+        [string]
+        $AzAccountsVersion,
+
+        [Parameter(Mandatory)]
+        [string]
+        $GitHubRepository,
+
+        [Parameter(Mandatory)]
+        [bool]
+        $DebugAzAPICall,
+
+        [Parameter(Mandatory)]
+        [string]
+        $writeMethod,
+
+        [Parameter(Mandatory)]
+        [string]
+        $debugWriteMethod
     )
 
-    Write-Host ' Create htParameters'
+    Logging -preventWriteOutput $true -logMessage ' Create htParameters'
     #region codeRunPlatform
     $onAzureDevOps = $false
     $onAzureDevOpsOrGitHubActions = $false
@@ -36,20 +52,33 @@
     else {
         $codeRunPlatform = 'Console'
     }
-    Write-Host '  codeRunPlatform:' $codeRunPlatform
+    Logging -preventWriteOutput $true -logMessage "  codeRunPlatform: $codeRunPlatform"
     #endregion codeRunPlatform
 
 
     if ($DebugAzAPICall) {
-        write-host '  AzAPICall debug enabled' -ForegroundColor Cyan
+        switch ($debugWriteMethod) {
+            'Debug' { Write-Debug '  AzAPICall debug enabled' }
+            'Error' { Write-Error '  AzAPICall debug enabled' }
+            'Host' { Write-Host '  AzAPICall debug enabled' -ForegroundColor 'Cyan' }
+            'Information' { Write-Information '  AzAPICall debug enabled' }
+            #'Output' { Write-Output '  AzAPICall debug enabled' } #Not working with a return in a function
+            'Output' { Write-Host '  AzAPICall debug enabled' -ForegroundColor 'Cyan' }
+            'Progress' { Write-Progress '  AzAPICall debug enabled' }
+            'Verbose' { Write-Verbose '  AzAPICall debug enabled' -verbose }
+            'Warning' { Write-Warning '  AzAPICall debug enabled' }
+            Default { Write-Host '  AzAPICall debug enabled' -ForegroundColor 'Cyan' }
+        }
     }
     else {
-        write-host '  AzAPICall debug disabled' -ForegroundColor Cyan
+        Logging -preventWriteOutput $true -logMessage '  AzAPICall debug disabled' -logMessageForegroundColor 'Cyan'
     }
 
     #Region Test-HashtableParameter
     return [ordered]@{
         debugAzAPICall               = $DebugAzAPICall
+        writeMethod                  = $writeMethod
+        debugWriteMethod             = $debugWriteMethod
         gitHubRepository             = $GitHubRepository
         psVersion                    = $PSVersionTable.PSVersion
         azAccountsVersion            = $AzAccountsVersion
