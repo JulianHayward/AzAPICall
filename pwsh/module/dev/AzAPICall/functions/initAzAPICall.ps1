@@ -9,11 +9,11 @@
 
         [Parameter()]
         [string]
-        $writeMethod = 'Host',
+        $writeMethod = 'Host',        
 
         [Parameter()]
-        [string]
-        $debugWriteMethod = 'Warning',
+        [ValidateSet('Debug', 'Error', 'Host', 'Information', 'Output', 'Progress', 'Verbose', 'Warning')]
+        $debugWriteMethod = 'Host',
 
         [Parameter()]
         [guid]
@@ -21,12 +21,29 @@
 
         [Parameter()]
         [string]
-        $GitHubRepository = 'aka.ms/AzAPICall'
+        $GitHubRepository = 'aka.ms/AzAPICall',
+
+        [Parameter()]
+        [object]
+        $AzAPICallCustomRuleSet
     )
+
 
     $AzAccountsVersion = testAzModules
 
     $AzAPICallConfiguration = @{}
+
+    Write-Host "Here" $AzAPICallCustomRuleSet.keys.Count
+    $AzAPICallConfiguration['AzAPICallRuleSet'] = @{} 
+    if ($AzAPICallCustomRuleSet) {
+        $AzAPICallConfiguration['AzAPICallRuleSet'].AzAPICallErrorHandler = $AzAPICallCustomRuleSet.AzAPICallErrorHandler
+    }
+    else {
+        $AzAPICallConfiguration['AzAPICallRuleSet'].AzAPICallErrorHandler = $funcAzAPICallErrorHandler
+    }
+
+
+    
     $AzAPICallConfiguration['htParameters'] = $null
     $AzAPICallConfiguration['htParameters'] = setHtParameters -AzAccountsVersion $AzAccountsVersion -gitHubRepository $GitHubRepository -DebugAzAPICall $DebugAzAPICall -writeMethod $writeMethod -debugWriteMethod $debugWriteMethod
     Logging -preventWriteOutput $true -logMessage '  AzAPICall htParameters:'

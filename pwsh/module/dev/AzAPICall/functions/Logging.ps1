@@ -1,27 +1,27 @@
 ﻿function Logging {
     param (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $logMessage,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [string]
         $logMessageForegroundColor = $debugForeGroundColor,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [string]
-        $logMessageWriteMethod = $azAPICallConf.htParameters.writeMethod,
+        $logMessageWriteMethod = $azAPICallConfiguration.htParameters.writeMethod,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [bool]
         $preventWriteOutput
     )
 
-    if(-not $logMessageForegroundColor) {
+    if (-not $logMessageForegroundColor) {
         $logMessageForegroundColor = 'Cyan'
     }
 
-    if(-not $logMessageWriteMethod -or $preventWriteOutput) {
+    if (-not $logMessageWriteMethod -or $preventWriteOutput) {
         $logMessageWriteMethod = 'Warning'
     }
 

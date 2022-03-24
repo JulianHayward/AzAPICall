@@ -12,7 +12,7 @@
     RootModule        = 'AzAPICall.psm1'
 
     # Version number of this module.
-    ModuleVersion     = '1.1.3'
+    ModuleVersion     = '1.0.4'
 
     # Supported PSEditions
     # CompatiblePSEditions = @()
@@ -21,7 +21,7 @@
     GUID              = '16c6ca00-2411-4546-a483-6f7bb815670f'
 
     # Author of this module
-    Author            = 'Julian Hayward'
+    Author            = 'Julian Hayward, Kai Schulz'
 
     # Company or vendor of this module
     CompanyName       = 'Unknown'
@@ -69,8 +69,8 @@
     # NestedModules = @()
 
     # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-    FunctionsToExport = @('AzAPICall', 'initAzAPICall', 'getAzAPICallFunctions')
-
+    FunctionsToExport = @('AzAPICall', 'initAzAPICall', 'getAzAPICallFunctions', 'getAzAPICallRuleSet')
+            
     # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
     CmdletsToExport   = ''
 
