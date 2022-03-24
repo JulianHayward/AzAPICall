@@ -105,7 +105,12 @@ function AzAPICall {
 
     #Set defaults
     if (-not $method) { $method = 'GET' }
-    if (-not $currentTask) { $currentTask = $method + ' ' + $uri }
+    if (-not $currentTask) {
+        $currentTask = $method + ' ' + $uri
+        if ($body) {
+            $currentTask += ' ' + $body
+        }
+    }
     if ($validateAccess) { $noPaging = $true }
 
     $tryCounter = 0
@@ -246,7 +251,11 @@ function AzAPICall {
                 StatusCodePhrase                     = $actualStatusCodePhrase
             })
 
-        debugAzAPICall -debugMessage "attempt#$($tryCounter) processing: $($currenttask) uri: '$($uri)'"
+        $message = "attempt#$($tryCounter) processing: $($currenttask) uri: '$($uri)'"
+        if ($body) {
+            $message += " body: '$($body | Out-String)'"
+        }
+        debugAzAPICall -debugMessage $message
         if ($unexpectedError -eq $false) {
             debugAzAPICall -debugMessage 'unexpectedError: false'
             if ($azAPIRequest.StatusCode -notin 200..204) {
@@ -738,6 +747,9 @@ function AzAPICall {
                         else {
                             $uri = $azAPIRequestConvertedFromJson.nextLink
                             $notTryCounter = $true
+                            if($uri -match ':443'){
+                                $uri = $uri.replace(':443','')
+                            }
                         }
                         debugAzAPICall -debugMessage "nextLink: $Uri"
                     }
