@@ -1,7 +1,7 @@
 #needs special handling
 
 function AzAPICallErrorHandler {
-    Logging -preventWriteOutput $true -logMessage ' * BuiltIn RuleSet'
+    #Logging -preventWriteOutput $true -logMessage ' * BuiltIn RuleSet'
 
     switch ($uri) {
         #ARM

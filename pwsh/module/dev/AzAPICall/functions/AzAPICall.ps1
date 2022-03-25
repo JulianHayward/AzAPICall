@@ -85,10 +85,6 @@
         [int32]
         $skipOnErrorCode
     )
-    # foreach ($k in $AzAPICallConfiguration.Keys) {
-    #     Write-Host $k
-    # }
-    $function:AzAPICallErrorHandler = $AzAPICallConfiguration['AzAPICallRuleSet'].AzAPICallErrorHandler
 
     function debugAzAPICall {
         param (
@@ -99,10 +95,10 @@
 
         if ($doDebugAzAPICall -or $tryCounter -gt 3) {
             if ($doDebugAzAPICall) {
-                Logging -preventWriteOutput $true -logMessage "  DEBUGTASK: $debugMessage" -logMessageWriteMethod $azAPICallConfiguration.htParameters.debugWriteMethod
+                Logging -preventWriteOutput $true -logMessage "  DEBUGTASK: $debugMessage" -logMessageWriteMethod $azAPICallConfiguration['htParameters'].debugWriteMethod
             }
             if (-not $doDebugAzAPICall -and $tryCounter -gt 3) {
-                Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $debugMessage" -logMessageWriteMethod $azAPICallConfiguration.htParameters.debugWriteMethod
+                Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $debugMessage" -logMessageWriteMethod $azAPICallConfiguration['htParameters'].debugWriteMethod
             }
         }
     }
@@ -254,6 +250,7 @@
             debugAzAPICall -debugMessage 'unexpectedError: false'
             if ($azAPIRequest.StatusCode -notin 200..204) {
                 debugAzAPICall -debugMessage "apiStatusCode: '$($azAPIRequest.StatusCode)'"
+                $function:AzAPICallErrorHandler = $AzAPICallConfiguration['AzAPICallRuleSet'].AzAPICallErrorHandler
                 $AzAPICallErrorHandlerResponse = AzAPICallErrorHandler -AzAPICallConfiguration $AzAPICallConfiguration -uri $uri -catchResult $catchResult -currentTask $currentTask -tryCounter $tryCounter
                 Write-host ($AzAPICallErrorHandlerResponse | convertto-json)
                 switch ($AzAPICallErrorHandlerResponse.action) {
