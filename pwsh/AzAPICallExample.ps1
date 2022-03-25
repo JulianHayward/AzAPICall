@@ -95,7 +95,7 @@ if (-not $DevMode) {
     do {
         $importAzAPICallModuleSuccess = $false
         try {
-        
+
             if (-not $azAPICallVersion) {
                 Write-Host '  Check latest module version'
                 try {
@@ -185,7 +185,7 @@ if (-not $DevMode) {
                     }
                     elseif ($installAzAPICallModuleUserChoice -eq 'n') {
                         Write-Host '  AzAPICall module is required, please visit https://aka.ms/AZAPICall or https://www.powershellgallery.com/packages/AzAPICall'
-                        throw '  AzAPICall module is required' 
+                        throw '  AzAPICall module is required'
                     }
                     else {
                         Write-Host "  Accepted input 'y' or 'n'; start over.."
@@ -208,10 +208,10 @@ else {
 #region customRuleSet
 Write-Host "Custom RuleSet 'AzAPICall'"
 getAzAPICallRuleSet | Out-File .\pwsh\AzAPICallCustomRuleSet.ps1
-    
+
 Write-Host 'Now it´s your turn to customize file: .\pwsh\AzAPICallCustomRuleSet.ps1'
 Write-Host "*Remember to enable the 'AzAPICallCustomRuleSet' parameter in the splat!"
-pause 
+pause
 if (Test-Path ".\pwsh\AzAPICallCustomRuleSet.ps1" -PathType leaf) {
     $AzAPICallCustomRuleSet = @{
         AzAPICallErrorHandler = get-content -path .\pwsh\AzAPICallCustomRuleSet.ps1 -Raw
@@ -223,8 +223,10 @@ if (Test-Path ".\pwsh\AzAPICallCustomRuleSet.ps1" -PathType leaf) {
 Write-Host "Splat for 'initAzAPICall'"
 $parameters4AzAPICallModule = @{
     #SubscriptionId4AzContext = $null #enter subscriptionId for AzContext
-    #DebugAzAPICall = $true
-    #AzAPICallCustomRuleSet = $AzAPICallCustomRuleSet #enable if custom ruleSet shall apply
+    DebugAzAPICall = $true
+    writeMethod = 'Host'
+    debugWriteMethod = 'Host'
+    AzAPICallCustomRuleSet = $AzAPICallCustomRuleSet #enable if custom ruleSet shall apply
 }
 
 Write-Host "Initialize 'AzAPICall'"
@@ -232,9 +234,9 @@ $azAPICallConf = initAzAPICall @parameters4AzAPICallModule
 Write-Host "Initialize 'AzAPICall' ($(((Get-Module -Name AzAPICall).Version).ToString())) succeeded" -ForegroundColor Green
 #endregion initAZAPICall
 
-#getting some functions for foreach-parallel (using:) - currently measuring performance ':using' vs 'Import-Module' 
+#getting some functions for foreach-parallel (using:) - currently measuring performance ':using' vs 'Import-Module'
 $AzAPICallFunctions = getAzAPICallFunctions
-
+PAUSE
 #region Main
 # Example calls
 
@@ -318,7 +320,7 @@ if (-not $NoPsParallelization) {
         else {
             Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].azAPICallModuleVersion -Force -ErrorAction Stop
         }
-        
+
         #Import-Module .\pwsh\module\build\AzAPICall\AzAPICall.psd1 -Force -ErrorAction Stop
         #specific for this operation
         $htAzureAdGroupDetails = $using:htAzureAdGroupDetails

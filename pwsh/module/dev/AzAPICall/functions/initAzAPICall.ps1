@@ -8,11 +8,13 @@
         $DebugAzAPICall = $false,
 
         [Parameter()]
+        #[ValidateSet('Debug', 'Error', 'Host', 'Information', 'Output', 'Progress', 'Verbose', 'Warning')]
         [string]
-        $writeMethod = 'Host',        
+        $writeMethod = 'Host',
 
         [Parameter()]
-        [ValidateSet('Debug', 'Error', 'Host', 'Information', 'Output', 'Progress', 'Verbose', 'Warning')]
+        #[ValidateSet('Debug', 'Error', 'Host', 'Information', 'Output', 'Progress', 'Verbose', 'Warning')]
+        [string]
         $debugWriteMethod = 'Host',
 
         [Parameter()]
@@ -28,13 +30,14 @@
         $AzAPICallCustomRuleSet
     )
 
+    $AzAPICallConfiguration = @{}
+    $AzAPICallConfiguration['htParameters'] = @{}
+    $AzAPICallConfiguration['htParameters'].writeMethod = $writeMethod
+    $AzAPICallConfiguration['htParameters'].debugWriteMethod = $debugWriteMethod
 
     $AzAccountsVersion = testAzModules
 
-    $AzAPICallConfiguration = @{}
-
-    Write-Host "Here" $AzAPICallCustomRuleSet.keys.Count
-    $AzAPICallConfiguration['AzAPICallRuleSet'] = @{} 
+    $AzAPICallConfiguration['AzAPICallRuleSet'] = @{}
     if ($AzAPICallCustomRuleSet) {
         $AzAPICallConfiguration['AzAPICallRuleSet'].AzAPICallErrorHandler = $AzAPICallCustomRuleSet.AzAPICallErrorHandler
     }
@@ -43,9 +46,7 @@
     }
 
 
-    
-    $AzAPICallConfiguration['htParameters'] = $null
-    $AzAPICallConfiguration['htParameters'] = setHtParameters -AzAccountsVersion $AzAccountsVersion -gitHubRepository $GitHubRepository -DebugAzAPICall $DebugAzAPICall -writeMethod $writeMethod -debugWriteMethod $debugWriteMethod
+    $AzAPICallConfiguration['htParameters'] = setHtParameters -AzAccountsVersion $AzAccountsVersion -gitHubRepository $GitHubRepository -DebugAzAPICall $DebugAzAPICall
     Logging -preventWriteOutput $true -logMessage '  AzAPICall htParameters:'
     Logging -preventWriteOutput $true -logMessage "($AzAPICallConfiguration['htParameters'] | format-table -AutoSize | Out-String)"
     Logging -preventWriteOutput $true -logMessage '  Create htParameters succeeded' -logMessageForegroundColor 'Green'

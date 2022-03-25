@@ -1017,11 +1017,13 @@ function initAzAPICall {
         $DebugAzAPICall = $false,
 
         [Parameter()]
+        #[ValidateSet('Debug', 'Error', 'Host', 'Information', 'Output', 'Progress', 'Verbose', 'Warning')]
         [string]
-        $writeMethod = 'Host',        
+        $writeMethod = 'Host',
 
         [Parameter()]
-        [ValidateSet('Debug', 'Error', 'Host', 'Information', 'Output', 'Progress', 'Verbose', 'Warning')]
+        #[ValidateSet('Debug', 'Error', 'Host', 'Information', 'Output', 'Progress', 'Verbose', 'Warning')]
+        [string]
         $debugWriteMethod = 'Host',
 
         [Parameter()]
@@ -1037,13 +1039,14 @@ function initAzAPICall {
         $AzAPICallCustomRuleSet
     )
 
+    $AzAPICallConfiguration = @{}
+    $AzAPICallConfiguration['htParameters'] = @{}
+    $AzAPICallConfiguration['htParameters'].writeMethod = $writeMethod
+    $AzAPICallConfiguration['htParameters'].debugWriteMethod = $debugWriteMethod
 
     $AzAccountsVersion = testAzModules
 
-    $AzAPICallConfiguration = @{}
-
-    Write-Host "Here" $AzAPICallCustomRuleSet.keys.Count
-    $AzAPICallConfiguration['AzAPICallRuleSet'] = @{} 
+    $AzAPICallConfiguration['AzAPICallRuleSet'] = @{}
     if ($AzAPICallCustomRuleSet) {
         $AzAPICallConfiguration['AzAPICallRuleSet'].AzAPICallErrorHandler = $AzAPICallCustomRuleSet.AzAPICallErrorHandler
     }
@@ -1052,9 +1055,7 @@ function initAzAPICall {
     }
 
 
-    
-    $AzAPICallConfiguration['htParameters'] = $null
-    $AzAPICallConfiguration['htParameters'] = setHtParameters -AzAccountsVersion $AzAccountsVersion -gitHubRepository $GitHubRepository -DebugAzAPICall $DebugAzAPICall -writeMethod $writeMethod -debugWriteMethod $debugWriteMethod
+    $AzAPICallConfiguration['htParameters'] = setHtParameters -AzAccountsVersion $AzAccountsVersion -gitHubRepository $GitHubRepository -DebugAzAPICall $DebugAzAPICall
     Logging -preventWriteOutput $true -logMessage '  AzAPICall htParameters:'
     Logging -preventWriteOutput $true -logMessage "($AzAPICallConfiguration['htParameters'] | format-table -AutoSize | Out-String)"
     Logging -preventWriteOutput $true -logMessage '  Create htParameters succeeded' -logMessageForegroundColor 'Green'
@@ -1152,7 +1153,9 @@ function Logging {
     }
 
     if (-not $logMessageWriteMethod -or $preventWriteOutput) {
-        $logMessageWriteMethod = 'Warning'
+        if (-not $logMessageWriteMethod -and $logMessageWriteMethod -ne 'Output' ) {
+            $logMessageWriteMethod = 'Warning'
+        }
     }
 
     switch ($logMessageWriteMethod) {
@@ -1238,15 +1241,7 @@ function setHtParameters {
 
         [Parameter(Mandatory)]
         [bool]
-        $DebugAzAPICall,
-
-        [Parameter(Mandatory)]
-        [string]
-        $writeMethod,
-
-        [Parameter(Mandatory)]
-        [string]
-        $debugWriteMethod
+        $DebugAzAPICall
     )
 
     Logging -preventWriteOutput $true -logMessage ' Create htParameters'
@@ -1283,28 +1278,15 @@ function setHtParameters {
 
 
     if ($DebugAzAPICall) {
-        switch ($debugWriteMethod) {
-            'Debug' { Write-Debug '  AzAPICall debug enabled' }
-            'Error' { Write-Error '  AzAPICall debug enabled' }
-            'Host' { Write-Host '  AzAPICall debug enabled' -ForegroundColor 'Cyan' }
-            'Information' { Write-Information '  AzAPICall debug enabled' }
-            #'Output' { Write-Output '  AzAPICall debug enabled' } #Not working with a return in a function
-            'Output' { Write-Host '  AzAPICall debug enabled' -ForegroundColor 'Cyan' }
-            'Progress' { Write-Progress '  AzAPICall debug enabled' }
-            'Verbose' { Write-Verbose '  AzAPICall debug enabled' -verbose }
-            'Warning' { Write-Warning '  AzAPICall debug enabled' }
-            Default { Write-Host '  AzAPICall debug enabled' -ForegroundColor 'Cyan' }
-        }
+        Logging -preventWriteOutput $true -logMessage '  AzAPICall debug enabled' -logMessageForegroundColor 'Cyan'
     }
     else {
         Logging -preventWriteOutput $true -logMessage '  AzAPICall debug disabled' -logMessageForegroundColor 'Cyan'
     }
 
     #Region Test-HashtableParameter
-    return [ordered]@{
+    $htParam = [ordered]@{
         debugAzAPICall               = $DebugAzAPICall
-        writeMethod                  = $writeMethod
-        debugWriteMethod             = $debugWriteMethod
         gitHubRepository             = $GitHubRepository
         psVersion                    = $PSVersionTable.PSVersion
         azAccountsVersion            = $AzAccountsVersion
@@ -1314,6 +1296,8 @@ function setHtParameters {
         onAzureDevOps                = [bool]$onAzureDevOps
         onGitHubActions              = [bool]$onGitHubActions
     }
+
+    return ($AzAPICallConfiguration['htParameters'] += $htParam)
     #EndRegion Test-HashtableParameter
 }
 function testAzModules {

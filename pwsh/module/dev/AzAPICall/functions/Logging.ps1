@@ -22,7 +22,9 @@
     }
 
     if (-not $logMessageWriteMethod -or $preventWriteOutput) {
-        $logMessageWriteMethod = 'Warning'
+        if (-not $logMessageWriteMethod -and $logMessageWriteMethod -ne 'Output' ) {
+            $logMessageWriteMethod = 'Warning'
+        }
     }
 
     switch ($logMessageWriteMethod) {

@@ -1,11 +1,7 @@
 param(
     [Parameter()]
     [switch]
-    $test,
-
-    [Parameter()]
-    [switch]
-    $zip
+    $test
 )
 
 $ErrorActionPreference = 'Stop'

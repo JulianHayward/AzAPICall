@@ -83,6 +83,7 @@ By default, endPoints return results in batches of e.g. `100`. You can increase 
 | SubscriptionId4AzContext		| `string`	| Specify if specific subscription should be used for the AzContext (Subscription Id / GUID) | 		   |
 | writeMethod		| `string`	| Write method. Debug, Error, Host, Information, Output, Progress, Verbose, Warning (default: host) | 		   |
 | debugWriteMethod		| `string`	| Write method in case of wanted or enforced debug. Debug, Error, Host, Information, Output, Progress, Verbose, Warning (default: host) | 		   |
+| AzAPICallCustomRuleSet | `JULIAN`	| JULIAN |  |
 
 ### AzAPICall Tracking
 
