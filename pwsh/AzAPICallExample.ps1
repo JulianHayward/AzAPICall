@@ -223,9 +223,9 @@ if (Test-Path ".\pwsh\AzAPICallCustomRuleSet.ps1" -PathType leaf) {
 Write-Host "Splat for 'initAzAPICall'"
 $parameters4AzAPICallModule = @{
     #SubscriptionId4AzContext = $null #enter subscriptionId for AzContext
-    DebugAzAPICall = $true
-    writeMethod = 'Host'
-    debugWriteMethod = 'Host'
+    DebugAzAPICall         = $true
+    writeMethod            = 'Host'
+    debugWriteMethod       = 'Host'
     AzAPICallCustomRuleSet = $AzAPICallCustomRuleSet #enable if custom ruleSet shall apply
 }
 
@@ -236,7 +236,7 @@ Write-Host "Initialize 'AzAPICall' ($(((Get-Module -Name AzAPICall).Version).ToS
 
 #getting some functions for foreach-parallel (using:) - currently measuring performance ':using' vs 'Import-Module'
 $AzAPICallFunctions = getAzAPICallFunctions
-PAUSE
+
 #region Main
 # Example calls
 

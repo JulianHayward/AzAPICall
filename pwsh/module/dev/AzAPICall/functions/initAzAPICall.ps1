@@ -8,13 +8,11 @@
         $DebugAzAPICall = $false,
 
         [Parameter()]
-        #[ValidateSet('Debug', 'Error', 'Host', 'Information', 'Output', 'Progress', 'Verbose', 'Warning')]
-        [string]
+        [ValidateSet('Debug', 'Error', 'Host', 'Information', 'Output', 'Progress', 'Verbose', 'Warning')]
         $writeMethod = 'Host',
 
         [Parameter()]
-        #[ValidateSet('Debug', 'Error', 'Host', 'Information', 'Output', 'Progress', 'Verbose', 'Warning')]
-        [string]
+        [ValidateSet('Debug', 'Error', 'Host', 'Information', 'Output', 'Progress', 'Verbose', 'Warning')]
         $debugWriteMethod = 'Host',
 
         [Parameter()]

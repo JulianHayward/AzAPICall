@@ -1,9 +1,8 @@
 #needs special handling
 
 function AzAPICallErrorHandler {
-    
-    Write-Host "BuiltIn RuleSet" -ForegroundColor Magenta
-    #Write-Host "Checking uri:" $uri -ForegroundColor Magenta
+    Logging -preventWriteOutput $true -logMessage ' * BuiltIn RuleSet'
+
     switch ($uri) {
         #ARM
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/Microsoft.PolicyInsights/policyStates/latest/summarize*" } { $getARMPolicyComplianceStates = $true }
@@ -21,21 +20,7 @@ function AzAPICallErrorHandler {
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/servicePrincipals/*/getMemberGroups" } { $getMicrosoftGraphServicePrincipalGetMemberGroups = $true }
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/*/roleManagement/directory/roleAssignmentSchedules*" } { $getMicrosoftGraphRoleAssignmentSchedules = $true }
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/*/roleManagement/directory/roleAssignmentScheduleInstances*" } { $getMicrosoftGraphRoleAssignmentScheduleInstances = $true }
-        #testing customRule
-        #{ $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/subscriptions/*" } { $getSubs = $true; write-Host 'testrule: getSubs' }
-        #default { return $null }
     }
-
-
-    #testRule getSubs
-    # if ($getSubs -and $catchResult.error.code -eq 'SubscriptionNotFound') {
-    #     Write-Host "skipping request $currentTask #$tryCounter - $uri"
-    #     $response = @{
-    #         return = $null
-    #         action = 'break'
-    #     }
-    #     return $response
-    # }
 
     if (
                         ($getARMPolicyComplianceStates -and (
@@ -44,7 +29,7 @@ function AzAPICallErrorHandler {
                         )
     ) {
         if ($catchResult.error.code -like '*ResponseTooLarge*') {
-            Write-Host "Info: $currentTask - (StatusCode: '$($azAPIRequest.StatusCode)') Response too large, skipping this scope."
+            Logging -preventWriteOutput $true -logMessage "Info: $currentTask - (StatusCode: '$($azAPIRequest.StatusCode)') Response too large, skipping this scope."
             $response = @{
                 action    = 'return' #break or return
                 returnMsg = 'ResponseTooLarge'
@@ -53,7 +38,7 @@ function AzAPICallErrorHandler {
         }
         if (-not $catchResult.error.code) {
             #seems API now returns null instead of 'ResponseTooLarge'
-            Write-Host "Info: $currentTask - (StatusCode: '$($azAPIRequest.StatusCode)') Response empty - handle like 'Response too large', skipping this scope."
+            Logging -preventWriteOutput $true -logMessage "Info: $currentTask - (StatusCode: '$($azAPIRequest.StatusCode)') Response empty - handle like 'Response too large', skipping this scope."
             $response = @{
                 action    = 'return' #break or return
                 returnMsg = 'ResponseTooLarge'
@@ -62,18 +47,18 @@ function AzAPICallErrorHandler {
         }
     }
     elseif ($catchResult.error.message -like '*The offer MS-AZR-0110P is not supported*') {
-        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - seems we´re hitting a malicious endpoint .. try again in $tryCounter second(s)"
+        Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - seems we´re hitting a malicious endpoint .. try again in $tryCounter second(s)"
         Start-Sleep -Seconds $tryCounter
     }
 
     elseif ($catchResult.error.code -like '*GatewayTimeout*' -or $catchResult.error.code -like '*BadGatewayConnection*' -or $catchResult.error.code -like '*InvalidGatewayHost*' -or $catchResult.error.code -like '*ServerTimeout*' -or $catchResult.error.code -like '*ServiceUnavailable*' -or $catchResult.code -like '*ServiceUnavailable*' -or $catchResult.error.code -like '*MultipleErrorsOccurred*' -or $catchResult.code -like '*InternalServerError*' -or $catchResult.error.code -like '*InternalServerError*' -or $catchResult.error.code -like '*RequestTimeout*' -or $catchResult.error.code -like '*UnknownError*' -or $catchResult.error.code -eq '500') {
-        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again in $tryCounter second(s)"
+        Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again in $tryCounter second(s)"
         Start-Sleep -Seconds $tryCounter
     }
 
     elseif ($catchResult.error.code -like '*AuthorizationFailed*') {
         if ($validateAccess) {
-            #Write-Host "$currentTask failed ('$($catchResult.error.code)' | '$($catchResult.error.message)')" -ForegroundColor DarkRed
+            #Logging -preventWriteOutput $true -logMessage "$currentTask failed ('$($catchResult.error.code)' | '$($catchResult.error.message)')" -ForegroundColor DarkRed
             $response = @{
                 action    = 'return' #break or return
                 returnMsg = 'failed'
@@ -82,13 +67,13 @@ function AzAPICallErrorHandler {
         }
         else {
             if ($retryAuthorizationFailedCounter -gt $retryAuthorizationFailed) {
-                Write-Host '- - - - - - - - - - - - - - - - - - - - '
-                Write-Host "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository) and provide the following dump" -ForegroundColor Yellow
-                Write-Host "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - $retryAuthorizationFailed retries failed - EXIT"
-                Write-Host ''
-                Write-Host 'Parameters:'
+                Logging -preventWriteOutput $true -logMessage '- - - - - - - - - - - - - - - - - - - - '
+                Logging -preventWriteOutput $true -logMessage "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository) and provide the following dump" -ForegroundColor Yellow
+                Logging -preventWriteOutput $true -logMessage "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - $retryAuthorizationFailed retries failed - EXIT"
+                Logging -preventWriteOutput $true -logMessage ''
+                Logging -preventWriteOutput $true -logMessage 'Parameters:'
                 foreach ($htParameter in ($AzApiCallConfiguration['htParameters'].Keys | Sort-Object)) {
-                    Write-Host "$($htParameter):$($AzApiCallConfiguration['htParameters'].($htParameter))"
+                    Logging -preventWriteOutput $true -logMessage "$($htParameter):$($AzApiCallConfiguration['htParameters'].($htParameter))"
                 }
                 Throw 'Error: check the last console output for details'
             }
@@ -99,14 +84,14 @@ function AzAPICallErrorHandler {
                 if ($retryAuthorizationFailedCounter -gt 3) {
                     Start-Sleep -Seconds 10
                 }
-                Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - not reasonable, retry #$retryAuthorizationFailedCounter of $retryAuthorizationFailed"
+                Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - not reasonable, retry #$retryAuthorizationFailedCounter of $retryAuthorizationFailed"
                 $retryAuthorizationFailedCounter ++
             }
         }
     }
 
     elseif ($catchResult.error.code -like '*ExpiredAuthenticationToken*' -or $catchResult.error.code -like '*Authentication_ExpiredToken*' -or $catchResult.error.code -like '*InvalidAuthenticationToken*') {
-        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - requesting new bearer token ($targetEndpoint)"
+        Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - requesting new bearer token ($targetEndpoint)"
         createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
     }
 
@@ -122,7 +107,7 @@ function AzAPICallErrorHandler {
 
     ) {
         if ($catchResult.error.code -eq 404) {
-            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems Subscriptions was created only recently - skipping"
+            Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems Subscriptions was created only recently - skipping"
             $response = @{
                 action = 'returnCollection' #break or return or returnCollection
             }
@@ -130,7 +115,7 @@ function AzAPICallErrorHandler {
         }
 
         if ($catchResult.error.code -eq 'AccountCostDisabled') {
-            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems Access to cost data has been disabled for this Account - skipping CostManagement"
+            Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems Access to cost data has been disabled for this Account - skipping CostManagement"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnMsg = 'AccountCostDisabled'
@@ -139,7 +124,7 @@ function AzAPICallErrorHandler {
         }
 
         if ($catchResult.error.message -like '*does not have any valid subscriptions*') {
-            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems there are no valid Subscriptions present - skipping CostManagement"
+            Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems there are no valid Subscriptions present - skipping CostManagement"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnMsg = 'NoValidSubscriptions'
@@ -148,7 +133,7 @@ function AzAPICallErrorHandler {
         }
 
         if ($catchResult.error.code -eq 'Unauthorized') {
-            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) Unauthorized - handling as exception"
+            Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) Unauthorized - handling as exception"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnMsg = 'Unauthorized'
@@ -157,7 +142,7 @@ function AzAPICallErrorHandler {
         }
 
         if ($catchResult.error.code -eq 'BadRequest' -and $catchResult.error.message -like '*The offer*is not supported*' -and $catchResult.error.message -notlike '*The offer MS-AZR-0110P is not supported*') {
-            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) Unauthorized - handling as exception"
+            Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) Unauthorized - handling as exception"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnMsg = 'OfferNotSupported'
@@ -166,7 +151,7 @@ function AzAPICallErrorHandler {
         }
 
         if ($catchResult.error.code -eq 'BadRequest' -and $catchResult.error.message -like 'Invalid query definition*') {
-            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) Unauthorized - handling as exception"
+            Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) Unauthorized - handling as exception"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnMsg = 'InvalidQueryDefinition'
@@ -175,7 +160,7 @@ function AzAPICallErrorHandler {
         }
 
         if ($catchResult.error.code -eq 'NotFound' -and $catchResult.error.message -like '*have valid WebDirect/AIRS offer type*') {
-            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) Unauthorized - handling as exception"
+            Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) Unauthorized - handling as exception"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnMsg = 'NonValidWebDirectAIRSOfferType'
@@ -201,12 +186,12 @@ function AzAPICallErrorHandler {
     }
 
     #if (($getMicrosoftGraphApplication -or $getMicrosoftGraphServicePrincipal -or $getMicrosoftGraphGroupMembersTransitive -or $getMicrosoftGraphGroupMembersTransitiveCount) -and $catchResult.error.code -like "*Request_ResourceNotFound*") {
-    #    Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) uncertain object status - skipping for now :)"
+    #    Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) uncertain object status - skipping for now :)"
     #    return [string]"Request_ResourceNotFound"
     #}
 
     elseif ($targetEndpoint -eq 'MicrosoftGraph' -and $catchResult.error.code -like '*Request_ResourceNotFound*') {
-        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) uncertain object status - skipping for now :)"
+        Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) uncertain object status - skipping for now :)"
         $response = @{
             action    = 'return' #break or return
             returnMsg = 'Request_ResourceNotFound'
@@ -218,15 +203,15 @@ function AzAPICallErrorHandler {
         $maxTries = 7
         $sleepSec = @(1, 3, 5, 7, 10, 12, 20, 30, 40, 45)[$tryCounter]
         if ($tryCounter -gt $maxTries) {
-            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - exit"
+            Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - exit"
             Throw 'Error - check the last console output for details'
         }
-        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' sleeping $($sleepSec) seconds"
+        Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' sleeping $($sleepSec) seconds"
         start-sleep -Seconds $sleepSec
     }
 
     elseif ($currentTask -eq 'Checking AAD UserType' -and $catchResult.error.code -like '*Authorization_RequestDenied*') {
-        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) cannot get the executing user´s userType information (member/guest) - proceeding as 'unknown'"
+        Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) cannot get the executing user´s userType information (member/guest) - proceeding as 'unknown'"
         $response = @{
             action    = 'return' #break or return or returnCollection
             returnMsg = 'unknown'
@@ -236,7 +221,7 @@ function AzAPICallErrorHandler {
 
     elseif ($getMicrosoftGraphApplication -and $catchResult.error.code -like '*Authorization_RequestDenied*') {
         if ($AzApiCallConfiguration['htParameters'].userType -eq 'Guest') {
-            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - skip Application | Guest not enough permissions"
+            Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - skip Application | Guest not enough permissions"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnMsg = 'skipApplications'
@@ -244,20 +229,20 @@ function AzAPICallErrorHandler {
             return $response
         }
         else {
-            Write-Host '- - - - - - - - - - - - - - - - - - - - '
-            Write-Host "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository) and provide the following dump" -ForegroundColor Yellow
-            Write-Host "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - EXIT"
-            Write-Host ''
-            Write-Host 'Parameters:'
+            Logging -preventWriteOutput $true -logMessage '- - - - - - - - - - - - - - - - - - - - '
+            Logging -preventWriteOutput $true -logMessage "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository) and provide the following dump" -ForegroundColor Yellow
+            Logging -preventWriteOutput $true -logMessage "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - EXIT"
+            Logging -preventWriteOutput $true -logMessage ''
+            Logging -preventWriteOutput $true -logMessage 'Parameters:'
             foreach ($htParameter in ($AzApiCallConfiguration['htParameters'].Keys | Sort-Object)) {
-                Write-Host "$($htParameter):$($AzApiCallConfiguration['htParameters'].($htParameter))"
+                Logging -preventWriteOutput $true -logMessage "$($htParameter):$($AzApiCallConfiguration['htParameters'].($htParameter))"
             }
             Throw 'Authorization_RequestDenied'
         }
     }
 
     elseif ($validateAccess -and $catchResult.error.code -eq 'Authorization_RequestDenied') {
-        #Write-Host "$currentTask failed ('$($catchResult.error.code)' | '$($catchResult.error.message)')" -ForegroundColor DarkRed
+        #Logging -preventWriteOutput $true -logMessage "$currentTask failed ('$($catchResult.error.code)' | '$($catchResult.error.message)')" -ForegroundColor DarkRed
         $response = @{
             action    = 'return' #break or return or returnCollection
             returnMsg = 'failed'
@@ -267,14 +252,14 @@ function AzAPICallErrorHandler {
 
     elseif ($AzApiCallConfiguration['htParameters'].userType -eq 'Guest' -and $catchResult.error.code -eq 'Authorization_RequestDenied') {
         #https://docs.microsoft.com/en-us/azure/active-directory/enterprise-users/users-restrict-guest-permissions
-        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - exit"
-        Write-Host 'Tenant seems hardened (AAD External Identities / Guest user access = most restrictive) -> https://docs.microsoft.com/en-us/azure/active-directory/enterprise-users/users-restrict-guest-permissions'
-        Write-Host "AAD Role 'Directory readers' is required for your Guest User Account!"
+        Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - exit"
+        Logging -preventWriteOutput $true -logMessage 'Tenant seems hardened (AAD External Identities / Guest user access = most restrictive) -> https://docs.microsoft.com/en-us/azure/active-directory/enterprise-users/users-restrict-guest-permissions'
+        Logging -preventWriteOutput $true -logMessage "AAD Role 'Directory readers' is required for your Guest User Account!"
         Throw 'Error - check the last console output for details'
     }
 
     elseif ($catchResult.error.code -like '*BlueprintNotFound*') {
-        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems Blueprint definition is gone - skipping for now :)"
+        Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems Blueprint definition is gone - skipping for now :)"
         $response = @{
             action    = 'return' #break or return or returnCollection
             returnMsg = 'BlueprintNotFound'
@@ -285,14 +270,14 @@ function AzAPICallErrorHandler {
     elseif ($catchResult.error.code -eq 'ResourceRequestsThrottled' -or $catchResult.error.code -eq '429') {
         $sleepSeconds = 11
         if ($catchResult.error.code -eq 'ResourceRequestsThrottled') {
-            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - throttled! sleeping $sleepSeconds seconds"
+            Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - throttled! sleeping $sleepSeconds seconds"
             start-sleep -Seconds $sleepSeconds
         }
         if ($catchResult.error.code -eq '429') {
             if ($catchResult.error.message -like '*60 seconds*') {
                 $sleepSeconds = 60
             }
-            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - throttled! sleeping $sleepSeconds seconds"
+            Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - throttled! sleeping $sleepSeconds seconds"
             start-sleep -Seconds $sleepSeconds
         }
 
@@ -302,14 +287,14 @@ function AzAPICallErrorHandler {
         $sleepSec = @(1, 1, 2, 3, 5, 7, 9, 10, 13, 15, 20, 25, 30, 45, 60, 60, 60, 60)[$tryCounter]
         $maxTries = 15
         if ($tryCounter -gt $maxTries) {
-            Write-Host " $currentTask - capitulation after $maxTries attempts"
+            Logging -preventWriteOutput $true -logMessage " $currentTask - capitulation after $maxTries attempts"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnMsg = 'capitulation'
             }
             return $response
         }
-        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again (trying $maxTries times) in $sleepSec second(s)"
+        Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again (trying $maxTries times) in $sleepSec second(s)"
         Start-Sleep -Seconds $sleepSec
     }
 
@@ -373,15 +358,15 @@ function AzAPICallErrorHandler {
         $maxTries = 7
         $sleepSec = @(1, 3, 5, 7, 10, 12, 20, 30, 40, 45)[$tryCounter]
         if ($tryCounter -gt $maxTries) {
-            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - exit"
+            Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - exit"
             Throw 'Error - check the last console output for details'
         }
-        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' sleeping $($sleepSec) seconds"
+        Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' sleeping $($sleepSec) seconds"
         start-sleep -Seconds $sleepSec
     }
 
     elseif ($getARMMDfC -and $catchResult.error.code -eq 'Subscription Not Registered') {
-        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' skipping Subscription"
+        Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' skipping Subscription"
         $response = @{
             action    = 'return' #break or return or returnCollection
             returnMsg = 'SubScriptionNotRegistered'
@@ -393,14 +378,14 @@ function AzAPICallErrorHandler {
         $sleepSec = @(1, 3, 7, 10, 15, 20, 30)[$tryCounter]
         $maxTries = 5
         if ($tryCounter -gt $maxTries) {
-            Write-Host " $currentTask - capitulation after $maxTries attempts"
+            Logging -preventWriteOutput $true -logMessage " $currentTask - capitulation after $maxTries attempts"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnMsg = 'Request_UnsupportedQuery'
             }
             return $response
         }
-        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again (trying $maxTries times) in $sleepSec second(s)"
+        Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - try again (trying $maxTries times) in $sleepSec second(s)"
         Start-Sleep -Seconds $sleepSec
     }
 
@@ -414,7 +399,7 @@ function AzAPICallErrorHandler {
         )
     ) {
         if ($catchResult.error.code -like '*ResourceNotFound*' -or $catchResult.code -like '*ResourceNotFound*') {
-            Write-Host "  ResourceGone | The resourceId '$($resourceId)' seems meanwhile deleted."
+            Logging -preventWriteOutput $true -logMessage "  ResourceGone | The resourceId '$($resourceId)' seems meanwhile deleted."
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnMsg = 'meanwhile_deleted_ResourceNotFound'
@@ -422,7 +407,7 @@ function AzAPICallErrorHandler {
             return $response
         }
         if ($catchResult.error.code -like '*ResourceGroupNotFound*' -or $catchResult.code -like '*ResourceGroupNotFound*') {
-            Write-Host "  ResourceGone | ResourceGroup not found - the resourceId '$($resourceId)' seems meanwhile deleted."
+            Logging -preventWriteOutput $true -logMessage "  ResourceGone | ResourceGroup not found - the resourceId '$($resourceId)' seems meanwhile deleted."
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnMsg = 'meanwhile_deleted_ResourceGroupNotFound'
@@ -439,7 +424,7 @@ function AzAPICallErrorHandler {
     }
 
     elseif ($getMicrosoftGraphServicePrincipalGetMemberGroups -and $catchResult.error.code -like '*Directory_ResultSizeLimitExceeded*') {
-        Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) maximum number of groups exceeded, skipping; docs: https://docs.microsoft.com/pt-br/previous-versions/azure/ad/graph/api/functions-and-actions#getmembergroups-get-group-memberships-transitive--"
+        Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) maximum number of groups exceeded, skipping; docs: https://docs.microsoft.com/pt-br/previous-versions/azure/ad/graph/api/functions-and-actions#getmembergroups-get-group-memberships-transitive--"
         $response = @{
             action    = 'return' #break or return or returnCollection
             returnMsg = 'Directory_ResultSizeLimitExceeded'
@@ -456,26 +441,26 @@ function AzAPICallErrorHandler {
             }
             else {
                 $sleepSec = @(3, 7, 12, 20, 30, 45, 60)[$tryCounter]
-                Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) try again in $sleepSec second(s)"
+                Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) try again in $sleepSec second(s)"
                 Start-Sleep -Seconds $sleepSec
             }
         }
         elseif (-not $catchResult.code -and -not $catchResult.error.code -and -not $catchResult.message -and -not $catchResult.error.message -and $catchResult -and $tryCounter -lt 6) {
             $sleepSec = @(3, 7, 12, 20, 30, 45, 60)[$tryCounter]
-            Write-Host " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) try again in $sleepSec second(s)"
+            Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) try again in $sleepSec second(s)"
             Start-Sleep -Seconds $sleepSec
         }
         else {
-            Write-Host '- - - - - - - - - - - - - - - - - - - - '
-            Write-Host "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository) and provide the following dump" -ForegroundColor Yellow
-            Write-Host "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - EXIT"
-            Write-Host ''
-            Write-Host 'Parameters:'
+            Logging -preventWriteOutput $true -logMessage '- - - - - - - - - - - - - - - - - - - - '
+            Logging -preventWriteOutput $true -logMessage "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository) and provide the following dump" -ForegroundColor Yellow
+            Logging -preventWriteOutput $true -logMessage "$currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - EXIT"
+            Logging -preventWriteOutput $true -logMessage ''
+            Logging -preventWriteOutput $true -logMessage 'Parameters:'
             foreach ($htParameter in ($AzApiCallConfiguration['htParameters'].Keys | Sort-Object)) {
-                Write-Host "$($htParameter):$($AzApiCallConfiguration['htParameters'].($htParameter))"
+                Logging -preventWriteOutput $true -logMessage "$($htParameter):$($AzApiCallConfiguration['htParameters'].($htParameter))"
             }
             if ($getARMCostManagement) {
-                Write-Host 'If Consumption data is not that important for you, do not use parameter: -DoAzureConsumption (however, please still report the issue - thank you)'
+                Logging -preventWriteOutput $true -logMessage 'If Consumption data is not that important for you, do not use parameter: -DoAzureConsumption (however, please still report the issue - thank you)'
             }
             Throw 'Error - check the last console output for details'
         }
