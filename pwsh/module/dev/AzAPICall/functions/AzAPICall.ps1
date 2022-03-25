@@ -99,10 +99,10 @@
 
         if ($doDebugAzAPICall -or $tryCounter -gt 3) {
             if ($doDebugAzAPICall) {
-                Logging -preventWriteOutput $true -logMessage "  DEBUGTASK: $debugMessage" -logMessageWriteMethod $azAPICallConfiguration.htParameters.writeMethod
+                Logging -preventWriteOutput $true -logMessage "  DEBUGTASK: $debugMessage" -logMessageWriteMethod $azAPICallConfiguration.htParameters.debugWriteMethod
             }
             if (-not $doDebugAzAPICall -and $tryCounter -gt 3) {
-                Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $debugMessage" -logMessageWriteMethod $azAPICallConfiguration.htParameters.writeMethod
+                Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $debugMessage" -logMessageWriteMethod $azAPICallConfiguration.htParameters.debugWriteMethod
             }
         }
     }
@@ -168,7 +168,7 @@
             Write-Host 'handleSpecialURL:' $handleSpecialURL
             New-Variable -Name $handleSpecialURL -Value $true
             Write-Host 'handleSpecialURL value:' $handleSpecialURL
-            
+
         }
         #>
 
