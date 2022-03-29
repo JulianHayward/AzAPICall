@@ -5,7 +5,7 @@
         $AzAPICallConfiguration
     )
     #Region Test-Environment
-    Write-Host ' Set environment endPoint url mapping'
+    Logging -preventWriteOutput $true -logMessage ' Set environment endPoint url mapping'
 
     function testAvailable {
         [CmdletBinding()]Param(
@@ -13,16 +13,16 @@
             [string]$Endpoint,
             [string]$EnvironmentKey
         )
-        Write-Host "  Check endpoint: '$($Endpoint)'; endpoint url: '$($EndpointUrl)'"
+        Logging -preventWriteOutput $true -logMessage "  Check endpoint: '$($Endpoint)'; endpoint url: '$($EndpointUrl)'"
         if ([string]::IsNullOrWhiteSpace($EndpointUrl)) {
             if ($Endpoint -eq 'MicrosoftGraph') {
-                Write-Host "  Older Az.Accounts version in use (`$AzApiCallConfiguration.checkContext.Environment.$($EnvironmentKey) not existing). AzureEnvironmentRelatedUrls -> Setting static Microsoft Graph Url '$($legacyAzAccountsEnvironmentMicrosoftGraphUrls.($AzApiCallConfiguration['checkContext'].Environment.Name))'"
+                Logging -preventWriteOutput $true -logMessage "  Older Az.Accounts version in use (`$AzApiCallConfiguration.checkContext.Environment.$($EnvironmentKey) not existing). AzureEnvironmentRelatedUrls -> Setting static Microsoft Graph Url '$($legacyAzAccountsEnvironmentMicrosoftGraphUrls.($AzApiCallConfiguration['checkContext'].Environment.Name))'"
                 return $legacyAzAccountsEnvironmentMicrosoftGraphUrls.($AzApiCallConfiguration['checkContext'].Environment.Name)
             }
             else {
-                Write-Host "  Cannot read '$($Endpoint)' endpoint from current context (`$AzApiCallConfiguration.checkContext.Environment.$($EnvironmentKey))"
-                Write-Host "  Please check current context (Subglobalion criteria: quotaId notLike 'AAD*'; state = enabled); Install latest Az.Accounts version"
-                Write-Host ($checkContext | Format-List | Out-String)
+                Logging -preventWriteOutput $true -logMessage "  Cannot read '$($Endpoint)' endpoint from current context (`$AzApiCallConfiguration.checkContext.Environment.$($EnvironmentKey))"
+                Logging -preventWriteOutput $true -logMessage "  Please check current context (Subglobalion criteria: quotaId notLike 'AAD*'; state = enabled); Install latest Az.Accounts version"
+                Logging -preventWriteOutput $true -logMessage ($checkContext | Format-List | Out-String)
                 Throw 'Error - check the last console output for details'
             }
         }
@@ -52,6 +52,6 @@
     $AzAPICallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].LogAnalytics -split '/')[2]) = 'LogAnalytics'
     $AzAPICallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph -split '/')[2]) = 'MicrosoftGraph'
 
-    Write-Host '  Set environment endPoint url mapping succeeded' -ForegroundColor Green
-    Write-Output $AzApiCallConfiguration
+    Logging -preventWriteOutput $true -logMessage '  Set environment endPoint url mapping succeeded' -logMessageForegroundColor 'Green'
+    return $AzApiCallConfiguration
 }

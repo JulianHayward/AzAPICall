@@ -10,7 +10,7 @@
         $AzAPICallConfiguration
     )
 
-    Write-Host " +Processing new bearer token request '$targetEndPoint' ($($AzApiCallConfiguration['azAPIEndpointUrls'].$targetEndPoint))" -ForegroundColor DarkGray
+    Logging -logMessage " +Processing new bearer token request '$targetEndPoint' ($($AzApiCallConfiguration['azAPIEndpointUrls'].$targetEndPoint))"
 
     if (($AzApiCallConfiguration['azAPIEndpointUrls']).$targetEndPoint) {
 
@@ -24,9 +24,9 @@
         }
 
         if ($catchResult -ne 'letscheck') {
-            Write-Host "-ERROR processing new bearer token request ($targetEndPoint): $catchResult" -ForegroundColor Red
-            Write-Host "Likely your Azure credentials have not been set up or have expired, please run 'Connect-AzAccount -tenantId <tenantId>' to set up your Azure credentials."
-            Write-Host "It could also well be that there are multiple context in cache, please run 'Clear-AzContext' and then run 'Connect-AzAccount -tenantId <tenantId>'."
+            Logging -logMessage "-ERROR processing new bearer token request ($targetEndPoint): $catchResult" -logMessageWriteMethod 'Error'
+            Logging -logMessage "Likely your Azure credentials have not been set up or have expired, please run 'Connect-AzAccount -tenantId <tenantId>' to set up your Azure credentials."
+            Logging -logMessage "It could also well be that there are multiple context in cache, please run 'Clear-AzContext' and then run 'Connect-AzAccount -tenantId <tenantId>'."
             Throw 'Error - check the last console output for details'
         }
 
@@ -37,10 +37,10 @@
         $bearerDetails = getJWTDetails -token $newBearerAccessTokenRequest.AccessToken
         $bearerAccessTokenExpiryDateTime = $bearerDetails.expiryDateTime
         $bearerAccessTokenTimeToExpiry = $bearerDetails.timeToExpiry
-        Write-Host " +Bearer token ($targetEndPoint): [tokenRequestProcessed: '$dateTimeTokenCreated']; [expiryDateTime: '$bearerAccessTokenExpiryDateTime']; [timeUntilExpiry: '$bearerAccessTokenTimeToExpiry']" -ForegroundColor DarkGray
+        Logging -logMessage " +Bearer token ($targetEndPoint): [tokenRequestProcessed: '$dateTimeTokenCreated']; [expiryDateTime: '$bearerAccessTokenExpiryDateTime']; [timeUntilExpiry: '$bearerAccessTokenTimeToExpiry']" -logMessageForegroundColor 'DarkGray'
     }
     else {
-        Write-Host "targetEndPoint: '$targetEndPoint' unknown"
+        Logging -logMessage "targetEndPoint: '$targetEndPoint' unknown" -logMessageWriteMethod 'Error'
         throw
     }
 }

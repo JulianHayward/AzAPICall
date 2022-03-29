@@ -1,4 +1,4 @@
-﻿# AzAPICall 
+﻿# AzAPICall
 
 [![PowerShell Gallery Version (including pre-releases)](https://img.shields.io/powershellgallery/v/AzAPICall?include_prereleases&label=PowerShell%20Gallery)](https://www.powershellgallery.com/packages/AzAPICall)
 
@@ -34,6 +34,8 @@ Initialize AzAPICall
 $parameters4AzAPICallModule = @{
     #SubscriptionId4AzContext = $null #specify Subscription Id
     #DebugAzAPICall = $true
+    #writeMethod = 'Output' #Debug, Error, Host, Information, Output, Progress, Verbose, Warning (default: host)
+    #debugWriteMethod = 'Warning' #Debug, Error, Host, Information, Output, Progress, Verbose, Warning (default: host)
 }
 $azAPICallConf = initAzAPICall @parameters4AzAPICallModule
 ```
@@ -66,9 +68,10 @@ Add a new endpoint -> setAzureEnvironment.ps1
 | body	                        | `string`	| Request Body for the API request - [Example](https://docs.microsoft.com/en-us/graph/api/group-post-owners?view=graph-rest-1.0&tabs=http#request-body)	| 		   |
 | caller                        | `string`  | Set the value to `CustomDataCollection` for parallelization to have different font colors for the debug output |          |
 | consistencyLevel              | `string`  | For several [OData query parameters](https://docs.microsoft.com/en-us/graph/query-parameters) the `consistencyLevel`-header need to be set to `eventual` |          |
-| listenOn                      | `string`  | Default is `Value`. Depending to the expected response of the API call the following values are accepted: `Content`, `ContentProperties` |          |
+| listenOn                      | `string`  | Default is `Value`. Depending to the expected response of the API call the following values are accepted: `Content`, `ContentProperties` or `StatusCode` |          |
 | noPaging                      | `switch`    | If value is `true` paging will be deactivated and you will only get the defined number of `$top` results or [Resource Graph limits any query to returning only `100` records](https://docs.microsoft.com/en-us/azure/governance/resource-graph/concepts/work-with-data). Otherwise, you can use `$top` to increase the result batches from default `100` up to `999` for the `AzAPICall`. Value for `$top` must range from 1 to 999 |          |
 | validateAccess                | `switch`    | Use this parameter if you only want to validate that the requester has permissions to the enpoint, if authorization is denied AzAPICall returns 'failed'. (Using `-validateAccess` will set `noPaging` to `true`)                                                                                |          |
+| skipOnErrorCode                | `int32`    | In some cases _(e.g. trying to add a user to a group were the user is already a member of)_ the API responde with an http status code 400. This is an expected error. To not throw an error and exit the script, you can use this parameter and set an expected error status code like `400`. _(example: .error.message: 'One or more added object references already exist for the following modified properties: 'members'.')_ |          |
 
 ### Good to know
 By default, endPoints return results in batches of e.g. `100`. You can increase the return count defining e.g. `$top=999` (`$top` requires use of `consistencyLevel` = `eventual`)
@@ -78,6 +81,9 @@ By default, endPoints return results in batches of e.g. `100`. You can increase 
 | ----------------------------- | :-------: | ------------------------------------------------------------------------------------- | :------: |
 | DebugAzAPICall			    | `bool`	| Set to `true` to enable debug output                | 		   |
 | SubscriptionId4AzContext		| `string`	| Specify if specific subscription should be used for the AzContext (Subscription Id / GUID) | 		   |
+| writeMethod		| `string`	| Write method. Debug, Error, Host, Information, Output, Progress, Verbose, Warning (default: host) | 		   |
+| debugWriteMethod		| `string`	| Write method in case of wanted or enforced debug. Debug, Error, Host, Information, Output, Progress, Verbose, Warning (default: host) | 		   |
+| AzAPICallCustomRuleSet | `JULIAN`	| JULIAN |  |
 
 ### AzAPICall Tracking
 

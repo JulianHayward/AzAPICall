@@ -19,7 +19,7 @@
         [Parameter(Mandatory)][string]$token
     )
     #JWTDetails https://www.powershellgallery.com/packages/JWTDetails/1.0.2
-    if (!$token -contains ('.') -or !$token.StartsWith('eyJ')) { Write-Error 'Invalid token' -ErrorAction Stop }
+    if (!$token -contains ('.') -or !$token.StartsWith('eyJ')) { Logging -preventWriteOutput $true -logMessage 'Invalid token' -logMessageWriteMethod 'Error' -ErrorAction Stop }
 
     #Token
     foreach ($i in 0..1) {
@@ -32,8 +32,6 @@
     }
 
     $decodedToken = [System.Text.Encoding]::UTF8.GetString([convert]::FromBase64String($data)) | ConvertFrom-Json
-    Write-Verbose 'JWT Token:'
-    Write-Verbose $decodedToken
 
     #Signature
     foreach ($i in 0..2) {
@@ -44,8 +42,6 @@
             3 { $sig += '=' }
         }
     }
-    Write-Verbose 'JWT Signature:'
-    Write-Verbose $sig
     $decodedToken | Add-Member -Type NoteProperty -Name 'sig' -Value $sig
 
     #Convert Expiry time to PowerShell DateTime

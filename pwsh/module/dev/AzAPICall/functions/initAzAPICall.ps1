@@ -8,67 +8,91 @@
         $DebugAzAPICall = $false,
 
         [Parameter()]
+        [ValidateSet('Debug', 'Error', 'Host', 'Information', 'Output', 'Progress', 'Verbose', 'Warning')]
+        $writeMethod = 'Host',
+
+        [Parameter()]
+        [ValidateSet('Debug', 'Error', 'Host', 'Information', 'Output', 'Progress', 'Verbose', 'Warning')]
+        $debugWriteMethod = 'Host',
+
+        [Parameter()]
         [guid]
         $SubscriptionId4AzContext,
 
         [Parameter()]
         [string]
-        $GitHubRepository = 'aka.ms/AzAPICall'
+        $GitHubRepository = 'aka.ms/AzAPICall',
+
+        [Parameter()]
+        [object]
+        $AzAPICallCustomRuleSet
     )
+
+    $AzAPICallConfiguration = @{}
+    $AzAPICallConfiguration['htParameters'] = @{}
+    $AzAPICallConfiguration['htParameters'].writeMethod = $writeMethod
+    $AzAPICallConfiguration['htParameters'].debugWriteMethod = $debugWriteMethod
 
     $AzAccountsVersion = testAzModules
 
-    $AzAPICallConfiguration = @{}
-    $AzAPICallConfiguration['htParameters'] = $null
+    $AzAPICallConfiguration['AzAPICallRuleSet'] = @{}
+    if ($AzAPICallCustomRuleSet) {
+        $AzAPICallConfiguration['AzAPICallRuleSet'].AzAPICallErrorHandler = $AzAPICallCustomRuleSet.AzAPICallErrorHandler
+    }
+    else {
+        $AzAPICallConfiguration['AzAPICallRuleSet'].AzAPICallErrorHandler = $funcAzAPICallErrorHandler
+    }
+
+
     $AzAPICallConfiguration['htParameters'] = setHtParameters -AzAccountsVersion $AzAccountsVersion -gitHubRepository $GitHubRepository -DebugAzAPICall $DebugAzAPICall
-    Write-Host '  AzAPICall htParameters:'
-    Write-Host ($AzAPICallConfiguration['htParameters'] | format-table -AutoSize | Out-String)
-    Write-Host '  Create htParameters succeeded' -ForegroundColor Green
+    Logging -preventWriteOutput $true -logMessage '  AzAPICall htParameters:'
+    Logging -preventWriteOutput $true -logMessage "($AzAPICallConfiguration['htParameters'] | format-table -AutoSize | Out-String)"
+    Logging -preventWriteOutput $true -logMessage '  Create htParameters succeeded' -logMessageForegroundColor 'Green'
 
     $AzAPICallConfiguration['arrayAPICallTracking'] = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $AzAPICallConfiguration['htBearerAccessToken'] = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
 
-    Write-Host ' Get Az context'
+    Logging -preventWriteOutput $true -logMessage ' Get Az context'
     try {
         $AzAPICallConfiguration['checkContext'] = Get-AzContext -ErrorAction Stop
     }
     catch {
         $_
-        Write-Host '  Get Az context failed'
+        Logging -preventWriteOutput $true -logMessage '  Get Az context failed' -logMessageWriteMethod 'Error'
         Throw 'Error - check the last console output for details'
     }
     if (-not $AzAPICallConfiguration['checkContext']) {
-        Write-Host '  Get Az context failed: No context found. Please connect to Azure (run: Connect-AzAccount -tenantId <tenantId>) and re-run the script'
+        Logging -preventWriteOutput $true -logMessage '  Get Az context failed: No context found. Please connect to Azure (run: Connect-AzAccount -tenantId <tenantId>) and re-run the script' -logMessageWriteMethod 'Error'
         Throw 'Error - check the last console output for details'
     }
-    Write-Host '  Get Az context succeeded' -ForegroundColor Green
+    Logging -preventWriteOutput $true -logMessage '  Get Az context succeeded' -logMessageForegroundColor 'Green'
 
     $AzAPICallConfiguration = setAzureEnvironment -AzAPICallConfiguration $AzAPICallConfiguration
 
-    Write-Host ' Check Az context'
-    Write-Host "  Az context AccountId: '$($AzAPICallConfiguration['checkContext'].Account.Id)'" -ForegroundColor Yellow
-    Write-Host "  Az context AccountType: '$($AzAPICallConfiguration['checkContext'].Account.Type)'" -ForegroundColor Yellow
+    Logging -preventWriteOutput $true -logMessage ' Check Az context'
+    Logging -preventWriteOutput $true -logMessage "  Az context AccountId: '$($AzAPICallConfiguration['checkContext'].Account.Id)'" -logMessageForegroundColor 'Yellow'
+    Logging -preventWriteOutput $true -logMessage "  Az context AccountType: '$($AzAPICallConfiguration['checkContext'].Account.Type)'" -logMessageForegroundColor 'Yellow'
     $AzApiCallConfiguration['htParameters'].accountType = $($AzAPICallConfiguration['checkContext'].Account.Type)
 
     if ($SubscriptionId4AzContext) {
-        Write-Host "  Parameter -SubscriptionId4AzContext: '$SubscriptionId4AzContext'"
+        Logging -preventWriteOutput $true -logMessage "  Parameter -SubscriptionId4AzContext: '$SubscriptionId4AzContext'"
         if ($AzAPICallConfiguration['checkContext'].Subscription.Id -ne $SubscriptionId4AzContext) {
 
             testSubscription -SubscriptionId4Test $SubscriptionId4AzContext -AzAPICallConfiguration $AzAPICallConfiguration
 
-            Write-Host "  Setting Az context to SubscriptionId: '$SubscriptionId4AzContext'"
+            Logging -preventWriteOutput $true -logMessage "  Setting Az context to SubscriptionId: '$SubscriptionId4AzContext'"
             try {
                 $null = Set-AzContext -SubscriptionId $SubscriptionId4AzContext -ErrorAction Stop
             }
             catch {
-                Write-Host $_
+                Logging -preventWriteOutput $true -logMessage $_
                 Throw 'Error - check the last console output for details'
             }
             $AzAPICallConfiguration['checkContext'] = Get-AzContext -ErrorAction Stop
-            Write-Host "  New Az context: $($AzAPICallConfiguration['checkContext'].Subscription.Name) ($($AzAPICallConfiguration['checkContext'].Subscription.Id))"
+            Logging -preventWriteOutput $true -logMessage "  New Az context: $($AzAPICallConfiguration['checkContext'].Subscription.Name) ($($AzAPICallConfiguration['checkContext'].Subscription.Id))"
         }
         else {
-            Write-Host "  Stay with current Az context: $($AzAPICallConfiguration['checkContext'].Subscription.Name) ($($AzAPICallConfiguration['checkContext'].Subscription.Id))"
+            Logging -preventWriteOutput $true -logMessage "  Stay with current Az context: $($AzAPICallConfiguration['checkContext'].Subscription.Name) ($($AzAPICallConfiguration['checkContext'].Subscription.Id))"
         }
     }
     else {
@@ -77,19 +101,19 @@
 
     if (-not $AzAPICallConfiguration['checkContext'].Subscription) {
         $AzAPICallConfiguration['checkContext'] | Format-list | Out-String
-        Write-Host '  Check Az context failed: Az context is not set to any Subscription'
-        Write-Host '  Set Az context to a subscription by running: Set-AzContext -subscription <subscriptionId> (run Get-AzSubscription to get the list of available Subscriptions). When done re-run the script'
-        Write-Host '  OR'
-        Write-Host '  Use parameter -SubscriptionId4Test - e.g. .\AzGovVizParallel.ps1 -SubscriptionId4Test <subscriptionId>'
+        Logging -preventWriteOutput $true -logMessage '  Check Az context failed: Az context is not set to any Subscription'
+        Logging -preventWriteOutput $true -logMessage '  Set Az context to a subscription by running: Set-AzContext -subscription <subscriptionId> (run Get-AzSubscription to get the list of available Subscriptions). When done re-run the script'
+        Logging -preventWriteOutput $true -logMessage '  OR'
+        Logging -preventWriteOutput $true -logMessage '  Use parameter -SubscriptionId4Test - e.g. .\AzGovVizParallel.ps1 -SubscriptionId4Test <subscriptionId>'
         Throw 'Error - check the last console output for details'
     }
     else {
-        Write-Host "   Az context Tenant: '$($AzAPICallConfiguration['checkContext'].Tenant.Id)'" -ForegroundColor Yellow
-        Write-Host "   Az context Subscription: $($AzAPICallConfiguration['checkContext'].Subscription.Name) [$($AzAPICallConfiguration['checkContext'].Subscription.Id)] (state: $($AzAPICallConfiguration['checkContext'].Subscription.State))" -ForegroundColor Yellow
-        Write-Host '  Az context check succeeded' -ForegroundColor Green
+        Logging -preventWriteOutput $true -logMessage "   Az context Tenant: '$($AzAPICallConfiguration['checkContext'].Tenant.Id)'" -logMessageForegroundColor 'Yellow'
+        Logging -preventWriteOutput $true -logMessage "   Az context Subscription: $($AzAPICallConfiguration['checkContext'].Subscription.Name) [$($AzAPICallConfiguration['checkContext'].Subscription.Id)] (state: $($AzAPICallConfiguration['checkContext'].Subscription.State))" -logMessageForegroundColor 'Yellow'
+        Logging -preventWriteOutput $true -logMessage '  Az context check succeeded' -logMessageForegroundColor 'Green'
     }
 
     $AzApiCallConfiguration['htParameters'].userType = testUserType -AzApiCallConfiguration $AzAPICallConfiguration
 
-    Write-Output $AzAPICallConfiguration
+    return $AzAPICallConfiguration
 }

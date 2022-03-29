@@ -2,12 +2,20 @@
     [CmdletBinding()]
     Param
     (
-        [Parameter(Mandatory)][string]$AzAccountsVersion,
-        [Parameter(Mandatory)][string]$GitHubRepository,
-        [Parameter(Mandatory)][bool]$DebugAzAPICall
+        [Parameter(Mandatory)]
+        [string]
+        $AzAccountsVersion,
+
+        [Parameter(Mandatory)]
+        [string]
+        $GitHubRepository,
+
+        [Parameter(Mandatory)]
+        [bool]
+        $DebugAzAPICall
     )
 
-    Write-Host ' Create htParameters'
+    Logging -preventWriteOutput $true -logMessage ' Create htParameters'
     #region codeRunPlatform
     $onAzureDevOps = $false
     $onAzureDevOpsOrGitHubActions = $false
@@ -36,19 +44,19 @@
     else {
         $codeRunPlatform = 'Console'
     }
-    Write-Host '  codeRunPlatform:' $codeRunPlatform
+    Logging -preventWriteOutput $true -logMessage "  codeRunPlatform: $codeRunPlatform"
     #endregion codeRunPlatform
 
 
     if ($DebugAzAPICall) {
-        write-host '  AzAPICall debug enabled' -ForegroundColor Cyan
+        Logging -preventWriteOutput $true -logMessage '  AzAPICall debug enabled' -logMessageForegroundColor 'Cyan'
     }
     else {
-        write-host '  AzAPICall debug disabled' -ForegroundColor Cyan
+        Logging -preventWriteOutput $true -logMessage '  AzAPICall debug disabled' -logMessageForegroundColor 'Cyan'
     }
 
     #Region Test-HashtableParameter
-    return [ordered]@{
+    $htParam = [ordered]@{
         debugAzAPICall               = $DebugAzAPICall
         gitHubRepository             = $GitHubRepository
         psVersion                    = $PSVersionTable.PSVersion
@@ -59,5 +67,7 @@
         onAzureDevOps                = [bool]$onAzureDevOps
         onGitHubActions              = [bool]$onGitHubActions
     }
+
+    return ($AzAPICallConfiguration['htParameters'] += $htParam)
     #EndRegion Test-HashtableParameter
 }

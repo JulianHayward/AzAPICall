@@ -18,6 +18,16 @@ if (-not $test) {
     }
 }
 
+if (Test-Path .\pwsh\module\build\AzAPICall.zip) {
+    try {
+        Remove-Item -Path .\pwsh\module\build\AzAPICall.zip -Verbose -ErrorAction Stop
+    }
+    catch {
+        Write-Host ' Cleaning build for AzAPICall.zip failed'
+        throw
+    }
+}
+
 Write-Host ' Cleaning build\functions'
 
 if (Test-Path .\pwsh\module\build\AzAPICall\functions\AzAPICallFunctions.ps1) {
@@ -69,6 +79,14 @@ try {
 }
 catch {
     Write-Host ' Copy AzAPICall.psm1 failed'
+    Throw
+}
+
+try {
+    Compress-Archive -Path .\pwsh\module\build\AzAPICall -DestinationPath .\pwsh\module\build\AzAPICall.zip
+}
+catch {
+    Write-Host ' Compress-Archive of build\AzAPICall failed'
     Throw
 }
 
