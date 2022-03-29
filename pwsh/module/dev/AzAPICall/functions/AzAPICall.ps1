@@ -248,15 +248,20 @@
         debugAzAPICall -debugMessage $message
         if ($unexpectedError -eq $false) {
             debugAzAPICall -debugMessage 'unexpectedError: false'
-            if ($azAPIRequest.StatusCode -notin 200..204) {
-                debugAzAPICall -debugMessage "apiStatusCode: '$($azAPIRequest.StatusCode)'"
-                $function:AzAPICallErrorHandler = $AzAPICallConfiguration['AzAPICallRuleSet'].AzAPICallErrorHandler
-                $AzAPICallErrorHandlerResponse = AzAPICallErrorHandler -AzAPICallConfiguration $AzAPICallConfiguration -uri $uri -catchResult $catchResult -currentTask $currentTask -tryCounter $tryCounter
-                Write-host ($AzAPICallErrorHandlerResponse | convertto-json)
-                switch ($AzAPICallErrorHandlerResponse.action) {
-                    'break' { break }
-                    'return' { return [string]$AzAPICallErrorHandlerResponse.returnMsg }
-                    'returnCollection' { return [PSCustomObject]$apiCallResultsCollection }
+            if ($actualStatusCode -notin 200..204) {
+                if ($listenOn -eq 'StatusCode') {
+                    return [int32]$actualStatusCode
+                }
+                else {
+                    debugAzAPICall -debugMessage "apiStatusCode: '$($actualStatusCode)'"
+                    $function:AzAPICallErrorHandler = $AzAPICallConfiguration['AzAPICallRuleSet'].AzAPICallErrorHandler
+                    $AzAPICallErrorHandlerResponse = AzAPICallErrorHandler -AzAPICallConfiguration $AzAPICallConfiguration -uri $uri -catchResult $catchResult -currentTask $currentTask -tryCounter $tryCounter
+                    Write-host ($AzAPICallErrorHandlerResponse | convertto-json)
+                    switch ($AzAPICallErrorHandlerResponse.action) {
+                        'break' { break }
+                        'return' { return [string]$AzAPICallErrorHandlerResponse.returnMsg }
+                        'returnCollection' { return [PSCustomObject]$apiCallResultsCollection }
+                    }
                 }
             }
             else {
@@ -265,6 +270,11 @@
                 if ($listenOn -eq 'Content') {
                     debugAzAPICall -debugMessage "listenOn=content ($((($azAPIRequestConvertedFromJson)).count))"
                     $null = $apiCallResultsCollection.Add($azAPIRequestConvertedFromJson)
+                }
+                elseif ($listenOn -eq 'StatusCode') {
+                    debugAzAPICall -debugMessage "listenOn=StatusCode ($actualStatusCode)"
+                    #$null = $apiCallResultsCollection.Add($actualStatusCode)
+                    return [int32]$actualStatusCode
                 }
                 elseif ($listenOn -eq 'ContentProperties') {
                     if (($azAPIRequestConvertedFromJson.properties.rows).Count -gt 0) {
@@ -397,8 +407,8 @@
         }
     }
     until(
-            ($azAPIRequest.StatusCode -in 200..204 -and -not $isMore ) -or
-            ($Method -eq 'HEAD' -and $azAPIRequest.StatusCode -eq 404)
+            ($actualStatusCode -in 200..204 -and -not $isMore ) -or
+            ($Method -eq 'HEAD' -and $actualStatusCode -eq 404)
     )
     return [PSCustomObject]$apiCallResultsCollection
 }

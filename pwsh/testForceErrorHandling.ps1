@@ -1,4 +1,3 @@
-
 $apiEndPoint = $azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph
 $apiEndPointVersion = '/v1.0'
 $api = "/groups/$((new-guid).guid)"
@@ -16,3 +15,9 @@ $azAPICallPayload = @{
 Write-Host $azAPICallPayload.currentTask
 
 $AzApiCallResult = AzAPICall @azAPICallPayload
+$AzApiCallResult
+
+$AzApiCallResultStatusCode = AzAPICall @azAPICallPayload -listenOn 'StatusCode'
+if($AzApiCallResultStatusCode -eq 404) {
+    $true
+}
