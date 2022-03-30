@@ -323,7 +323,6 @@ if (-not $DevMode) {
                 Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].azAPICallModuleVersion -Force -ErrorAction Stop
             }
 
-            #Import-Module .\pwsh\module\build\AzAPICall\AzAPICall.psd1 -Force -ErrorAction Stop
             #specific for this operation
             $htAzureAdGroupDetails = $using:htAzureAdGroupDetails
             $arrayGroupMembers = $using:arrayGroupMembers
@@ -457,10 +456,16 @@ if (-not $DevMode) {
             #general hashTables and arrays
             $azAPICallConf = $using:azAPICallConf
             #general functions
-            $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
-            $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
-            $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
-            #Import-Module .\pwsh\module\AzAPICall\AzAPICall.psd1 -Force -ErrorAction Stop
+            # $function:AzAPICall = $using:AzAPICallFunctions.funcAzAPICall
+            # $function:createBearerToken = $using:AzAPICallFunctions.funcCreateBearerToken
+            # $function:GetJWTDetails = $using:AzAPICallFunctions.funcGetJWTDetails
+            if ($azAPICallConf['htParameters'].onAzureDevOpsOrGitHubActions) {
+                Import-Module ".\pwsh\AzAPICallModule\AzAPICall\$($azAPICallConf['htParameters'].azAPICallModuleVersion)\AzAPICall.psd1" -Force -ErrorAction Stop
+            }
+            else {
+                Import-Module -Name AzAPICall -RequiredVersion $azAPICallConf['htParameters'].azAPICallModuleVersion -Force -ErrorAction Stop
+            }
+
             #specific for this operation
             $htAzureResources = $using:htAzureResources
             $arrayAzureResources = $using:arrayAzureResources
