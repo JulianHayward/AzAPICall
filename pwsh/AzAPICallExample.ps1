@@ -99,7 +99,7 @@ if (-not $DevMode) {
             if (-not $azAPICallVersion) {
                 Write-Host '  Check latest module version'
                 try {
-                    $azAPICallVersion = (Find-Module -name AzAPICall).Version
+                    $azAPICallVersion = (Find-Module -Name AzAPICall).Version
                     Write-Host "  Latest module version: $azAPICallVersion"
                 }
                 catch {
@@ -110,7 +110,7 @@ if (-not $DevMode) {
 
             try {
                 $azAPICallModuleDeviation = $false
-                $azAPICallModuleVersionLoaded = ((Get-Module -name AzAPICall).Version)
+                $azAPICallModuleVersionLoaded = ((Get-Module -Name AzAPICall).Version)
                 foreach ($moduleLoaded in $azAPICallModuleVersionLoaded) {
                     if ($moduleLoaded.toString() -ne $azAPICallVersion) {
                         Write-Host "  Deviating loaded version found ('$($moduleLoaded.toString())' != '$($azAPICallVersion)')"
@@ -159,9 +159,9 @@ if (-not $DevMode) {
                 Write-Host "  Saving AzAPICall module ($($azAPICallVersion))"
                 try {
                     $params = @{
-                        Name            = 'AzAPICall'
-                        Path            = '.\pwsh\AzAPICallModule'
-                        Force           = $true
+                        Name = 'AzAPICall'
+                        Path = '.\pwsh\AzAPICallModule'
+                        Force = $true
                         RequiredVersion = $azAPICallVersion
                     }
                     Save-Module @params
@@ -199,34 +199,40 @@ if (-not $DevMode) {
     #endregion verifyAzAPICall
 }
 else {
-    Remove-Module -name azapicall -ErrorAction Ignore
+    Remove-Module -Name azapicall -ErrorAction Ignore
     Write-Host " Import dev PS module 'AzAPICall'"
     Import-Module .\pwsh\module\dev\AzAPICall\AzAPICall.psd1 -Force -ErrorAction Stop
     Write-Host "  Import dev PS module 'AzAPICall' succeeded" -ForegroundColor Green
 }
 
 #region customRuleSet
-Write-Host "Custom RuleSet 'AzAPICall'"
-getAzAPICallRuleSet | Out-File .\pwsh\AzAPICallCustomRuleSet.ps1
+if (($env:SYSTEM_TEAMPROJECTID -and $env:BUILD_REPOSITORY_ID) -or $env:GITHUB_ACTIONS) {
+    Write-Host "Skipping Custom RuleSet 'AzAPICall'"
+}
+else {
+    Write-Host "Custom RuleSet 'AzAPICall'"
+    getAzAPICallRuleSet | Out-File .\pwsh\AzAPICallCustomRuleSet.ps1
 
-Write-Host 'Now it´s your turn to customize file: .\pwsh\AzAPICallCustomRuleSet.ps1'
-Write-Host "*Remember to enable the 'AzAPICallCustomRuleSet' parameter in the splat!"
-pause
-if (Test-Path ".\pwsh\AzAPICallCustomRuleSet.ps1" -PathType leaf) {
-    $AzAPICallCustomRuleSet = @{
-        AzAPICallErrorHandler = get-content -path .\pwsh\AzAPICallCustomRuleSet.ps1 -Raw
+    Write-Host 'Now it´s your turn to customize file: .\pwsh\AzAPICallCustomRuleSet.ps1'
+    Write-Host "*Remember to enable the 'AzAPICallCustomRuleSet' parameter in the splat!"
+    Pause
+    if (Test-Path '.\pwsh\AzAPICallCustomRuleSet.ps1' -PathType leaf) {
+        $AzAPICallCustomRuleSet = @{
+            AzAPICallErrorHandler = Get-Content -Path .\pwsh\AzAPICallCustomRuleSet.ps1 -Raw
+        }
     }
 }
+
 #endregion customRuleSet
 
 #region initAZAPICall
 Write-Host "Splat for 'initAzAPICall'"
 $parameters4AzAPICallModule = @{
     #SubscriptionId4AzContext = $null #enter subscriptionId for AzContext
-    DebugAzAPICall         = $true
-    writeMethod            = 'Host'
-    debugWriteMethod       = 'Host'
-    AzAPICallCustomRuleSet = $AzAPICallCustomRuleSet #enable if custom ruleSet shall apply
+    DebugAzAPICall = $true
+    writeMethod = 'Host'
+    debugWriteMethod = 'Host'
+    #AzAPICallCustomRuleSet = $AzAPICallCustomRuleSet #enable if custom ruleSet shall apply
 }
 
 Write-Host "Initialize 'AzAPICall'"
@@ -235,7 +241,7 @@ Write-Host "Initialize 'AzAPICall' ($(((Get-Module -Name AzAPICall).Version).ToS
 #endregion initAZAPICall
 
 #getting some functions for foreach-parallel (using:) - currently measuring performance ':using' vs 'Import-Module'
-$AzAPICallFunctions = getAzAPICallFunctions
+#$AzAPICallFunctions = getAzAPICallFunctions
 
 
 if (-not $DevMode) {
@@ -252,12 +258,12 @@ if (-not $DevMode) {
     $uri = $apiEndPoint + $apiEndPointVersion + $api + $optionalQueryParameters
 
     $azAPICallPayload = @{
-        uri                    = $uri
-        method                 = 'GET'
-        currentTask            = "$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: Validate Access for Groups Read permission"
-        consistencyLevel       = 'eventual'
-        validateAccess         = $true
-        noPaging               = $true
+        uri = $uri
+        method = 'GET'
+        currentTask = "$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: Validate Access for Groups Read permission"
+        consistencyLevel = 'eventual'
+        validateAccess = $true
+        noPaging = $true
         AzApiCallConfiguration = $azAPICallConf
     }
     Write-Host $azAPICallPayload.currentTask
@@ -288,11 +294,11 @@ if (-not $DevMode) {
     $uri = $apiEndPoint + $apiEndPointVersion + $api + $optionalQueryParameters
 
     $azAPICallPayload = @{
-        uri                    = $uri
-        method                 = 'GET'
-        currentTask            = "'$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: Get - Groups'"
-        consistencyLevel       = 'eventual'
-        noPaging               = $true #$top in $uri + parameter 'noPaging=$false' (not using 'noPaging' in the splat) will iterate further https://docs.microsoft.com/en-us/graph/paging
+        uri = $uri
+        method = 'GET'
+        currentTask = "'$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: Get - Groups'"
+        consistencyLevel = 'eventual'
+        noPaging = $true #$top in $uri + parameter 'noPaging=$false' (not using 'noPaging' in the splat) will iterate further https://docs.microsoft.com/en-us/graph/paging
         AzAPICallConfiguration = $azAPICallConf
     }
     Write-Host $azAPICallPayload.currentTask
@@ -308,7 +314,7 @@ if (-not $DevMode) {
     if (-not $NoPsParallelization) {
         $htAzureAdGroupDetails = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
         $arrayGroupMembers = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
-        $startTime = get-date
+        $startTime = Get-Date
         $aadgroups | ForEach-Object -Parallel {
             #general hashTables and arrays
             $azAPICallConf = $using:azAPICallConf
@@ -340,9 +346,9 @@ if (-not $DevMode) {
             $uri = $apiEndPoint + $apiEndPointVersion + $api + $optionalQueryParameters
 
             $azAPICallPayload = @{
-                uri                    = $uri
-                method                 = 'GET'
-                currentTask            = " '$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: Get - Group List Members (id: $($group.id))'"
+                uri = $uri
+                method = 'GET'
+                currentTask = " '$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: Get - Group List Members (id: $($group.id))'"
                 AzAPICallConfiguration = $azAPICallConf
             }
             Write-Host $azAPICallPayload.currentTask
@@ -359,7 +365,7 @@ if (-not $DevMode) {
 
         } -ThrottleLimit $ThrottleLimitMicrosoftGraph
 
-        $parallelElapsedTime = "elapsed time (foreach-parallel loop with ThrottleLimit:$($ThrottleLimitMicrosoftGraph)): " + ((get-date) - $startTime).TotalSeconds + ' seconds'
+        $parallelElapsedTime = "elapsed time (foreach-parallel loop with ThrottleLimit:$($ThrottleLimitMicrosoftGraph)): " + ((Get-Date) - $startTime).TotalSeconds + ' seconds'
         Write-Host $parallelElapsedTime
         Write-Host 'returned members hashTable:' $htAzureAdGroupDetails.Values.Id.Count
         Write-Host 'returned members arrayList:' $arrayGroupMembers.Count
@@ -370,7 +376,7 @@ if (-not $DevMode) {
     else {
         $htAzureAdGroupDetails = @{}
         $arrayGroupMembers = [System.Collections.ArrayList]@()
-        $startTime = get-date
+        $startTime = Get-Date
 
         $aadgroups | ForEach-Object {
             $group = $_
@@ -386,9 +392,9 @@ if (-not $DevMode) {
             $uri = $apiEndPoint + $apiEndPointVersion + $api + $optionalQueryParameters
 
             $azAPICallPayload = @{
-                uri                    = $uri
-                method                 = 'GET'
-                currentTask            = "'$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: Get - Group List Members (id: $($group.id))'"
+                uri = $uri
+                method = 'GET'
+                currentTask = "'$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: Get - Group List Members (id: $($group.id))'"
                 AzAPICallConfiguration = $azAPICallConf
             }
             Write-Host $azAPICallPayload.currentTask
@@ -404,7 +410,7 @@ if (-not $DevMode) {
             }
         }
 
-        $elapsedTime = 'elapsed time: ' + ((get-date) - $startTime).TotalSeconds + ' seconds'
+        $elapsedTime = 'elapsed time: ' + ((Get-Date) - $startTime).TotalSeconds + ' seconds'
         Write-Host $elapsedTime
         Write-Host 'returned members:' $htAzureAdGroupDetails.Values.Id.Count
         Write-Host 'returned members arrayList:' $arrayGroupMembers.Count
@@ -429,9 +435,9 @@ if (-not $DevMode) {
     $uri = $apiEndPoint + $api + $apiVersion + $uriParameter
 
     $azAPICallPayload = @{
-        uri                    = $uri
-        method                 = 'GET'
-        currentTask            = " '$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: List - Subscriptions'"
+        uri = $uri
+        method = 'GET'
+        currentTask = " '$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: List - Subscriptions'"
         AzAPICallConfiguration = $azAPICallConf
     }
     Write-Host $azAPICallPayload.currentTask
@@ -450,7 +456,7 @@ if (-not $DevMode) {
     if (-not $NoPsParallelization) {
         $htAzureResources = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
         $arrayAzureResources = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
-        $startTime = get-date
+        $startTime = Get-Date
 
         $subscriptions.where( { $_.state -eq 'enabled' -and $_.subscriptionPolicies.quotaId -notlike 'AAD*' } )[0..($subsToProcess - 1)] | ForEach-Object -Parallel {
             #general hashTables and arrays
@@ -483,9 +489,9 @@ if (-not $DevMode) {
             $uri = $apiEndPoint + $api + $apiVersion + $uriParameter
 
             $azAPICallPayload = @{
-                uri                    = $uri
-                method                 = 'GET'
-                currentTask            = " '$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: Get - Resources for Subscription (name: $($subscription.displayName); id: $($subscription.subscriptionId))'"
+                uri = $uri
+                method = 'GET'
+                currentTask = " '$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: Get - Resources for Subscription (name: $($subscription.displayName); id: $($subscription.subscriptionId))'"
                 AzAPICallConfiguration = $azAPICallConf
             }
             Write-Host $azAPICallPayload.currentTask
@@ -502,7 +508,7 @@ if (-not $DevMode) {
 
         } -ThrottleLimit $ThrottleLimitARM
 
-        $parallelElapsedTime = "elapsed time (foreach-parallel loop with ThrottleLimit:$($ThrottleLimitARM)): " + ((get-date) - $startTime).TotalSeconds + ' seconds'
+        $parallelElapsedTime = "elapsed time (foreach-parallel loop with ThrottleLimit:$($ThrottleLimitARM)): " + ((Get-Date) - $startTime).TotalSeconds + ' seconds'
         Write-Host $parallelElapsedTime
         Write-Host 'returned resources hashTable:' $htAzureResources.Values.Id.Count
         Write-Host 'returned resources arrayList:' $arrayAzureResources.Count
@@ -513,7 +519,7 @@ if (-not $DevMode) {
     else {
         $htAzureResources = @{}
         $arrayAzureResources = [System.Collections.ArrayList]@()
-        $startTime = get-date
+        $startTime = Get-Date
 
     ($subscriptions.where( { $_.state -eq 'enabled' -and $_.subscriptionPolicies.quotaId -notlike 'AAD*' } ))[0..($subsToProcess - 1)] | ForEach-Object {
             $subscription = $_
@@ -529,9 +535,9 @@ if (-not $DevMode) {
             $uri = $apiEndPoint + $api + $apiVersion + $uriParameter
 
             $azAPICallPayload = @{
-                uri                    = $uri
-                method                 = 'GET'
-                currentTask            = " '$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: Get - Resources for Subscription (name: $($subscription.displayName); id: $($subscription.subscriptionId))'"
+                uri = $uri
+                method = 'GET'
+                currentTask = " '$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: Get - Resources for Subscription (name: $($subscription.displayName); id: $($subscription.subscriptionId))'"
                 AzAPICallConfiguration = $azAPICallConf
             }
             Write-Host $azAPICallPayload.currentTask
@@ -547,7 +553,7 @@ if (-not $DevMode) {
             }
         }
 
-        $elapsedTime = 'elapsed time: ' + ((get-date) - $startTime).TotalSeconds + ' seconds'
+        $elapsedTime = 'elapsed time: ' + ((Get-Date) - $startTime).TotalSeconds + ' seconds'
         Write-Host $elapsedTime
         Write-Host 'returned resources hashTable:' $htAzureResources.Values.Id.Count
         Write-Host 'returned resources arrayList:' $arrayAzureResources.Count
