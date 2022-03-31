@@ -14,7 +14,7 @@ Param
     [switch]
     $DevMode
 )
-
+$DevMode = $true
 #region parallelization
 if (-not $NoPsParallelization) {
     function testPowerShellVersion {
