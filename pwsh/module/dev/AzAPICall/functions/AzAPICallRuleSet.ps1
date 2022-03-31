@@ -66,6 +66,7 @@ function AzAPICallErrorHandler {
             return $response
         }
         else {
+            $script:retryAuthorizationFailedCounter ++
             if ($retryAuthorizationFailedCounter -gt $retryAuthorizationFailed) {
                 Logging -preventWriteOutput $true -logMessage '- - - - - - - - - - - - - - - - - - - - '
                 Logging -preventWriteOutput $true -logMessage "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository) and provide the following dump" -logMessageForegroundColor 'Yellow'
@@ -74,6 +75,7 @@ function AzAPICallErrorHandler {
                 foreach ($htParameter in ($AzApiCallConfiguration['htParameters'].Keys | Sort-Object)) {
                     Logging -preventWriteOutput $true -logMessage "$($htParameter):$($AzApiCallConfiguration['htParameters'].($htParameter))"
                 }
+                $script:retryAuthorizationFailedCounter = $null
                 Throw 'Error: check the last console output for details'
             }
             else {
@@ -84,7 +86,6 @@ function AzAPICallErrorHandler {
                     Start-Sleep -Seconds 10
                 }
                 Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - not reasonable, retry #$retryAuthorizationFailedCounter of $retryAuthorizationFailed"
-                $retryAuthorizationFailedCounter ++
             }
         }
     }

@@ -116,7 +116,7 @@
     $tryCounter = 0
     $tryCounterUnexpectedError = 0
     $retryAuthorizationFailed = 5
-    $retryAuthorizationFailedCounter = 0
+    #$retryAuthorizationFailedCounter = 0
     $apiCallResultsCollection = [System.Collections.ArrayList]@()
     $initialUri = $uri
     $restartDueToDuplicateNextlinkCounter = 0
