@@ -1,6 +1,4 @@
-#needs special handling
 
-function AzAPICallErrorHandler {
     #Logging -preventWriteOutput $true -logMessage ' * BuiltIn RuleSet'
 
     switch ($uri) {
@@ -447,5 +445,4 @@ function AzAPICallErrorHandler {
             Throw 'Error - check the last console output for details'
         }
     }
-}
-$script:funcAzAPICallErrorHandler = $function:AzAPICallErrorHandler.ToString()
+

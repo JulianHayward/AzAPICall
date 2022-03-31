@@ -9,28 +9,28 @@
 @{
 
     # Script module or binary module file associated with this manifest.
-    RootModule        = 'AzAPICall.psm1'
+    RootModule = 'AzAPICall.psm1'
 
     # Version number of this module.
-    ModuleVersion     = '1.1.6'
+    ModuleVersion = '1.1.7'
 
     # Supported PSEditions
     # CompatiblePSEditions = @()
 
     # ID used to uniquely identify this module
-    GUID              = '16c6ca00-2411-4546-a483-6f7bb815670f'
+    GUID = '16c6ca00-2411-4546-a483-6f7bb815670f'
 
     # Author of this module
-    Author            = 'Julian Hayward, Kai Schulz'
+    Author = 'Julian Hayward, Kai Schulz'
 
     # Company or vendor of this module
-    CompanyName       = 'Unknown'
+    CompanyName = 'Unknown'
 
     # Copyright statement for this module
-    Copyright         = '(c) All rights reserved.'
+    Copyright = '(c) All rights reserved.'
 
     # Description of the functionality provided by this module
-    Description       = 'Azure API call handler for Microsoft Graph, Azure Resource Management, KeyVault and Log Analytics. Visit aka.ms/AzAPICall'
+    Description = 'Azure API call handler for Microsoft Graph, Azure Resource Management, KeyVault and Log Analytics. Visit aka.ms/AzAPICall'
 
     # Minimum version of the PowerShell engine required by this module
     # PowerShellVersion = '7.0.3'
@@ -72,13 +72,13 @@
     FunctionsToExport = @('AzAPICall', 'initAzAPICall', 'getAzAPICallFunctions', 'getAzAPICallRuleSet')
 
     # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
-    CmdletsToExport   = ''
+    CmdletsToExport = ''
 
     # Variables to export from this module
     VariablesToExport = ''
 
     # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
-    AliasesToExport   = ''
+    AliasesToExport = ''
 
     # DSC resources to export from this module
     # DscResourcesToExport = @()
@@ -90,7 +90,7 @@
     # FileList = @()
 
     # Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.
-    PrivateData       = @{
+    PrivateData = @{
 
         PSData = @{
 
