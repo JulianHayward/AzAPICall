@@ -149,13 +149,13 @@
         $unexpectedError = $false
 
         $Header = @{
-            'Content-Type' = 'application/json';
+            'Content-Type'  = 'application/json';
             'Authorization' = "Bearer $($AzAPICallConfiguration['htBearerAccessToken'].$targetEndpoint)"
         }
         if ($consistencyLevel) {
             $Header = @{
-                'Content-Type' = 'application/json';
-                'Authorization' = "Bearer $($AzAPICallConfiguration['htBearerAccessToken'].$targetEndpoint)";
+                'Content-Type'     = 'application/json';
+                'Authorization'    = "Bearer $($AzAPICallConfiguration['htBearerAccessToken'].$targetEndpoint)";
                 'ConsistencyLevel' = "$consistencyLevel"
             }
         }
@@ -219,18 +219,18 @@
         #API Call Tracking
         $tstmp = (Get-Date -Format 'yyyyMMddHHmmssms')
         $null = $AzApiCallConfiguration['arrayAPICallTracking'].Add([PSCustomObject]@{
-                CurrentTask = $currentTask
-                TargetEndpoint = $targetEndpoint
-                Uri = $uri
-                Method = $method
-                TryCounter = $tryCounter
-                TryCounterUnexpectedError = $tryCounterUnexpectedError
-                RetryAuthorizationFailedCounter = $retryAuthorizationFailedCounter
+                CurrentTask                          = $currentTask
+                TargetEndpoint                       = $targetEndpoint
+                Uri                                  = $uri
+                Method                               = $method
+                TryCounter                           = $tryCounter
+                TryCounterUnexpectedError            = $tryCounterUnexpectedError
+                RetryAuthorizationFailedCounter      = $retryAuthorizationFailedCounter
                 RestartDueToDuplicateNextlinkCounter = $restartDueToDuplicateNextlinkCounter
-                TimeStamp = $tstmp
-                Duration = $durationAPICall.TotalSeconds
-                StatusCode = $actualStatusCode
-                StatusCodePhrase = $actualStatusCodePhrase
+                TimeStamp                            = $tstmp
+                Duration                             = $durationAPICall.TotalSeconds
+                StatusCode                           = $actualStatusCode
+                StatusCodePhrase                     = $actualStatusCodePhrase
             })
 
         $message = "attempt#$($tryCounter) processing: $($currenttask) uri: '$($uri)'"

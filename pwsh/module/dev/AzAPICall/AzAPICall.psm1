@@ -1,3 +1,3 @@
-Get-ChildItem -path $PSScriptRoot\functions | ForEach-Object -Process {
+Get-ChildItem -Path $PSScriptRoot\functions | ForEach-Object -Process {
     . $PSItem.FullName
 }

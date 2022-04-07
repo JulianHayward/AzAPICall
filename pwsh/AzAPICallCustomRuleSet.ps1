@@ -1,6 +1,4 @@
-#needs special handling
 
-function AzAPICallErrorHandler {
     #Logging -preventWriteOutput $true -logMessage ' * BuiltIn RuleSet'
 
     switch ($uri) {
@@ -23,9 +21,9 @@ function AzAPICallErrorHandler {
     }
 
     if (
-        $getARMPolicyComplianceStates -and (
-            $catchResult.error.code -like '*ResponseTooLarge*' -or
-            -not $catchResult.error.code
+        ($getARMPolicyComplianceStates -and (
+            ($catchResult.error.code -like '*ResponseTooLarge*') -or
+            (-not $catchResult.error.code))
         )
     ) {
         if ($catchResult.error.code -like '*ResponseTooLarge*') {
@@ -97,10 +95,10 @@ function AzAPICallErrorHandler {
 
     elseif (
         $getARMCostManagement -and (
-            $catchResult.error.code -eq 404 -or
-            $catchResult.error.code -eq 'AccountCostDisabled' -or
-            $catchResult.error.message -like '*does not have any valid subscriptions*' -or
-            $catchResult.error.code -eq 'Unauthorized' -or
+                            ($catchResult.error.code -eq 404) -or
+                            ($catchResult.error.code -eq 'AccountCostDisabled') -or
+                            ($catchResult.error.message -like '*does not have any valid subscriptions*') -or
+                            ($catchResult.error.code -eq 'Unauthorized') -or
                             ($catchResult.error.code -eq 'BadRequest' -and $catchResult.error.message -like '*The offer*is not supported*' -and $catchResult.error.message -notlike '*The offer MS-AZR-0110P is not supported*') -or
                             ($catchResult.error.code -eq 'BadRequest' -and $catchResult.error.message -like 'Invalid query definition*')
         )
@@ -448,5 +446,4 @@ function AzAPICallErrorHandler {
             Throw 'Error - check the last console output for details'
         }
     }
-}
-$script:funcAzAPICallErrorHandler = $function:AzAPICallErrorHandler.ToString()
+

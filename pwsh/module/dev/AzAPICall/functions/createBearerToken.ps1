@@ -15,22 +15,17 @@
     if (($AzApiCallConfiguration['azAPIEndpointUrls']).$targetEndPoint) {
 
         $azContext = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile.DefaultContext
-        $catchResult = 'letscheck'
         try {
             $newBearerAccessTokenRequest = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($azContext.Account, $azContext.Environment, $azContext.Tenant.id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "$(($AzApiCallConfiguration['azAPIEndpointUrls']).$targetEndPoint)")
         }
         catch {
-            $catchResult = $_
-        }
-
-        if ($catchResult -ne 'letscheck') {
-            Logging -logMessage "-ERROR processing new bearer token request ($targetEndPoint): $catchResult" -logMessageWriteMethod 'Error'
+            Logging -logMessage "-ERROR processing new bearer token request ($targetEndPoint): $_" -logMessageWriteMethod 'Error'
             Logging -logMessage "Likely your Azure credentials have not been set up or have expired, please run 'Connect-AzAccount -tenantId <tenantId>' to set up your Azure credentials."
             Logging -logMessage "It could also well be that there are multiple context in cache, please run 'Clear-AzContext' and then run 'Connect-AzAccount -tenantId <tenantId>'."
             Throw 'Error - check the last console output for details'
         }
 
-        $dateTimeTokenCreated = (get-date -format 'MM/dd/yyyy HH:mm:ss')
+        $dateTimeTokenCreated = (Get-Date -Format 'MM/dd/yyyy HH:mm:ss')
 
         ($AzApiCallConfiguration['htBearerAccessToken']).$targetEndPoint = $newBearerAccessTokenRequest.AccessToken
 

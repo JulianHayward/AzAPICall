@@ -34,7 +34,7 @@
         'Information' { Write-Information $logMessage }
         'Output' { Write-Output $logMessage }
         'Progress' { Write-Progress $logMessage }
-        'Verbose' { Write-Verbose $logMessage -verbose }
+        'Verbose' { Write-Verbose $logMessage -Verbose }
         'Warning' { Write-Warning $logMessage }
         Default { Write-Host $logMessage -ForegroundColor $logMessageForegroundColor }
     }

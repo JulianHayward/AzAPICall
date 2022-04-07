@@ -28,6 +28,7 @@
         $AzAPICallCustomRuleSet
     )
 
+
     $AzAPICallConfiguration = @{}
     $AzAPICallConfiguration['htParameters'] = @{}
     $AzAPICallConfiguration['htParameters'].writeMethod = $writeMethod
@@ -44,9 +45,9 @@
     }
 
 
-    $AzAPICallConfiguration['htParameters'] = setHtParameters -AzAccountsVersion $AzAccountsVersion -gitHubRepository $GitHubRepository -DebugAzAPICall $DebugAzAPICall
+    $AzAPICallConfiguration['htParameters'] += setHtParameters -AzAccountsVersion $AzAccountsVersion -gitHubRepository $GitHubRepository -DebugAzAPICall $DebugAzAPICall
     Logging -preventWriteOutput $true -logMessage '  AzAPICall htParameters:'
-    Logging -preventWriteOutput $true -logMessage "($AzAPICallConfiguration['htParameters'] | format-table -AutoSize | Out-String)"
+    Logging -preventWriteOutput $true -logMessage $($AzAPICallConfiguration['htParameters'] | Format-Table -AutoSize | Out-String)
     Logging -preventWriteOutput $true -logMessage '  Create htParameters succeeded' -logMessageForegroundColor 'Green'
 
     $AzAPICallConfiguration['arrayAPICallTracking'] = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))

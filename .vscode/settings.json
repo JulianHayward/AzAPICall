@@ -6,7 +6,7 @@
         "files.trimTrailingWhitespace": false
     },
     "powershell.codeFormatting.addWhitespaceAroundPipe": true,
-    "powershell.codeFormatting.alignPropertyValuePairs": false,
+    "powershell.codeFormatting.alignPropertyValuePairs": true,
     "powershell.codeFormatting.autoCorrectAliases": true,
     "powershell.codeFormatting.ignoreOneLineBlock": true,
     "powershell.codeFormatting.newLineAfterCloseBrace": true,

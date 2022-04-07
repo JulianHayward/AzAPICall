@@ -159,9 +159,9 @@ if (-not $DevMode) {
                 Write-Host "  Saving AzAPICall module ($($azAPICallVersion))"
                 try {
                     $params = @{
-                        Name = 'AzAPICall'
-                        Path = '.\pwsh\AzAPICallModule'
-                        Force = $true
+                        Name            = 'AzAPICall'
+                        Path            = '.\pwsh\AzAPICallModule'
+                        Force           = $true
                         RequiredVersion = $azAPICallVersion
                     }
                     Save-Module @params
@@ -201,8 +201,15 @@ if (-not $DevMode) {
 else {
     Remove-Module -Name azapicall -ErrorAction Ignore
     Write-Host " Import dev PS module 'AzAPICall'"
-    Import-Module .\pwsh\module\dev\AzAPICall\AzAPICall.psd1 -Force -ErrorAction Stop
-    Write-Host "  Import dev PS module 'AzAPICall' succeeded" -ForegroundColor Green
+    try {
+        Import-Module .\pwsh\module\dev\AzAPICall\AzAPICall.psd1 -Force -ErrorAction Stop
+        Write-Host "  Import dev PS module 'AzAPICall' succeeded" -ForegroundColor Green
+    }
+    catch {
+
+    }
+    $moduleVer = ((Get-Module -Name AzAPICall).version).toString()
+    Write-Host "  Dev PS module 'AzAPICall' version: $moduleVer" -ForegroundColor Green
 }
 
 #region customRuleSet
@@ -229,8 +236,8 @@ else {
 Write-Host "Splat for 'initAzAPICall'"
 $parameters4AzAPICallModule = @{
     #SubscriptionId4AzContext = $null #enter subscriptionId for AzContext
-    DebugAzAPICall = $true
-    writeMethod = 'Host'
+    DebugAzAPICall   = $true
+    writeMethod      = 'Host'
     debugWriteMethod = 'Host'
     #AzAPICallCustomRuleSet = $AzAPICallCustomRuleSet #enable if custom ruleSet shall apply
 }
@@ -240,7 +247,8 @@ $azAPICallConf = initAzAPICall @parameters4AzAPICallModule
 Write-Host "Initialize 'AzAPICall' ($(((Get-Module -Name AzAPICall).Version).ToString())) succeeded" -ForegroundColor Green
 #endregion initAZAPICall
 
-#getting some functions for foreach-parallel (using:) - currently measuring performance ':using' vs 'Import-Module'
+#deprecated - getting some functions for foreach-parallel (using:) - currently measuring performance ':using' vs 'Import-Module'
+# import-Module is the way to go
 #$AzAPICallFunctions = getAzAPICallFunctions
 
 
@@ -258,12 +266,12 @@ if (-not $DevMode) {
     $uri = $apiEndPoint + $apiEndPointVersion + $api + $optionalQueryParameters
 
     $azAPICallPayload = @{
-        uri = $uri
-        method = 'GET'
-        currentTask = "$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: Validate Access for Groups Read permission"
-        consistencyLevel = 'eventual'
-        validateAccess = $true
-        noPaging = $true
+        uri                    = $uri
+        method                 = 'GET'
+        currentTask            = "$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: Validate Access for Groups Read permission"
+        consistencyLevel       = 'eventual'
+        validateAccess         = $true
+        noPaging               = $true
         AzApiCallConfiguration = $azAPICallConf
     }
     Write-Host $azAPICallPayload.currentTask
@@ -294,11 +302,11 @@ if (-not $DevMode) {
     $uri = $apiEndPoint + $apiEndPointVersion + $api + $optionalQueryParameters
 
     $azAPICallPayload = @{
-        uri = $uri
-        method = 'GET'
-        currentTask = "'$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: Get - Groups'"
-        consistencyLevel = 'eventual'
-        noPaging = $true #$top in $uri + parameter 'noPaging=$false' (not using 'noPaging' in the splat) will iterate further https://docs.microsoft.com/en-us/graph/paging
+        uri                    = $uri
+        method                 = 'GET'
+        currentTask            = "'$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: Get - Groups'"
+        consistencyLevel       = 'eventual'
+        noPaging               = $true #$top in $uri + parameter 'noPaging=$false' (not using 'noPaging' in the splat) will iterate further https://docs.microsoft.com/en-us/graph/paging
         AzAPICallConfiguration = $azAPICallConf
     }
     Write-Host $azAPICallPayload.currentTask
@@ -346,9 +354,9 @@ if (-not $DevMode) {
             $uri = $apiEndPoint + $apiEndPointVersion + $api + $optionalQueryParameters
 
             $azAPICallPayload = @{
-                uri = $uri
-                method = 'GET'
-                currentTask = " '$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: Get - Group List Members (id: $($group.id))'"
+                uri                    = $uri
+                method                 = 'GET'
+                currentTask            = " '$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: Get - Group List Members (id: $($group.id))'"
                 AzAPICallConfiguration = $azAPICallConf
             }
             Write-Host $azAPICallPayload.currentTask
@@ -392,9 +400,9 @@ if (-not $DevMode) {
             $uri = $apiEndPoint + $apiEndPointVersion + $api + $optionalQueryParameters
 
             $azAPICallPayload = @{
-                uri = $uri
-                method = 'GET'
-                currentTask = "'$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: Get - Group List Members (id: $($group.id))'"
+                uri                    = $uri
+                method                 = 'GET'
+                currentTask            = "'$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: Get - Group List Members (id: $($group.id))'"
                 AzAPICallConfiguration = $azAPICallConf
             }
             Write-Host $azAPICallPayload.currentTask
@@ -435,9 +443,9 @@ if (-not $DevMode) {
     $uri = $apiEndPoint + $api + $apiVersion + $uriParameter
 
     $azAPICallPayload = @{
-        uri = $uri
-        method = 'GET'
-        currentTask = " '$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: List - Subscriptions'"
+        uri                    = $uri
+        method                 = 'GET'
+        currentTask            = " '$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: List - Subscriptions'"
         AzAPICallConfiguration = $azAPICallConf
     }
     Write-Host $azAPICallPayload.currentTask
@@ -489,9 +497,9 @@ if (-not $DevMode) {
             $uri = $apiEndPoint + $api + $apiVersion + $uriParameter
 
             $azAPICallPayload = @{
-                uri = $uri
-                method = 'GET'
-                currentTask = " '$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: Get - Resources for Subscription (name: $($subscription.displayName); id: $($subscription.subscriptionId))'"
+                uri                    = $uri
+                method                 = 'GET'
+                currentTask            = " '$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: Get - Resources for Subscription (name: $($subscription.displayName); id: $($subscription.subscriptionId))'"
                 AzAPICallConfiguration = $azAPICallConf
             }
             Write-Host $azAPICallPayload.currentTask
@@ -535,9 +543,9 @@ if (-not $DevMode) {
             $uri = $apiEndPoint + $api + $apiVersion + $uriParameter
 
             $azAPICallPayload = @{
-                uri = $uri
-                method = 'GET'
-                currentTask = " '$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: Get - Resources for Subscription (name: $($subscription.displayName); id: $($subscription.subscriptionId))'"
+                uri                    = $uri
+                method                 = 'GET'
+                currentTask            = " '$($azAPICallConf['azAPIEndpoints'].($apiEndPoint.split('/')[2])) API: Get - Resources for Subscription (name: $($subscription.displayName); id: $($subscription.subscriptionId))'"
                 AzAPICallConfiguration = $azAPICallConf
             }
             Write-Host $azAPICallPayload.currentTask

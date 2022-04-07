@@ -15,7 +15,7 @@
 
     #Logging -preventWriteOutput $true -logMessage " Collecting Az modules versions"
     foreach ($azModule in $azModules) {
-        $azModuleVersion = (Get-InstalledModule -name "$azModule" -ErrorAction Ignore).Version
+        $azModuleVersion = (Get-InstalledModule -Name "$azModule" -ErrorAction Ignore).Version
         if ($azModuleVersion) {
             Logging -preventWriteOutput $true -logMessage "  Az Module $azModule Version: $azModuleVersion"
             Logging -preventWriteOutput $true -logMessage '  Required Az modules cmdlets check succeeded' -logMessageForegroundColor 'Green'
