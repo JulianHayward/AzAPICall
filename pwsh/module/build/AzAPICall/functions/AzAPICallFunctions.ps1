@@ -248,7 +248,6 @@ function AzAPICall {
                     debugAzAPICall -debugMessage "apiStatusCode: '$($actualStatusCode)'"
                     $function:AzAPICallErrorHandler = $AzAPICallConfiguration['AzAPICallRuleSet'].AzAPICallErrorHandler
                     $AzAPICallErrorHandlerResponse = AzAPICallErrorHandler -AzAPICallConfiguration $AzAPICallConfiguration -uri $uri -catchResult $catchResult -currentTask $currentTask -tryCounter $tryCounter -retryAuthorizationFailed $retryAuthorizationFailed
-                    Write-Host ($AzAPICallErrorHandlerResponse | ConvertTo-Json)
                     switch ($AzAPICallErrorHandlerResponse.action) {
                         'break' { break }
                         'return' { return [string]$AzAPICallErrorHandlerResponse.returnMsg }
@@ -902,6 +901,7 @@ function getAzAPICallFunctions {
         funcAZAPICall         = $function:AzAPICall.ToString()
         funcCreateBearerToken = $function:createBearerToken.ToString()
         funcGetJWTDetails     = $function:getJWTDetails.ToString()
+        funcLogging           = $function:Logging.ToString()
     }
     return $functions
 }

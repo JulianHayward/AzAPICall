@@ -248,7 +248,6 @@
                     debugAzAPICall -debugMessage "apiStatusCode: '$($actualStatusCode)'"
                     $function:AzAPICallErrorHandler = $AzAPICallConfiguration['AzAPICallRuleSet'].AzAPICallErrorHandler
                     $AzAPICallErrorHandlerResponse = AzAPICallErrorHandler -AzAPICallConfiguration $AzAPICallConfiguration -uri $uri -catchResult $catchResult -currentTask $currentTask -tryCounter $tryCounter -retryAuthorizationFailed $retryAuthorizationFailed
-                    Write-Host ($AzAPICallErrorHandlerResponse | ConvertTo-Json)
                     switch ($AzAPICallErrorHandlerResponse.action) {
                         'break' { break }
                         'return' { return [string]$AzAPICallErrorHandlerResponse.returnMsg }
