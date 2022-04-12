@@ -16,7 +16,9 @@
     General notes
     #>
     param (
-        [Parameter(Mandatory)][string]$token
+        [Parameter(Mandatory)]
+        [string]
+        $token
     )
     #JWTDetails https://www.powershellgallery.com/packages/JWTDetails/1.0.2
     if (!$token -contains ('.') -or !$token.StartsWith('eyJ')) { Logging -preventWriteOutput $true -logMessage 'Invalid token' -logMessageWriteMethod 'Error' -ErrorAction Stop }
@@ -45,7 +47,7 @@
     $decodedToken | Add-Member -Type NoteProperty -Name 'sig' -Value $sig
 
     #Convert Expiry time to PowerShell DateTime
-    $orig = (Get-Date -Year 1970 -Month 1 -Day 1 -hour 0 -Minute 0 -Second 0 -Millisecond 0)
+    $orig = (Get-Date -Year 1970 -Month 1 -Day 1 -Hour 0 -Minute 0 -Second 0 -Millisecond 0)
     $timeZone = Get-TimeZone
     $utcTime = $orig.AddSeconds($decodedToken.exp)
     $offset = $timeZone.GetUtcOffset($(Get-Date)).TotalMinutes #Daylight saving needs to be calculated
@@ -54,7 +56,7 @@
     $decodedToken | Add-Member -Type NoteProperty -Name 'expiryDateTime' -Value $localTime
 
     #Time to Expiry
-    $timeToExpiry = ($localTime - (get-date))
+    $timeToExpiry = ($localTime - (Get-Date))
     $decodedToken | Add-Member -Type NoteProperty -Name 'timeToExpiry' -Value $timeToExpiry
 
     return $decodedToken

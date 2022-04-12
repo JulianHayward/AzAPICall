@@ -55,8 +55,21 @@
         Logging -preventWriteOutput $true -logMessage '  AzAPICall debug disabled' -logMessageForegroundColor 'Cyan'
     }
 
+    if ($DebugAzAPICall) {
+        Logging -preventWriteOutput $true -logMessage '  AzAPICall preparing ht for return' -logMessageForegroundColor 'Cyan'
+        Logging -preventWriteOutput $true -logMessage "     debugAzAPICall               = $DebugAzAPICall" -logMessageForegroundColor 'Cyan'
+        Logging -preventWriteOutput $true -logMessage "     gitHubRepository             = $GitHubRepository" -logMessageForegroundColor 'Cyan'
+        Logging -preventWriteOutput $true -logMessage "     psVersion                    = $($PSVersionTable.PSVersion)" -logMessageForegroundColor 'Cyan'
+        Logging -preventWriteOutput $true -logMessage "     azAccountsVersion            = $AzAccountsVersion" -logMessageForegroundColor 'Cyan'
+        Logging -preventWriteOutput $true -logMessage "     azAPICallModuleVersion       = $(((Get-Module -Name AzAPICall).Version).ToString())" -logMessageForegroundColor 'Cyan'
+        Logging -preventWriteOutput $true -logMessage "     codeRunPlatform              = $codeRunPlatform" -logMessageForegroundColor 'Cyan'
+        Logging -preventWriteOutput $true -logMessage "     onAzureDevOpsOrGitHubActions = $([bool]$onAzureDevOpsOrGitHubActions)" -logMessageForegroundColor 'Cyan'
+        Logging -preventWriteOutput $true -logMessage "     onAzureDevOps                = $([bool]$onAzureDevOps)" -logMessageForegroundColor 'Cyan'
+        Logging -preventWriteOutput $true -logMessage "     onGitHubActions              = $([bool]$onGitHubActions)" -logMessageForegroundColor 'Cyan'
+    }
+
     #Region Test-HashtableParameter
-    $htParam = [ordered]@{
+    $htParameters = [ordered]@{
         debugAzAPICall               = $DebugAzAPICall
         gitHubRepository             = $GitHubRepository
         psVersion                    = $PSVersionTable.PSVersion
@@ -68,6 +81,6 @@
         onGitHubActions              = [bool]$onGitHubActions
     }
 
-    return ($AzAPICallConfiguration['htParameters'] += $htParam)
+    return $htParameters
     #EndRegion Test-HashtableParameter
 }

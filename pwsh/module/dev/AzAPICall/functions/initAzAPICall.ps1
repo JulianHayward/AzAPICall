@@ -28,6 +28,7 @@
         $AzAPICallCustomRuleSet
     )
 
+
     $AzAPICallConfiguration = @{}
     $AzAPICallConfiguration['htParameters'] = @{}
     $AzAPICallConfiguration['htParameters'].writeMethod = $writeMethod
@@ -44,9 +45,9 @@
     }
 
 
-    $AzAPICallConfiguration['htParameters'] = setHtParameters -AzAccountsVersion $AzAccountsVersion -gitHubRepository $GitHubRepository -DebugAzAPICall $DebugAzAPICall
+    $AzAPICallConfiguration['htParameters'] += setHtParameters -AzAccountsVersion $AzAccountsVersion -gitHubRepository $GitHubRepository -DebugAzAPICall $DebugAzAPICall
     Logging -preventWriteOutput $true -logMessage '  AzAPICall htParameters:'
-    Logging -preventWriteOutput $true -logMessage "($AzAPICallConfiguration['htParameters'] | format-table -AutoSize | Out-String)"
+    Logging -preventWriteOutput $true -logMessage $($AzAPICallConfiguration['htParameters'] | Format-Table -AutoSize | Out-String)
     Logging -preventWriteOutput $true -logMessage '  Create htParameters succeeded' -logMessageForegroundColor 'Green'
 
     $AzAPICallConfiguration['arrayAPICallTracking'] = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
@@ -96,11 +97,14 @@
         }
     }
     else {
-        testSubscription -SubscriptionId4Test $AzAPICallConfiguration['checkContext'].Subscription.Id -AzAPICallConfiguration $AzAPICallConfiguration
+        if (-not [string]::IsNullOrWhiteSpace($AzAPICallConfiguration['checkContext'].Subscription.Id)) {
+            testSubscription -SubscriptionId4Test $AzAPICallConfiguration['checkContext'].Subscription.Id -AzAPICallConfiguration $AzAPICallConfiguration
+        }
+
     }
 
     if (-not $AzAPICallConfiguration['checkContext'].Subscription) {
-        $AzAPICallConfiguration['checkContext'] | Format-list | Out-String
+        $AzAPICallConfiguration['checkContext'] | Format-List | Out-String
         Logging -preventWriteOutput $true -logMessage '  Check Az context failed: Az context is not set to any Subscription'
         Logging -preventWriteOutput $true -logMessage '  Set Az context to a subscription by running: Set-AzContext -subscription <subscriptionId> (run Get-AzSubscription to get the list of available Subscriptions). When done re-run the script'
         Logging -preventWriteOutput $true -logMessage '  OR'

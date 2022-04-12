@@ -116,11 +116,12 @@
     $tryCounter = 0
     $tryCounterUnexpectedError = 0
     $retryAuthorizationFailed = 5
-    $retryAuthorizationFailedCounter = 0
+    #$retryAuthorizationFailedCounter = 0
     $apiCallResultsCollection = [System.Collections.ArrayList]@()
     $initialUri = $uri
     $restartDueToDuplicateNextlinkCounter = 0
 
+    <#
     $debugForeGroundColor = 'Cyan'
     if ($AzAPICallConfiguration['htParameters'].debugAzAPICall -eq $true) {
         $doDebugAzAPICall = $true
@@ -131,6 +132,7 @@
             $debugForeGroundColor = $debugForeGroundColors[$randomNumber]
         }
     }
+    #>
 
     do {
         $uriSplitted = $uri.split('/')
@@ -158,24 +160,14 @@
             }
         }
 
-        <#needs special handling
-        $handleSpecialURL = AzAPICallSpecialURIs -AzAPICallConfiguration $AzAPICallConfiguration -uri $uri
-        if ($handleSpecialURL) {
-            Write-Host 'handleSpecialURL:' $handleSpecialURL
-            New-Variable -Name $handleSpecialURL -Value $true
-            Write-Host 'handleSpecialURL value:' $handleSpecialURL
-
-        }
-        #>
-
         $startAPICall = Get-Date
         try {
             if ($body) {
                 if ($AzApiCallConfiguration['htParameters'].codeRunPlatform -eq 'AzureAutomation') {
-                    $azAPIRequest = Invoke-WebRequest -Uri $uri -Method $method -body $body -Headers $Header -UseBasicParsing
+                    $azAPIRequest = Invoke-WebRequest -Uri $uri -Method $method -Body $body -Headers $Header -UseBasicParsing
                 }
                 else {
-                    $azAPIRequest = Invoke-WebRequest -Uri $uri -Method $method -body $body -Headers $Header
+                    $azAPIRequest = Invoke-WebRequest -Uri $uri -Method $method -Body $body -Headers $Header
                 }
             }
             else {
@@ -217,7 +209,7 @@
             }
         }
         $endAPICall = Get-Date
-        $durationAPICall = NEW-TIMESPAN -Start $startAPICall -End $endAPICall
+        $durationAPICall = New-TimeSpan -Start $startAPICall -End $endAPICall
 
         if (-not $notTryCounter) {
             $tryCounter++
@@ -255,8 +247,7 @@
                 else {
                     debugAzAPICall -debugMessage "apiStatusCode: '$($actualStatusCode)'"
                     $function:AzAPICallErrorHandler = $AzAPICallConfiguration['AzAPICallRuleSet'].AzAPICallErrorHandler
-                    $AzAPICallErrorHandlerResponse = AzAPICallErrorHandler -AzAPICallConfiguration $AzAPICallConfiguration -uri $uri -catchResult $catchResult -currentTask $currentTask -tryCounter $tryCounter
-                    Write-host ($AzAPICallErrorHandlerResponse | convertto-json)
+                    $AzAPICallErrorHandlerResponse = AzAPICallErrorHandler -AzAPICallConfiguration $AzAPICallConfiguration -uri $uri -catchResult $catchResult -currentTask $currentTask -tryCounter $tryCounter -retryAuthorizationFailed $retryAuthorizationFailed
                     switch ($AzAPICallErrorHandlerResponse.action) {
                         'break' { break }
                         'return' { return [string]$AzAPICallErrorHandlerResponse.returnMsg }
