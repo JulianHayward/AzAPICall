@@ -269,22 +269,6 @@
                 }
                 elseif ($listenOn -eq 'ContentProperties') {
                     if (($azAPIRequestConvertedFromJson.properties.rows).Count -gt 0) {
-                        <#
-                        foreach ($consumptionline in $azAPIRequestConvertedFromJson.properties.rows) {
-                            $hlper = $htSubscriptionsMgPath.($consumptionline[1])
-                            $null = $apiCallResultsCollection.Add([PSCustomObject]@{
-                                    "$($azAPIRequestConvertedFromJson.properties.columns.name[0])" = $consumptionline[0]
-                                    "$($azAPIRequestConvertedFromJson.properties.columns.name[1])" = $consumptionline[1]
-                                    SubscriptionName                                               = $hlper.DisplayName
-                                    SubscriptionMgPath                                             = $hlper.ParentNameChainDelimited
-                                    "$($azAPIRequestConvertedFromJson.properties.columns.name[2])" = $consumptionline[2]
-                                    "$($azAPIRequestConvertedFromJson.properties.columns.name[3])" = $consumptionline[3]
-                                    "$($azAPIRequestConvertedFromJson.properties.columns.name[4])" = $consumptionline[4]
-                                    "$($azAPIRequestConvertedFromJson.properties.columns.name[5])" = $consumptionline[5]
-                                    "$($azAPIRequestConvertedFromJson.properties.columns.name[6])" = $consumptionline[6]
-                                })
-                        }
-                        #>
                         $apiCallResultsCollection.Add($azAPIRequestConvertedFromJson)
                     }
                 }
