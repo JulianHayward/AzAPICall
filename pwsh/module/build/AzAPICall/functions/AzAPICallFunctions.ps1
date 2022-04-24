@@ -269,22 +269,6 @@ function AzAPICall {
                 }
                 elseif ($listenOn -eq 'ContentProperties') {
                     if (($azAPIRequestConvertedFromJson.properties.rows).Count -gt 0) {
-                        <#
-                        foreach ($consumptionline in $azAPIRequestConvertedFromJson.properties.rows) {
-                            $hlper = $htSubscriptionsMgPath.($consumptionline[1])
-                            $null = $apiCallResultsCollection.Add([PSCustomObject]@{
-                                    "$($azAPIRequestConvertedFromJson.properties.columns.name[0])" = $consumptionline[0]
-                                    "$($azAPIRequestConvertedFromJson.properties.columns.name[1])" = $consumptionline[1]
-                                    SubscriptionName                                               = $hlper.DisplayName
-                                    SubscriptionMgPath                                             = $hlper.ParentNameChainDelimited
-                                    "$($azAPIRequestConvertedFromJson.properties.columns.name[2])" = $consumptionline[2]
-                                    "$($azAPIRequestConvertedFromJson.properties.columns.name[3])" = $consumptionline[3]
-                                    "$($azAPIRequestConvertedFromJson.properties.columns.name[4])" = $consumptionline[4]
-                                    "$($azAPIRequestConvertedFromJson.properties.columns.name[5])" = $consumptionline[5]
-                                    "$($azAPIRequestConvertedFromJson.properties.columns.name[6])" = $consumptionline[6]
-                                })
-                        }
-                        #>
                         $apiCallResultsCollection.Add($azAPIRequestConvertedFromJson)
                     }
                 }
@@ -820,6 +804,16 @@ function AzAPICallErrorHandler {
         }
         return $response
     }
+
+    elseif ($catchResult.error.code -eq 'RoleDefinitionDoesNotExist') {
+        Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($azAPIRequest.StatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) RBAC RoleDefinition does not exist"
+        $response = @{
+            action    = 'return' #break or return or returnCollection
+            returnMsg = 'RoleDefinitionDoesNotExist'
+        }
+        return $response
+    }
+
     else {
         if (-not $catchResult.code -and -not $catchResult.error.code -and -not $catchResult.message -and -not $catchResult.error.message -and -not $catchResult -and $tryCounter -lt 6) {
             if ($azAPIRequest.StatusCode -eq 204 -and $getARMCostManagement) {
