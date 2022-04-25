@@ -121,18 +121,18 @@
     $initialUri = $uri
     $restartDueToDuplicateNextlinkCounter = 0
 
-    <#
-    $debugForeGroundColor = 'Cyan'
+
+    #$debugForeGroundColor = 'Cyan'
     if ($AzAPICallConfiguration['htParameters'].debugAzAPICall -eq $true) {
         $doDebugAzAPICall = $true
-        if ($caller -like 'CustomDataCollection*') {
-            $debugForeGroundColors = @('DarkBlue', 'DarkGreen', 'DarkCyan', 'Cyan', 'DarkMagenta', 'DarkYellow', 'Blue', 'Magenta', 'Yellow', 'Green')
-            $debugForeGroundColorsCount = $debugForeGroundColors.Count
-            $randomNumber = Get-Random -Minimum 0 -Maximum ($debugForeGroundColorsCount - 1)
-            $debugForeGroundColor = $debugForeGroundColors[$randomNumber]
-        }
+        # if ($caller -like 'CustomDataCollection*') {
+        #     $debugForeGroundColors = @('DarkBlue', 'DarkGreen', 'DarkCyan', 'Cyan', 'DarkMagenta', 'DarkYellow', 'Blue', 'Magenta', 'Yellow', 'Green')
+        #     $debugForeGroundColorsCount = $debugForeGroundColors.Count
+        #     $randomNumber = Get-Random -Minimum 0 -Maximum ($debugForeGroundColorsCount - 1)
+        #     $debugForeGroundColor = $debugForeGroundColors[$randomNumber]
+        # }
     }
-    #>
+
 
     do {
         $uriSplitted = $uri.split('/')
