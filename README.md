@@ -12,6 +12,7 @@ You want to have an easy way to interact with the Microsoft Azure API endpoints 
 - [AzAPICall Tracking](#azapicall-tracking)
 - [Prerequisites](#prerequisites)
     - [Powershell Modules](powershell-modules)
+- [Contribute](contribute)
 
 ## AzAPICall example
 
@@ -127,3 +128,14 @@ As well you can see how fast a AzAPICall was responding:
 | PowerShell Module |
 | ----------------- |
 | Az.Accounts       |
+
+## Contribute
+
+Your contribution is welcome.
+
+Thanks to the awesome contributors:
+* Brooks Vaugn
+* Kai Schulz
+* Simon Wahlin
+* Tim Stock
+* Tim Wanierke

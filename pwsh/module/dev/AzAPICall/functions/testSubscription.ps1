@@ -23,6 +23,7 @@ function testSubscription {
             Logging -logMessage "   SubscriptionId '$SubscriptionId4Test' state: '$($testSubscription.state)'"
         }
         Logging -logMessage "   Subscription check - SubscriptionId: '$SubscriptionId4Test' - please define another Subscription (Subscription criteria: quotaId notLike 'AAD*'; state = enabled)"
+        Logging -logMessage "   Use parameter: -SubscriptionId4Test (e.g. -SubscriptionId4Test '66f7c01a-ca6c-4ec2-a80b-34cc2dbda7d7')"
         Throw 'Error - check the last console output for details'
     }
     else {
