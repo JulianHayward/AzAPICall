@@ -425,6 +425,15 @@ function AzAPICallErrorHandler {
         return $response
     }
 
+    elseif ($catchResult.error.code -eq 'ClassicAdministratorListFailed') {
+        Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) ClassicAdministrators not applicable"
+        $response = @{
+            action    = 'return' #break or return or returnCollection
+            returnMsg = 'ClassicAdministratorListFailed'
+        }
+        return $response
+    }
+
     else {
         if (-not $catchResult.code -and -not $catchResult.error.code -and -not $catchResult.message -and -not $catchResult.error.message -and -not $catchResult -and $tryCounter -lt 6) {
             if ($actualStatusCode -eq 204 -and $getARMCostManagement) {
