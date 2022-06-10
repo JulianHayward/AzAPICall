@@ -353,7 +353,15 @@ function AzAPICallErrorHandler {
         Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' skipping Subscription"
         $response = @{
             action    = 'return' #break or return or returnCollection
-            returnMsg = 'SubScriptionNotRegistered'
+            returnMsg = 'SubscriptionNotRegistered'
+        }
+        return $response
+    }
+    elseif ($getARMMDfC -and $catchResult.error.code -eq 'DisallowedProvider') {
+        Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' skipping Subscription"
+        $response = @{
+            action    = 'return' #break or return or returnCollection
+            returnMsg = 'DisallowedProvider'
         }
         return $response
     }
