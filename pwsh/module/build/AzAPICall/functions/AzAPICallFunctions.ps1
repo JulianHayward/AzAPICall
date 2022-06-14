@@ -401,6 +401,9 @@ function AzAPICallErrorHandler {
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/Microsoft.CostManagement/query*" } { $getARMCostManagement = $true }
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/subscriptions/*/providers/Microsoft.Security/pricings*" } { $getARMMDfC = $true }
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/providers/Microsoft.ResourceGraph/*" } { $getARMARG = $true }
+        { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/subscriptions/*/providers/Microsoft.Blueprint/blueprints*" } { $getARMBlueprintDefinition = $true }
+        { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/subscriptions/*/providers/Microsoft.Blueprint/blueprintAssignments*" } { $getARMBlueprintAssignment = $true }
+        { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/subscriptions/*/providers/Microsoft.Security/securescores*" } { $getARMMdFCSecureScore = $true }
         #MicrosoftGraph
         #{ $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/*/groups/*/transitiveMembers" } { $getMicrosoftGraphGroupMembersTransitive = $true }
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/applications*" } { $getMicrosoftGraphApplication = $true }
@@ -435,6 +438,24 @@ function AzAPICallErrorHandler {
             return $response
         }
     }
+    elseif ($getARMPolicyComplianceStates -and $catchResult.error.code -eq 'DisallowedProvider') {
+        Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' skipping Subscription"
+        $response = @{
+            action    = 'return' #break or return or returnCollection
+            returnMsg = 'DisallowedProvider'
+        }
+        return $response
+    }
+
+    elseif ($getARMMdFCSecureScore -and $catchResult.error.code -eq 'DisallowedProvider') {
+        Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' skipping Subscription"
+        $response = @{
+            action    = 'return' #break or return or returnCollection
+            returnMsg = 'DisallowedProvider'
+        }
+        return $response
+    }
+
     elseif ($catchResult.error.message -like '*The offer MS-AZR-0110P is not supported*') {
         Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - seems we´re hitting a malicious endpoint .. try again in $tryCounter second(s)"
         Start-Sleep -Seconds $tryCounter
@@ -646,6 +667,15 @@ function AzAPICallErrorHandler {
         $response = @{
             action    = 'return' #break or return or returnCollection
             returnMsg = 'BlueprintNotFound'
+        }
+        return $response
+    }
+
+    elseif (($getARMBlueprintDefinition -or $getARMBlueprintAssignment) -and $catchResult.error.code -eq 'DisallowedProvider') {
+        Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) skipping Subscription"
+        $response = @{
+            action    = 'return' #break or return or returnCollection
+            returnMsg = 'DisallowedProvider'
         }
         return $response
     }
