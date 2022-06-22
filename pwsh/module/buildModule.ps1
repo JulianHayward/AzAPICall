@@ -8,9 +8,9 @@ $ErrorActionPreference = 'Stop'
 
 Write-Host 'Building final module (one file containing all functions)'
 
-$latestAzAPICallVersionInDev = (Import-PowerShellDataFile -path .\pwsh\module\dev\AzAPICall\AzAPICall.psd1 -Verbose -ErrorAction Stop).ModuleVersion
+$latestAzAPICallVersionInDev = (Import-PowerShellDataFile -Path .\pwsh\module\dev\AzAPICall\AzAPICall.psd1 -Verbose -ErrorAction Stop).ModuleVersion
 if (-not $test) {
-    $latestAzAPICallVersionInGallery = (Find-Module -name AzAPICall -ErrorAction Stop).Version
+    $latestAzAPICallVersionInGallery = (Find-Module -Name AzAPICall -ErrorAction Stop).Version
     if ($latestAzAPICallVersionInGallery -eq $latestAzAPICallVersionInDev) {
         Write-Host "Version conflict (Gallery/Dev):  $latestAzAPICallVersionInGallery = $latestAzAPICallVersionInDev"
         Write-Host 'For testing use switch parameter -test'
@@ -60,7 +60,15 @@ if (Test-Path .\pwsh\module\build\AzAPICall\AzAPICall.psm1) {
     }
 }
 
-Get-ChildItem -path .\pwsh\module\dev\AzAPICall\functions | ForEach-Object -Process {
+try {
+    "function getAzAPICallVersion { return '$latestAzAPICallVersionInDev' }" | Set-Content -Path .\pwsh\module\dev\AzAPICall\functions\getAzAPICallVersion.ps1 -Verbose
+}
+catch {
+    Write-Host ' building AzAPICallVersion.ps1 failed'
+    Throw
+}
+
+Get-ChildItem -Path .\pwsh\module\dev\AzAPICall\functions | ForEach-Object -Process {
     Write-Host ' processing:' $PSItem.Name
     $fileContent = Get-Content -Path .\pwsh\module\dev\AzAPICall\functions\$($PSItem.Name) -Raw -Verbose
     $fileContent | Add-Content -Path .\pwsh\module\build\AzAPICall\functions\AzAPICallFunctions.ps1 -Verbose

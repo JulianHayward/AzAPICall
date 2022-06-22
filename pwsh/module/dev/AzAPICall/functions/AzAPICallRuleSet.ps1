@@ -6,7 +6,8 @@ function AzAPICallErrorHandler {
     switch ($uri) {
         #ARM
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/Microsoft.PolicyInsights/policyStates/latest/summarize*" } { $getARMPolicyComplianceStates = $true }
-        { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/Microsoft.Authorization/roleAssignmentSchedules*" } { $getARMRoleAssignmentSchedules = $true }
+        #{ $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/Microsoft.Authorization/roleAssignmentSchedules*" } { $getARMRoleAssignmentSchedules = $true }
+        { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/Microsoft.Authorization/roleAssignmentScheduleInstances*" } { $getARMRoleAssignmentScheduleInstances = $true }
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/*/providers/microsoft.insights/diagnosticSettings*" } { $getARMDiagnosticSettingsMg = $true }
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/microsoft.insights/diagnosticSettingsCategories*" } { $getARMDiagnosticSettingsResource = $true }
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/Microsoft.CostManagement/query*" } { $getARMCostManagement = $true }
@@ -291,7 +292,7 @@ function AzAPICallErrorHandler {
         return $response
     }
 
-    elseif ($catchResult.error.code -eq 'ResourceRequestsThrottled' -or $catchResult.error.code -eq '429') {
+    elseif ($catchResult.error.code -eq 'ResourceRequestsThrottled' -or $catchResult.error.code -eq '429' -or $catchResult.error.code -eq 'RateLimiting') {
         $sleepSeconds = 11
         if ($catchResult.error.code -eq 'ResourceRequestsThrottled') {
             Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - throttled! sleeping $sleepSeconds seconds"
@@ -302,6 +303,11 @@ function AzAPICallErrorHandler {
                 $sleepSeconds = 60
             }
             Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - throttled! sleeping $sleepSeconds seconds"
+            Start-Sleep -Seconds $sleepSeconds
+        }
+        if ($catchResult.error.code -eq 'RateLimiting') {
+            $sleepSeconds = 5
+            Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)') '$($catchResult.error.code)' - throttled! sleeping $sleepSeconds seconds"
             Start-Sleep -Seconds $sleepSeconds
         }
     }
@@ -322,7 +328,7 @@ function AzAPICallErrorHandler {
     }
 
     elseif (
-            (($getARMRoleAssignmentSchedules -or $getMicrosoftGraphRoleAssignmentSchedules) -and (
+            ((<#$getARMRoleAssignmentSchedules -or #>$getMicrosoftGraphRoleAssignmentSchedules) -and (
             ($catchResult.error.code -eq 'ResourceNotOnboarded') -or
             ($catchResult.error.code -eq 'TenantNotOnboarded') -or
             ($catchResult.error.code -eq 'InvalidResourceType') -or
@@ -358,6 +364,15 @@ function AzAPICallErrorHandler {
             }
             return $response
         }
+    }
+
+    elseif ($getARMRoleAssignmentScheduleInstances -and ($actualStatusCode -eq 400 -or $actualStatusCode -eq 500)) {
+        Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - skipping"
+        $response = @{
+            action    = 'return' #break or return or returnCollection
+            returnMsg = 'RoleAssignmentScheduleInstancesError'
+        }
+        return $response
     }
 
     elseif ($getARMDiagnosticSettingsMg -and $catchResult.error.code -eq 'InvalidResourceType') {

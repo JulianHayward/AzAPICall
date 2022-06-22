@@ -260,7 +260,12 @@ function AzAPICall {
                 $azAPIRequestConvertedFromJson = ($azAPIRequest.Content | ConvertFrom-Json)
                 if ($listenOn -eq 'Content') {
                     debugAzAPICall -debugMessage "listenOn=content ($((($azAPIRequestConvertedFromJson)).count))"
-                    $null = $apiCallResultsCollection.Add($azAPIRequestConvertedFromJson)
+                    if ($uri -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/providers/Microsoft.ResourceGraph/*") {
+                        $null = $apiCallResultsCollection.AddRange($azAPIRequestConvertedFromJson.data)
+                    }
+                    else {
+                        $null = $apiCallResultsCollection.Add($azAPIRequestConvertedFromJson)
+                    }
                 }
                 elseif ($listenOn -eq 'StatusCode') {
                     debugAzAPICall -debugMessage "listenOn=StatusCode ($actualStatusCode)"
@@ -313,6 +318,44 @@ function AzAPICall {
                         }
                         debugAzAPICall -debugMessage "nextLink: $Uri"
                     }
+                    elseif ($azAPIRequestConvertedFromJson.'$skipToken' -and $uri -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/providers/Microsoft.ResourceGraph/*") {
+                        $isMore = $true
+                        if ($body) {
+                            $bodyHt = $body | ConvertFrom-Json -AsHashtable
+                            if ($bodyHt.options) {
+                                if ($bodyHt.options.'$skiptoken') {
+                                    if ($bodyHt.options.'$skiptoken' -eq $azAPIRequestConvertedFromJson.'$skipToken') {
+                                        if ($restartDueToDuplicateNextlinkCounter -gt 3) {
+                                            Logging -preventWriteOutput $true -logMessage " $currentTask restartDueToDuplicateSkipTokenCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
+                                            Throw 'Error - check the last console output for details'
+                                        }
+                                        else {
+                                            $restartDueToDuplicateNextlinkCounter++
+                                            debugAzAPICall -debugMessage "skipTokenLog: `$skipToken: $($azAPIRequestConvertedFromJson.'$skipToken') is equal to previous skipToken"
+                                            debugAzAPICall -debugMessage 'skipTokenLog: re-starting'
+                                            $bodyht.options.remove('$skiptoken')
+                                            debugAzAPICall -debugMessage "`$body: $($bodyHt | ConvertTo-Json -Depth 99 | Out-String)"
+                                        }
+                                    }
+                                    else {
+                                        $bodyHt.options.'$skiptoken' = $azAPIRequestConvertedFromJson.'$skipToken'
+                                    }
+                                }
+                                else {
+                                    $bodyHt.options.'$skiptoken' = $azAPIRequestConvertedFromJson.'$skipToken'
+                                }
+                            }
+                            else {
+                                $bodyHt.options = @{}
+                                $bodyHt.options.'$skiptoken' = $azAPIRequestConvertedFromJson.'$skipToken'
+                            }
+                            debugAzAPICall -debugMessage "`$body: $($bodyHt | ConvertTo-Json -Depth 99 | Out-String)"
+                            $body = $bodyHt | ConvertTo-Json -Depth 99
+                        }
+
+                        $notTryCounter = $true
+                        debugAzAPICall -debugMessage "`$skipToken: $($azAPIRequestConvertedFromJson.'$skipToken')"
+                    }
                     elseif ($azAPIRequestConvertedFromJson.'@oData.nextLink') {
                         $isMore = $true
                         if ($uri -eq $azAPIRequestConvertedFromJson.'@odata.nextLink') {
@@ -362,7 +405,7 @@ function AzAPICall {
                         debugAzAPICall -debugMessage "nextLink: $Uri"
                     }
                     else {
-                        debugAzAPICall -debugMessage 'NextLink: none'
+                        debugAzAPICall -debugMessage 'NextLink/skipToken: none'
                     }
                 }
             }
@@ -395,7 +438,8 @@ function AzAPICallErrorHandler {
     switch ($uri) {
         #ARM
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/Microsoft.PolicyInsights/policyStates/latest/summarize*" } { $getARMPolicyComplianceStates = $true }
-        { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/Microsoft.Authorization/roleAssignmentSchedules*" } { $getARMRoleAssignmentSchedules = $true }
+        #{ $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/Microsoft.Authorization/roleAssignmentSchedules*" } { $getARMRoleAssignmentSchedules = $true }
+        { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/Microsoft.Authorization/roleAssignmentScheduleInstances*" } { $getARMRoleAssignmentScheduleInstances = $true }
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/*/providers/microsoft.insights/diagnosticSettings*" } { $getARMDiagnosticSettingsMg = $true }
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/microsoft.insights/diagnosticSettingsCategories*" } { $getARMDiagnosticSettingsResource = $true }
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/Microsoft.CostManagement/query*" } { $getARMCostManagement = $true }
@@ -534,7 +578,7 @@ function AzAPICallErrorHandler {
         }
 
         if ($catchResult.error.message -like '*does not have any valid subscriptions*') {
-            Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems there are no valid Subscriptions present - skipping CostManagement"
+            Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)') <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) seems there are no valid Subscriptions present - skipping CostManagement on MG level"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnMsg = 'NoValidSubscriptions'
@@ -680,7 +724,7 @@ function AzAPICallErrorHandler {
         return $response
     }
 
-    elseif ($catchResult.error.code -eq 'ResourceRequestsThrottled' -or $catchResult.error.code -eq '429') {
+    elseif ($catchResult.error.code -eq 'ResourceRequestsThrottled' -or $catchResult.error.code -eq '429' -or $catchResult.error.code -eq 'RateLimiting') {
         $sleepSeconds = 11
         if ($catchResult.error.code -eq 'ResourceRequestsThrottled') {
             Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - throttled! sleeping $sleepSeconds seconds"
@@ -691,6 +735,11 @@ function AzAPICallErrorHandler {
                 $sleepSeconds = 60
             }
             Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - throttled! sleeping $sleepSeconds seconds"
+            Start-Sleep -Seconds $sleepSeconds
+        }
+        if ($catchResult.error.code -eq 'RateLimiting') {
+            $sleepSeconds = 5
+            Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)') '$($catchResult.error.code)' - throttled! sleeping $sleepSeconds seconds"
             Start-Sleep -Seconds $sleepSeconds
         }
     }
@@ -711,7 +760,7 @@ function AzAPICallErrorHandler {
     }
 
     elseif (
-            (($getARMRoleAssignmentSchedules -or $getMicrosoftGraphRoleAssignmentSchedules) -and (
+            ((<#$getARMRoleAssignmentSchedules -or #>$getMicrosoftGraphRoleAssignmentSchedules) -and (
             ($catchResult.error.code -eq 'ResourceNotOnboarded') -or
             ($catchResult.error.code -eq 'TenantNotOnboarded') -or
             ($catchResult.error.code -eq 'InvalidResourceType') -or
@@ -747,6 +796,15 @@ function AzAPICallErrorHandler {
             }
             return $response
         }
+    }
+
+    elseif ($getARMRoleAssignmentScheduleInstances -and ($actualStatusCode -eq 400 -or $actualStatusCode -eq 500)) {
+        Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - skipping"
+        $response = @{
+            action    = 'return' #break or return or returnCollection
+            returnMsg = 'RoleAssignmentScheduleInstancesError'
+        }
+        return $response
     }
 
     elseif ($getARMDiagnosticSettingsMg -and $catchResult.error.code -eq 'InvalidResourceType') {
@@ -949,6 +1007,8 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
+function getAzAPICallVersion { return '1.1.17' }
+
 function getJWTDetails {
     <#
     .SYNOPSIS
@@ -1047,7 +1107,8 @@ function initAzAPICall {
     $AzAPICallConfiguration['htParameters'].writeMethod = $writeMethod
     $AzAPICallConfiguration['htParameters'].debugWriteMethod = $debugWriteMethod
 
-    Logging -preventWriteOutput $true -logMessage " AzAPICall $(((Get-Module -Name AzAPICall).Version).ToString())"
+    $AzAPICallVersion = getAzAPICallVersion
+    Logging -preventWriteOutput $true -logMessage " AzAPICall $AzAPICallVersion"
 
     $AzAccountsVersion = testAzModules
 
@@ -1298,7 +1359,7 @@ function setHtParameters {
         Logging -preventWriteOutput $true -logMessage "     gitHubRepository             = $GitHubRepository" -logMessageForegroundColor 'Cyan'
         Logging -preventWriteOutput $true -logMessage "     psVersion                    = $($PSVersionTable.PSVersion)" -logMessageForegroundColor 'Cyan'
         Logging -preventWriteOutput $true -logMessage "     azAccountsVersion            = $AzAccountsVersion" -logMessageForegroundColor 'Cyan'
-        Logging -preventWriteOutput $true -logMessage "     azAPICallModuleVersion       = $(((Get-Module -Name AzAPICall).Version).ToString())" -logMessageForegroundColor 'Cyan'
+        Logging -preventWriteOutput $true -logMessage "     azAPICallModuleVersion       = $AzAPICallVersion" -logMessageForegroundColor 'Cyan'
         Logging -preventWriteOutput $true -logMessage "     codeRunPlatform              = $codeRunPlatform" -logMessageForegroundColor 'Cyan'
         Logging -preventWriteOutput $true -logMessage "     onAzureDevOpsOrGitHubActions = $([bool]$onAzureDevOpsOrGitHubActions)" -logMessageForegroundColor 'Cyan'
         Logging -preventWriteOutput $true -logMessage "     onAzureDevOps                = $([bool]$onAzureDevOps)" -logMessageForegroundColor 'Cyan'
@@ -1311,7 +1372,7 @@ function setHtParameters {
         gitHubRepository             = $GitHubRepository
         psVersion                    = $PSVersionTable.PSVersion
         azAccountsVersion            = $AzAccountsVersion
-        azAPICallModuleVersion       = ((Get-Module -Name AzAPICall).Version).ToString()
+        azAPICallModuleVersion       = $AzAPICallVersion
         codeRunPlatform              = $codeRunPlatform
         onAzureDevOpsOrGitHubActions = [bool]$onAzureDevOpsOrGitHubActions
         onAzureDevOps                = [bool]$onAzureDevOps

@@ -33,7 +33,8 @@
     $AzAPICallConfiguration['htParameters'].writeMethod = $writeMethod
     $AzAPICallConfiguration['htParameters'].debugWriteMethod = $debugWriteMethod
 
-    Logging -preventWriteOutput $true -logMessage " AzAPICall $(((Get-Module -Name AzAPICall).Version).ToString())"
+    $AzAPICallVersion = getAzAPICallVersion
+    Logging -preventWriteOutput $true -logMessage " AzAPICall $AzAPICallVersion"
 
     $AzAccountsVersion = testAzModules
 

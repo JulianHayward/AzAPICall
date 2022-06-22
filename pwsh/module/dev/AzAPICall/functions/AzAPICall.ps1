@@ -260,7 +260,12 @@
                 $azAPIRequestConvertedFromJson = ($azAPIRequest.Content | ConvertFrom-Json)
                 if ($listenOn -eq 'Content') {
                     debugAzAPICall -debugMessage "listenOn=content ($((($azAPIRequestConvertedFromJson)).count))"
-                    $null = $apiCallResultsCollection.Add($azAPIRequestConvertedFromJson)
+                    if ($uri -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/providers/Microsoft.ResourceGraph/*") {
+                        $null = $apiCallResultsCollection.AddRange($azAPIRequestConvertedFromJson.data)
+                    }
+                    else {
+                        $null = $apiCallResultsCollection.Add($azAPIRequestConvertedFromJson)
+                    }
                 }
                 elseif ($listenOn -eq 'StatusCode') {
                     debugAzAPICall -debugMessage "listenOn=StatusCode ($actualStatusCode)"
@@ -313,6 +318,44 @@
                         }
                         debugAzAPICall -debugMessage "nextLink: $Uri"
                     }
+                    elseif ($azAPIRequestConvertedFromJson.'$skipToken' -and $uri -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/providers/Microsoft.ResourceGraph/*") {
+                        $isMore = $true
+                        if ($body) {
+                            $bodyHt = $body | ConvertFrom-Json -AsHashtable
+                            if ($bodyHt.options) {
+                                if ($bodyHt.options.'$skiptoken') {
+                                    if ($bodyHt.options.'$skiptoken' -eq $azAPIRequestConvertedFromJson.'$skipToken') {
+                                        if ($restartDueToDuplicateNextlinkCounter -gt 3) {
+                                            Logging -preventWriteOutput $true -logMessage " $currentTask restartDueToDuplicateSkipTokenCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
+                                            Throw 'Error - check the last console output for details'
+                                        }
+                                        else {
+                                            $restartDueToDuplicateNextlinkCounter++
+                                            debugAzAPICall -debugMessage "skipTokenLog: `$skipToken: $($azAPIRequestConvertedFromJson.'$skipToken') is equal to previous skipToken"
+                                            debugAzAPICall -debugMessage 'skipTokenLog: re-starting'
+                                            $bodyht.options.remove('$skiptoken')
+                                            debugAzAPICall -debugMessage "`$body: $($bodyHt | ConvertTo-Json -Depth 99 | Out-String)"
+                                        }
+                                    }
+                                    else {
+                                        $bodyHt.options.'$skiptoken' = $azAPIRequestConvertedFromJson.'$skipToken'
+                                    }
+                                }
+                                else {
+                                    $bodyHt.options.'$skiptoken' = $azAPIRequestConvertedFromJson.'$skipToken'
+                                }
+                            }
+                            else {
+                                $bodyHt.options = @{}
+                                $bodyHt.options.'$skiptoken' = $azAPIRequestConvertedFromJson.'$skipToken'
+                            }
+                            debugAzAPICall -debugMessage "`$body: $($bodyHt | ConvertTo-Json -Depth 99 | Out-String)"
+                            $body = $bodyHt | ConvertTo-Json -Depth 99
+                        }
+
+                        $notTryCounter = $true
+                        debugAzAPICall -debugMessage "`$skipToken: $($azAPIRequestConvertedFromJson.'$skipToken')"
+                    }
                     elseif ($azAPIRequestConvertedFromJson.'@oData.nextLink') {
                         $isMore = $true
                         if ($uri -eq $azAPIRequestConvertedFromJson.'@odata.nextLink') {
@@ -362,7 +405,7 @@
                         debugAzAPICall -debugMessage "nextLink: $Uri"
                     }
                     else {
-                        debugAzAPICall -debugMessage 'NextLink: none'
+                        debugAzAPICall -debugMessage 'NextLink/skipToken: none'
                     }
                 }
             }

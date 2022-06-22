@@ -61,7 +61,7 @@
         Logging -preventWriteOutput $true -logMessage "     gitHubRepository             = $GitHubRepository" -logMessageForegroundColor 'Cyan'
         Logging -preventWriteOutput $true -logMessage "     psVersion                    = $($PSVersionTable.PSVersion)" -logMessageForegroundColor 'Cyan'
         Logging -preventWriteOutput $true -logMessage "     azAccountsVersion            = $AzAccountsVersion" -logMessageForegroundColor 'Cyan'
-        Logging -preventWriteOutput $true -logMessage "     azAPICallModuleVersion       = $(((Get-Module -Name AzAPICall).Version).ToString())" -logMessageForegroundColor 'Cyan'
+        Logging -preventWriteOutput $true -logMessage "     azAPICallModuleVersion       = $AzAPICallVersion" -logMessageForegroundColor 'Cyan'
         Logging -preventWriteOutput $true -logMessage "     codeRunPlatform              = $codeRunPlatform" -logMessageForegroundColor 'Cyan'
         Logging -preventWriteOutput $true -logMessage "     onAzureDevOpsOrGitHubActions = $([bool]$onAzureDevOpsOrGitHubActions)" -logMessageForegroundColor 'Cyan'
         Logging -preventWriteOutput $true -logMessage "     onAzureDevOps                = $([bool]$onAzureDevOps)" -logMessageForegroundColor 'Cyan'
@@ -74,7 +74,7 @@
         gitHubRepository             = $GitHubRepository
         psVersion                    = $PSVersionTable.PSVersion
         azAccountsVersion            = $AzAccountsVersion
-        azAPICallModuleVersion       = ((Get-Module -Name AzAPICall).Version).ToString()
+        azAPICallModuleVersion       = $AzAPICallVersion
         codeRunPlatform              = $codeRunPlatform
         onAzureDevOpsOrGitHubActions = [bool]$onAzureDevOpsOrGitHubActions
         onAzureDevOps                = [bool]$onAzureDevOps
