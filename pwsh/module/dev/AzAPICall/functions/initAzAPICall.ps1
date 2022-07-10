@@ -110,7 +110,7 @@
         Logging -preventWriteOutput $true -logMessage '  Check Az context failed: Az context is not set to any Subscription'
         Logging -preventWriteOutput $true -logMessage '  Set Az context to a subscription by running: Set-AzContext -subscription <subscriptionId> (run Get-AzSubscription to get the list of available Subscriptions). When done re-run the script'
         Logging -preventWriteOutput $true -logMessage '  OR'
-        Logging -preventWriteOutput $true -logMessage '  Use parameter -SubscriptionId4Test - e.g. .\AzGovVizParallel.ps1 -SubscriptionId4Test <subscriptionId>'
+        Logging -preventWriteOutput $true -logMessage '  Use parameter -SubscriptionId4AzContext - e.g. .\AzGovVizParallel.ps1 -SubscriptionId4AzContext <subscriptionId>'
         Throw 'Error - check the last console output for details'
     }
     else {

@@ -1007,7 +1007,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.17' }
+function getAzAPICallVersion { return '1.1.18' }
 
 function getJWTDetails {
     <#
@@ -1184,7 +1184,7 @@ function initAzAPICall {
         Logging -preventWriteOutput $true -logMessage '  Check Az context failed: Az context is not set to any Subscription'
         Logging -preventWriteOutput $true -logMessage '  Set Az context to a subscription by running: Set-AzContext -subscription <subscriptionId> (run Get-AzSubscription to get the list of available Subscriptions). When done re-run the script'
         Logging -preventWriteOutput $true -logMessage '  OR'
-        Logging -preventWriteOutput $true -logMessage '  Use parameter -SubscriptionId4Test - e.g. .\AzGovVizParallel.ps1 -SubscriptionId4Test <subscriptionId>'
+        Logging -preventWriteOutput $true -logMessage '  Use parameter -SubscriptionId4AzContext - e.g. .\AzGovVizParallel.ps1 -SubscriptionId4AzContext <subscriptionId>'
         Throw 'Error - check the last console output for details'
     }
     else {
@@ -1437,7 +1437,7 @@ function testSubscription {
             Logging -logMessage "   SubscriptionId '$SubscriptionId4Test' state: '$($testSubscription.state)'"
         }
         Logging -logMessage "   Subscription check - SubscriptionId: '$SubscriptionId4Test' - please define another Subscription (Subscription criteria: quotaId notLike 'AAD*'; state = enabled)"
-        Logging -logMessage "   Use parameter: -SubscriptionId4Test (e.g. -SubscriptionId4Test '66f7c01a-ca6c-4ec2-a80b-34cc2dbda7d7')"
+        Logging -logMessage "   Use parameter: -SubscriptionId4AzContext (e.g. -SubscriptionId4AzContext '66f7c01a-ca6c-4ec2-a80b-34cc2dbda7d7')"
         Throw 'Error - check the last console output for details'
     }
     else {
