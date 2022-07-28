@@ -458,7 +458,16 @@ function AzAPICallErrorHandler {
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/*/roleManagement/directory/roleAssignmentScheduleInstances*" } { $getMicrosoftGraphRoleAssignmentScheduleInstances = $true }
     }
 
-    if (
+    if ($validateAccess -and ($catchResult.error.code -eq 'Authorization_RequestDenied' -or $actualStatusCode -eq 403)) {
+        Logging -preventWriteOutput $true -logMessage "$currentTask failed ('$($catchResult.error.code)' | '$($catchResult.error.message)')" -logMessageForegroundColor 'DarkRed'
+        $response = @{
+            action    = 'return' #break or return or returnCollection
+            returnMsg = 'failed'
+        }
+        return $response
+    }
+
+    elseif (
         $getARMPolicyComplianceStates -and (
             $catchResult.error.code -like '*ResponseTooLarge*' -or
             -not $catchResult.error.code
@@ -482,6 +491,7 @@ function AzAPICallErrorHandler {
             return $response
         }
     }
+
     elseif ($getARMPolicyComplianceStates -and $catchResult.error.code -eq 'DisallowedProvider') {
         Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' skipping Subscription"
         $response = @{
@@ -555,8 +565,11 @@ function AzAPICallErrorHandler {
             $catchResult.error.code -eq 'AccountCostDisabled' -or
             $catchResult.error.message -like '*does not have any valid subscriptions*' -or
             $catchResult.error.code -eq 'Unauthorized' -or
-                            ($catchResult.error.code -eq 'BadRequest' -and $catchResult.error.message -like '*The offer*is not supported*' -and $catchResult.error.message -notlike '*The offer MS-AZR-0110P is not supported*') -or
-                            ($catchResult.error.code -eq 'BadRequest' -and $catchResult.error.message -like 'Invalid query definition*')
+            ($catchResult.error.code -eq 'NotFound' -and $catchResult.error.message -like '*have valid WebDirect/AIRS offer type*') -or
+            ($catchResult.error.code -eq 'NotFound' -and $catchResult.error.message -like 'Cost management data is not supported for subscription(s)*') -or
+            $catchResult.error.code -eq 'IndirectCostDisabled' -or
+            ($catchResult.error.code -eq 'BadRequest' -and $catchResult.error.message -like '*The offer*is not supported*' -and $catchResult.error.message -notlike '*The offer MS-AZR-0110P is not supported*') -or
+            ($catchResult.error.code -eq 'BadRequest' -and $catchResult.error.message -like 'Invalid query definition*')
         )
 
     ) {
@@ -687,15 +700,6 @@ function AzAPICallErrorHandler {
             }
             Throw 'Authorization_RequestDenied'
         }
-    }
-
-    elseif ($validateAccess -and $catchResult.error.code -eq 'Authorization_RequestDenied') {
-        #Logging -preventWriteOutput $true -logMessage "$currentTask failed ('$($catchResult.error.code)' | '$($catchResult.error.message)')" -logMessageForegroundColor "DarkRed"
-        $response = @{
-            action    = 'return' #break or return or returnCollection
-            returnMsg = 'failed'
-        }
-        return $response
     }
 
     elseif ($AzApiCallConfiguration['htParameters'].userType -eq 'Guest' -and $catchResult.error.code -eq 'Authorization_RequestDenied') {
@@ -1007,7 +1011,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.18' }
+function getAzAPICallVersion { return '1.1.21' }
 
 function getJWTDetails {
     <#
