@@ -814,10 +814,19 @@ function AzAPICallErrorHandler {
 
     elseif ($getARMRoleAssignmentScheduleInstances -and ($actualStatusCode -eq 400 -or $actualStatusCode -eq 500)) {
         Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)') '$($catchResult.error.code)' | '$($catchResult.error.message)' - skipping"
-        $response = @{
-            action    = 'return' #break or return or returnCollection
-            returnMsg = 'RoleAssignmentScheduleInstancesError'
+        if ($catchResult.error.code -eq 'AadPremiumLicenseRequired') {
+            $response = @{
+                action    = 'return' #break or return or returnCollection
+                returnMsg = 'AadPremiumLicenseRequired'
+            }
         }
+        else {
+            $response = @{
+                action    = 'return' #break or return or returnCollection
+                returnMsg = 'RoleAssignmentScheduleInstancesError'
+            }
+        }
+
         return $response
     }
 
@@ -1021,7 +1030,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.22' }
+function getAzAPICallVersion { return '1.1.23' }
 
 function getJWTDetails {
     <#
