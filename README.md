@@ -20,7 +20,7 @@ Get & Set AzAPICall PowerShell module
 
 ```POWERSHELL
 Install-Module -Name AzAPICall
-Import-Module -Name AzAPICall
+#Import-Module -Name AzAPICall
 ```
 
 Connect to Azure
@@ -48,6 +48,20 @@ AzAPICall -uri "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/group
 ```
 [AzAPICallExample.ps1](pwsh/AzAPICallExample.ps1)
 
+## Public functions
+* AzAPICall
+* initAzAPICall
+* getAzAPICallFunctions
+* getAzAPICallRuleSet
+* createBearerToken
+
+createBearerToken example: 
+```POWERSHELL
+$azAPICallConf = initAzAPICall
+createBearerToken -AzAPICallConfiguration $azapicallconf -targetEndPoint 'Storage'
+$azAPICallConf['htBearerAccessToken']Storage
+```
+
 ## Supported endpoints
 
 | Endpoint | Endpoint URL		   		     | Variable		        |
@@ -56,6 +70,7 @@ AzAPICall -uri "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/group
 | [ARM (Azure Resource Management)](https://docs.microsoft.com/en-us/rest/api/resources/) | https://management.azure.com  | `$azAPICallConf['azAPIEndpointUrls'].ARM`            |
 | [Azure Key Vault](https://docs.microsoft.com/en-us/rest/api/keyvault/) | https://vault.azure.net        | `$azAPICallConf['azAPIEndpointUrls'].KeyVault`       |
 | [Log Analytics](https://docs.microsoft.com/en-us/rest/api/loganalytics/) | https://api.loganalytics.io/v1 | `$azAPICallConf['azAPIEndpointUrls'].LogAnalytics`   |
+| [Storage (blob)](https://learn.microsoft.com/en-us/rest/api/storageservices/) | https://_storageAccountName_.blob.core.windows.net | https://_storageAccountName_.blob.`$($azAPICallConf['azAPIEndpointUrls'].Storage)`   |
 
 Add a new endpoint -> setAzureEnvironment.ps1
 
@@ -84,7 +99,7 @@ By default, endPoints return results in batches of e.g. `100`. You can increase 
 | SubscriptionId4AzContext		| `string`	| Specify if specific subscription should be used for the AzContext (Subscription Id / GUID) | 		   |
 | writeMethod		| `string`	| Write method. Debug, Error, Host, Information, Output, Progress, Verbose, Warning (default: host) | 		   |
 | debugWriteMethod		| `string`	| Write method in case of wanted or enforced debug. Debug, Error, Host, Information, Output, Progress, Verbose, Warning (default: host) | 		   |
-| AzAPICallCustomRuleSet | `JULIAN`	| JULIAN |  |
+| AzAPICallCustomRuleSet | `object`	| wip |  |
 
 ### AzAPICall Tracking
 

@@ -83,7 +83,11 @@
 
         [Parameter()]
         [int32]
-        $skipOnErrorCode
+        $skipOnErrorCode,
+
+        [Parameter()]
+        [string]
+        $saResourceGroupName
     )
 
     function debugAzAPICall {
@@ -95,10 +99,10 @@
 
         if ($doDebugAzAPICall -or $tryCounter -gt 3) {
             if ($doDebugAzAPICall) {
-                Logging -preventWriteOutput $true -logMessage "  DEBUGTASK: $debugMessage" -logMessageWriteMethod $azAPICallConfiguration['htParameters'].debugWriteMethod
+                Logging -preventWriteOutput $true -logMessage "  DEBUGTASK: $currentTask -> $debugMessage" -logMessageWriteMethod $azAPICallConfiguration['htParameters'].debugWriteMethod
             }
             if (-not $doDebugAzAPICall -and $tryCounter -gt 3) {
-                Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $debugMessage" -logMessageWriteMethod $azAPICallConfiguration['htParameters'].debugWriteMethod
+                Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> $debugMessage" -logMessageWriteMethod $azAPICallConfiguration['htParameters'].debugWriteMethod
             }
         }
     }
@@ -135,12 +139,21 @@
 
 
     do {
-        $uriSplitted = $uri.split('/')
-        if (-not ($AzApiCallConfiguration['azAPIEndpoints']).($uriSplitted[2])) {
-            Throw "Error - Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'"
+        if ($uri -notlike 'https://*') {
+            Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> check uri: '$uri' - EXIT"
+            Throw "Error - check uri: '$uri'"
         }
 
-        $targetEndpoint = ($AzApiCallConfiguration['azAPIEndpoints']).($uriSplitted[2])
+        $uriSplitted = $uri.split('/')
+        if ($uri -like '*core.windows.net/*') {
+            $targetEndpoint = 'Storage'
+        }
+        else {
+            if (-not ($AzApiCallConfiguration['azAPIEndpoints']).($uriSplitted[2])) {
+                Throw "Error - Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'"
+            }
+            $targetEndpoint = ($AzApiCallConfiguration['azAPIEndpoints']).($uriSplitted[2])
+        }
 
         if (-not $AzAPICallConfiguration['htBearerAccessToken'].($targetEndpoint)) {
             createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
@@ -148,15 +161,24 @@
 
         $unexpectedError = $false
 
-        $Header = @{
-            'Content-Type'  = 'application/json';
-            'Authorization' = "Bearer $($AzAPICallConfiguration['htBearerAccessToken'].$targetEndpoint)"
-        }
-        if ($consistencyLevel) {
+        if ($targetEndpoint -eq 'Storage') {
             $Header = @{
-                'Content-Type'     = 'application/json';
-                'Authorization'    = "Bearer $($AzAPICallConfiguration['htBearerAccessToken'].$targetEndpoint)";
-                'ConsistencyLevel' = "$consistencyLevel"
+                'Content-Type'  = 'application/json';
+                'x-ms-version'  = '2021-04-10';
+                'Authorization' = "Bearer $($AzAPICallConfiguration['htBearerAccessToken'].$targetEndpoint)"
+            }
+        }
+        else {
+            $Header = @{
+                'Content-Type'  = 'application/json';
+                'Authorization' = "Bearer $($AzAPICallConfiguration['htBearerAccessToken'].$targetEndpoint)"
+            }
+            if ($consistencyLevel) {
+                $Header = @{
+                    'Content-Type'     = 'application/json';
+                    'Authorization'    = "Bearer $($AzAPICallConfiguration['htBearerAccessToken'].$targetEndpoint)";
+                    'ConsistencyLevel' = "$consistencyLevel"
+                }
             }
         }
 
@@ -205,7 +227,26 @@
             catch {
                 $catchResult = $catchResultPlain
                 $tryCounterUnexpectedError++
-                $unexpectedError = $true
+                if ($targetEndpoint -eq 'Storage' -and $catchResult -like '*InvalidAuthenticationInfoServer*The token is expired.') {
+                    Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) '$($catchResult.error.code)' | '$($catchResult.error.message)' - requesting new bearer token ($targetEndpoint)"
+                    createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
+                }
+                elseif ($targetEndpoint -eq 'Storage' -and $catchResult -like '*AuthorizationFailure*' -or $catchResult -like '*AuthorizationPermissionDenied*') {
+                    if ($catchResult -like '*AuthorizationPermissionDenied*') {
+                        Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> $catchResult -> returning string 'AuthorizationPermissionDenied'"
+                        if ($saResourceGroupName) {
+                            Logging -preventWriteOutput $true -logMessage "  $currentTask - Contribution request: please verify if the Storage Account's ResourceGroup '$($saResourceGroupName)' is a managed Resource Group, if yes please check if the Resource Group Name is listed here: https://github.com/JulianHayward/AzSchnitzels/blob/main/info/managedResourceGroups.txt"
+                        }
+                        return 'AuthorizationPermissionDenied'
+                    }
+                    if ($catchResult -like '*AuthorizationFailure*') {
+                        Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> $catchResult -> returning string 'AuthorizationFailure'"
+                        return 'AuthorizationFailure'
+                    }
+                }
+                else {
+                    $unexpectedError = $true
+                }
             }
         }
         $endAPICall = Get-Date
@@ -245,7 +286,7 @@
                     return [int32]$actualStatusCode
                 }
                 else {
-                    debugAzAPICall -debugMessage "apiStatusCode: '$($actualStatusCode)'"
+                    debugAzAPICall -debugMessage "apiStatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))"
                     $function:AzAPICallErrorHandler = $AzAPICallConfiguration['AzAPICallRuleSet'].AzAPICallErrorHandler
                     $AzAPICallErrorHandlerResponse = AzAPICallErrorHandler -AzAPICallConfiguration $AzAPICallConfiguration -uri $uri -catchResult $catchResult -currentTask $currentTask -tryCounter $tryCounter -retryAuthorizationFailed $retryAuthorizationFailed
                     switch ($AzAPICallErrorHandlerResponse.action) {
@@ -256,8 +297,30 @@
                 }
             }
             else {
-                debugAzAPICall -debugMessage "apiStatusCode: '$actualStatusCode'"
-                $azAPIRequestConvertedFromJson = ($azAPIRequest.Content | ConvertFrom-Json)
+                debugAzAPICall -debugMessage "apiStatusCode: '$actualStatusCode' ($($actualStatusCodePhrase))"
+                if ($targetEndPoint -eq 'Storage') {
+                    try {
+                        $azAPIRequestConvertedFromJson = ($azAPIRequest.Content | ConvertFrom-Json)
+                    }
+                    catch {
+                        $azAPIRequestConvertedFromJson = ($azAPIRequest.Content)
+                        try {
+                            $storageResponseXML = [xml]([string]$azAPIRequestConvertedFromJson -replace $azAPIRequestConvertedFromJson.Substring(0, 3))
+                        }
+                        catch {
+                            debugAzAPICall -debugMessage "non JSON object; return as is ($((($azAPIRequestConvertedFromJson).gettype()).Name))"
+
+                        }
+
+                    }
+                }
+                else {
+                    $azAPIRequestConvertedFromJson = ($azAPIRequest.Content | ConvertFrom-Json)
+                }
+                if ($listenOn -eq 'headers') {
+                    debugAzAPICall -debugMessage "listenOn=headers ($((($azAPIRequest.Headers)).count))"
+                    $null = $apiCallResultsCollection.Add($azAPIRequest.Headers)
+                }
                 if ($listenOn -eq 'Content') {
                     debugAzAPICall -debugMessage "listenOn=content ($((($azAPIRequestConvertedFromJson)).count))"
                     if ($uri -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/providers/Microsoft.ResourceGraph/*") {
@@ -404,8 +467,11 @@
                         }
                         debugAzAPICall -debugMessage "nextLink: $Uri"
                     }
+                    elseif ($storageResponseXML.EnumerationResults.NextMarker) {
+                        debugAzAPICall -debugMessage "NextMarker found: $($storageResponseXML.EnumerationResults.NextMarker)"
+                    }
                     else {
-                        debugAzAPICall -debugMessage 'NextLink/skipToken: none'
+                        debugAzAPICall -debugMessage 'NextLink/skipToken/NextMarker: none'
                     }
                 }
             }
