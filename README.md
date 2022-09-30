@@ -6,6 +6,7 @@ You want to have an easy way to interact with the Microsoft Azure API endpoints 
 
 ## Table of content
 - [AzAPICall example](#azapicall-example)
+- [Public functions](#public-functions)
 - [Supported endpoints](#supported-endpoints)
 - [AzAPICall Parameters](#azapicall-parameters)
 - [General Parameters](#general-parameters)
