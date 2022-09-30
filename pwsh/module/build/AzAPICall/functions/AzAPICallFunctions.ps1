@@ -231,7 +231,7 @@ function AzAPICall {
                     Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) '$($catchResult.error.code)' | '$($catchResult.error.message)' - requesting new bearer token ($targetEndpoint)"
                     createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
                 }
-                elseif ($targetEndpoint -eq 'Storage' -and $catchResult -like '*AuthorizationFailure*' -or $catchResult -like '*AuthorizationPermissionDenied*') {
+                elseif ($targetEndpoint -eq 'Storage' -and $catchResult -like '*AuthorizationFailure*' -or $catchResult -like '*AuthorizationPermissionDenied*' -or $catchResult -like '*name or service not known*') {
                     if ($catchResult -like '*AuthorizationPermissionDenied*') {
                         Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> $catchResult -> returning string 'AuthorizationPermissionDenied'"
                         if ($saResourceGroupName) {
@@ -242,6 +242,10 @@ function AzAPICall {
                     if ($catchResult -like '*AuthorizationFailure*') {
                         Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> $catchResult -> returning string 'AuthorizationFailure'"
                         return 'AuthorizationFailure'
+                    }
+                    if ($catchResult -like '*name or service not known*') {
+                        Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> $catchResult -> returning string 'ResourceUnavailable'"
+                        return 'ResourceUnavailable'
                     }
                 }
                 else {
@@ -478,8 +482,8 @@ function AzAPICall {
         }
         else {
             debugAzAPICall -debugMessage 'unexpectedError: true'
-            if ($tryCounterUnexpectedError -lt 13) {
-                $sleepSec = @(1, 2, 3, 5, 7, 10, 13, 17, 20, 30, 40, 50, , 55, 60)[$tryCounterUnexpectedError]
+            if ($tryCounterUnexpectedError -lt 11) {
+                $sleepSec = @(1, 2, 3, 5, 7, 10, 13, 17, 20, 25, 30, 40, 50, 55, 60)[$tryCounterUnexpectedError]
                 Logging -preventWriteOutput $true -logMessage " $currentTask #$tryCounterUnexpectedError 'Unexpected Error' occurred (trying 10 times); sleep $sleepSec seconds"
                 Logging -preventWriteOutput $true -logMessage $catchResult
                 Start-Sleep -Seconds $sleepSec
@@ -1189,7 +1193,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.29' }
+function getAzAPICallVersion { return '1.1.30' }
 
 function getJWTDetails {
     <#
