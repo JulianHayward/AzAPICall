@@ -60,7 +60,7 @@ createBearerToken example:
 ```POWERSHELL
 $azAPICallConf = initAzAPICall
 createBearerToken -AzAPICallConfiguration $azapicallconf -targetEndPoint 'Storage'
-$azAPICallConf['htBearerAccessToken']Storage
+$azAPICallConf['htBearerAccessToken'].Storage
 ```
 
 ## Supported endpoints
