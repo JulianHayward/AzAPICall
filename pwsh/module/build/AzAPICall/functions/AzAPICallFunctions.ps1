@@ -99,10 +99,10 @@ function AzAPICall {
 
         if ($doDebugAzAPICall -or $tryCounter -gt 3) {
             if ($doDebugAzAPICall) {
-                Logging -preventWriteOutput $true -logMessage "  DEBUGTASK: $currentTask -> $debugMessage" -logMessageWriteMethod $azAPICallConfiguration['htParameters'].debugWriteMethod
+                Logging -preventWriteOutput $true -logMessage "  DEBUGTASK: $currentTask -> $debugMessage" -logMessageWriteMethod $AzAPICallConfiguration['htParameters'].debugWriteMethod
             }
             if (-not $doDebugAzAPICall -and $tryCounter -gt 3) {
-                Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> $debugMessage" -logMessageWriteMethod $azAPICallConfiguration['htParameters'].debugWriteMethod
+                Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> $debugMessage" -logMessageWriteMethod $AzAPICallConfiguration['htParameters'].debugWriteMethod
             }
         }
     }
@@ -279,9 +279,11 @@ function AzAPICall {
             })
 
         $message = "attempt#$($tryCounter) processing: $($currenttask) uri: '$($uri)'"
+
         if ($body) {
             $message += " body: '$($body | Out-String)'"
         }
+
         debugAzAPICall -debugMessage $message
         if ($unexpectedError -eq $false) {
             debugAzAPICall -debugMessage 'unexpectedError: false'
@@ -302,6 +304,7 @@ function AzAPICall {
             }
             else {
                 debugAzAPICall -debugMessage "apiStatusCode: '$actualStatusCode' ($($actualStatusCodePhrase))"
+
                 if ($targetEndPoint -eq 'Storage') {
                     try {
                         $azAPIRequestConvertedFromJson = ($azAPIRequest.Content | ConvertFrom-Json)
@@ -313,18 +316,18 @@ function AzAPICall {
                         }
                         catch {
                             debugAzAPICall -debugMessage "non JSON object; return as is ($((($azAPIRequestConvertedFromJson).gettype()).Name))"
-
                         }
-
                     }
                 }
                 else {
                     $azAPIRequestConvertedFromJson = ($azAPIRequest.Content | ConvertFrom-Json)
                 }
+
                 if ($listenOn -eq 'headers') {
                     debugAzAPICall -debugMessage "listenOn=headers ($((($azAPIRequest.Headers)).count))"
                     $null = $apiCallResultsCollection.Add($azAPIRequest.Headers)
                 }
+
                 if ($listenOn -eq 'Content') {
                     debugAzAPICall -debugMessage "listenOn=content ($((($azAPIRequestConvertedFromJson)).count))"
                     if ($uri -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/providers/Microsoft.ResourceGraph/*") {
@@ -508,20 +511,16 @@ function AzAPICallErrorHandler {
     switch ($uri) {
         #ARM
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/Microsoft.PolicyInsights/policyStates/latest/summarize*" } { $getARMPolicyComplianceStates = $true }
-        #{ $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/Microsoft.Authorization/roleAssignmentSchedules*" } { $getARMRoleAssignmentSchedules = $true }
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/Microsoft.Authorization/roleAssignmentScheduleInstances*" } { $getARMRoleAssignmentScheduleInstances = $true }
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/*/providers/microsoft.insights/diagnosticSettings*" } { $getARMDiagnosticSettingsMg = $true }
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/microsoft.insights/diagnosticSettingsCategories*" } { $getARMDiagnosticSettingsResource = $true }
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/Microsoft.CostManagement/query*" } { $getARMCostManagement = $true }
-        { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/subscriptions/*/providers/Microsoft.Security/pricings*" } { $getARMMDfC = $true }
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/providers/Microsoft.ResourceGraph/*" } { $getARMARG = $true }
-        { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/subscriptions/*/providers/Microsoft.Blueprint/blueprints*" } { $getARMBlueprintDefinition = $true }
-        { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/subscriptions/*/providers/Microsoft.Blueprint/blueprintAssignments*" } { $getARMBlueprintAssignment = $true }
-        { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/subscriptions/*/providers/Microsoft.Security/securescores*" } { $getARMMdFCSecureScore = $true }
+        { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/subscriptions/*/providers/Microsoft.Security/pricings*" } { $getARMMDfC = $true }
+        { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/subscriptions/*/providers/Microsoft.Security/securescores*" } { $getARMMdFC = $true }
+        { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/subscriptions/*/providers/Microsoft.Security/securityContacts*" } { $getARMMdFC = $true }
         #MicrosoftGraph
-        #{ $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/*/groups/*/transitiveMembers" } { $getMicrosoftGraphGroupMembersTransitive = $true }
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/applications*" } { $getMicrosoftGraphApplication = $true }
-        #{ $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/servicePrincipals*" } { $getMicrosoftGraphServicePrincipal = $true }
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/*/groups/*/transitiveMembers/`$count" } { $getMicrosoftGraphGroupMembersTransitiveCount = $true }
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/servicePrincipals/*/getMemberGroups" } { $getMicrosoftGraphServicePrincipalGetMemberGroups = $true }
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/*/roleManagement/directory/roleAssignmentSchedules*" } { $getMicrosoftGraphRoleAssignmentSchedules = $true }
@@ -562,16 +561,7 @@ function AzAPICallErrorHandler {
         }
     }
 
-    elseif ($getARMPolicyComplianceStates -and $catchResult.error.code -eq 'DisallowedProvider') {
-        Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) '$($catchResult.error.code)' | '$($catchResult.error.message)' skipping Subscription"
-        $response = @{
-            action    = 'return' #break or return or returnCollection
-            returnMsg = 'DisallowedProvider'
-        }
-        return $response
-    }
-
-    elseif ($getARMMdFCSecureScore -and $catchResult.error.code -eq 'DisallowedProvider') {
+    elseif ($catchResult.error.code -eq 'DisallowedProvider') {
         Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) '$($catchResult.error.code)' | '$($catchResult.error.message)' skipping Subscription"
         $response = @{
             action    = 'return' #break or return or returnCollection
@@ -799,15 +789,6 @@ function AzAPICallErrorHandler {
         return $response
     }
 
-    elseif (($getARMBlueprintDefinition -or $getARMBlueprintAssignment) -and $catchResult.error.code -eq 'DisallowedProvider') {
-        Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) skipping Subscription"
-        $response = @{
-            action    = 'return' #break or return or returnCollection
-            returnMsg = 'DisallowedProvider'
-        }
-        return $response
-    }
-
     elseif ($catchResult.error.code -eq 'ResourceRequestsThrottled' -or $catchResult.error.code -eq '429' -or $catchResult.error.code -eq 'RateLimiting') {
         $sleepSeconds = 11
         if ($catchResult.error.code -eq 'ResourceRequestsThrottled') {
@@ -896,7 +877,6 @@ function AzAPICallErrorHandler {
                 returnMsg = 'RoleAssignmentScheduleInstancesError'
             }
         }
-
         return $response
     }
 
@@ -924,14 +904,6 @@ function AzAPICallErrorHandler {
         $response = @{
             action    = 'return' #break or return or returnCollection
             returnMsg = 'SubscriptionNotRegistered'
-        }
-        return $response
-    }
-    elseif ($getARMMDfC -and $catchResult.error.code -eq 'DisallowedProvider') {
-        Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) '$($catchResult.error.code)' | '$($catchResult.error.message)' skipping Subscription"
-        $response = @{
-            action    = 'return' #break or return or returnCollection
-            returnMsg = 'DisallowedProvider'
         }
         return $response
     }
@@ -1193,7 +1165,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.30' }
+function getAzAPICallVersion { return '1.1.31' }
 
 function getJWTDetails {
     <#
@@ -1306,7 +1278,6 @@ function initAzAPICall {
         $AzAPICallConfiguration['AzAPICallRuleSet'].AzAPICallErrorHandler = $funcAzAPICallErrorHandler
     }
 
-
     $AzAPICallConfiguration['htParameters'] += setHtParameters -AzAccountsVersion $AzAccountsVersion -gitHubRepository $GitHubRepository -DebugAzAPICall $DebugAzAPICall
     Logging -preventWriteOutput $true -logMessage '  AzAPICall htParameters:'
     Logging -preventWriteOutput $true -logMessage $($AzAPICallConfiguration['htParameters'] | Format-Table -AutoSize | Out-String)
@@ -1324,6 +1295,7 @@ function initAzAPICall {
         Logging -preventWriteOutput $true -logMessage '  Get Az context failed' -logMessageWriteMethod 'Error'
         Throw 'Error - check the last console output for details'
     }
+
     if (-not $AzAPICallConfiguration['checkContext']) {
         Logging -preventWriteOutput $true -logMessage '  Get Az context failed: No context found. Please connect to Azure (run: Connect-AzAccount -tenantId <tenantId>) and re-run the script' -logMessageWriteMethod 'Error'
         Throw 'Error - check the last console output for details'
@@ -1362,7 +1334,6 @@ function initAzAPICall {
         if (-not [string]::IsNullOrWhiteSpace($AzAPICallConfiguration['checkContext'].Subscription.Id)) {
             testSubscription -SubscriptionId4Test $AzAPICallConfiguration['checkContext'].Subscription.Id -AzAPICallConfiguration $AzAPICallConfiguration
         }
-
     }
 
     if (-not $AzAPICallConfiguration['checkContext'].Subscription) {
@@ -1396,7 +1367,7 @@ function Logging {
 
         [Parameter(Mandatory = $false)]
         [string]
-        $logMessageWriteMethod = $azAPICallConfiguration['htParameters'].writeMethod,
+        $logMessageWriteMethod = $AzAPICallConfiguration['htParameters'].writeMethod,
 
         [Parameter(Mandatory = $false)]
         [bool]

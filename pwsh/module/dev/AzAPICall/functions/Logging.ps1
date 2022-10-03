@@ -10,7 +10,7 @@
 
         [Parameter(Mandatory = $false)]
         [string]
-        $logMessageWriteMethod = $azAPICallConfiguration['htParameters'].writeMethod,
+        $logMessageWriteMethod = $AzAPICallConfiguration['htParameters'].writeMethod,
 
         [Parameter(Mandatory = $false)]
         [bool]

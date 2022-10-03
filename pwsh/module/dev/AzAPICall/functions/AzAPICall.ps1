@@ -99,10 +99,10 @@
 
         if ($doDebugAzAPICall -or $tryCounter -gt 3) {
             if ($doDebugAzAPICall) {
-                Logging -preventWriteOutput $true -logMessage "  DEBUGTASK: $currentTask -> $debugMessage" -logMessageWriteMethod $azAPICallConfiguration['htParameters'].debugWriteMethod
+                Logging -preventWriteOutput $true -logMessage "  DEBUGTASK: $currentTask -> $debugMessage" -logMessageWriteMethod $AzAPICallConfiguration['htParameters'].debugWriteMethod
             }
             if (-not $doDebugAzAPICall -and $tryCounter -gt 3) {
-                Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> $debugMessage" -logMessageWriteMethod $azAPICallConfiguration['htParameters'].debugWriteMethod
+                Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> $debugMessage" -logMessageWriteMethod $AzAPICallConfiguration['htParameters'].debugWriteMethod
             }
         }
     }
@@ -279,9 +279,11 @@
             })
 
         $message = "attempt#$($tryCounter) processing: $($currenttask) uri: '$($uri)'"
+
         if ($body) {
             $message += " body: '$($body | Out-String)'"
         }
+
         debugAzAPICall -debugMessage $message
         if ($unexpectedError -eq $false) {
             debugAzAPICall -debugMessage 'unexpectedError: false'
@@ -302,6 +304,7 @@
             }
             else {
                 debugAzAPICall -debugMessage "apiStatusCode: '$actualStatusCode' ($($actualStatusCodePhrase))"
+
                 if ($targetEndPoint -eq 'Storage') {
                     try {
                         $azAPIRequestConvertedFromJson = ($azAPIRequest.Content | ConvertFrom-Json)
@@ -313,18 +316,18 @@
                         }
                         catch {
                             debugAzAPICall -debugMessage "non JSON object; return as is ($((($azAPIRequestConvertedFromJson).gettype()).Name))"
-
                         }
-
                     }
                 }
                 else {
                     $azAPIRequestConvertedFromJson = ($azAPIRequest.Content | ConvertFrom-Json)
                 }
+
                 if ($listenOn -eq 'headers') {
                     debugAzAPICall -debugMessage "listenOn=headers ($((($azAPIRequest.Headers)).count))"
                     $null = $apiCallResultsCollection.Add($azAPIRequest.Headers)
                 }
+
                 if ($listenOn -eq 'Content') {
                     debugAzAPICall -debugMessage "listenOn=content ($((($azAPIRequestConvertedFromJson)).count))"
                     if ($uri -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/providers/Microsoft.ResourceGraph/*") {
