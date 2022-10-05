@@ -145,7 +145,7 @@
         }
 
         $uriSplitted = $uri.split('/')
-        if ($uri -like '*core.windows.net/*') {
+        if ($uriSplitted[2] -like '*core.windows.net') {
             $targetEndpoint = 'Storage'
         }
         else {
