@@ -621,14 +621,24 @@ function AzAPICallErrorHandler {
         # TODO: embed retry functionality here
     }
 
-    elseif ($getARMManagedIdentityUserAssignedFederatedIdentityCredentials -and $actualStatusCode -eq 405) {
-        #https://learn.microsoft.com/en-us/azure/active-directory/develop/workload-identity-federation-considerations#errors
-        Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - skipping resource Managed Identity"
-        $response = @{
-            action    = 'return' #break or return or returnCollection
-            returnMsg = 'SupportForFederatedIdentityCredentialsNotEnabled'
+    elseif ($getARMManagedIdentityUserAssignedFederatedIdentityCredentials -and $actualStatusCode -eq 405 -or $getARMManagedIdentityUserAssignedFederatedIdentityCredentials -and $actualStatusCode -eq 404) {
+        if ($getARMManagedIdentityUserAssignedFederatedIdentityCredentials -and $actualStatusCode -eq 405) {
+            #https://learn.microsoft.com/en-us/azure/active-directory/develop/workload-identity-federation-considerations#errors
+            Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - skipping resource Managed Identity (SupportForFederatedIdentityCredentialsNotEnabled)"
+            $response = @{
+                action    = 'return' #break or return or returnCollection
+                returnMsg = 'SupportForFederatedIdentityCredentialsNotEnabled'
+            }
+            return $response
         }
-        return $response
+        if ($getARMManagedIdentityUserAssignedFederatedIdentityCredentials -and $actualStatusCode -eq 404) {
+            Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - skipping resource Managed Identity (NotFound)"
+            $response = @{
+                action    = 'return' #break or return or returnCollection
+                returnMsg = 'NotFound'
+            }
+            return $response
+        }
     }
 
     elseif (
@@ -1186,7 +1196,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.38' }
+function getAzAPICallVersion { return '1.1.39' }
 
 function getJWTDetails {
     <#
