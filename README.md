@@ -65,13 +65,13 @@ $azAPICallConf['htBearerAccessToken'].Storage
 
 ## Supported endpoints
 
-| Endpoint | Endpoint URL		   		     | Variable		        |
+| Endpoint | Endpoint URL (AzureCloud) | Variable |
 | ------------------------------ | -------------------- | -------------- |
-| [Microsoft Graph](https://docs.microsoft.com/en-us/graph/api/overview?view=graph-rest-1.0) | https://graph.microsoft.com	 | `$azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph` |
-| [ARM (Azure Resource Management)](https://docs.microsoft.com/en-us/rest/api/resources/) | https://management.azure.com  | `$azAPICallConf['azAPIEndpointUrls'].ARM`            |
-| [Azure Key Vault](https://docs.microsoft.com/en-us/rest/api/keyvault/) | https://vault.azure.net        | `$azAPICallConf['azAPIEndpointUrls'].KeyVault`       |
-| [Log Analytics](https://docs.microsoft.com/en-us/rest/api/loganalytics/) | https://api.loganalytics.io/v1 | `$azAPICallConf['azAPIEndpointUrls'].LogAnalytics`   |
-| [Storage (blob)](https://learn.microsoft.com/en-us/rest/api/storageservices/) | https://_storageAccountName_.blob.core.windows.net | https://_storageAccountName_.blob.`$($azAPICallConf['azAPIEndpointUrls'].Storage)`   |
+| [Microsoft Graph](https://docs.microsoft.com/en-us/graph/api/overview?view=graph-rest-1.0) | `https://graph.microsoft.com` | `$azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph` |
+| [ARM (Azure Resource Management)](https://docs.microsoft.com/en-us/rest/api/resources/) | `https://management.azure.com` | `$azAPICallConf['azAPIEndpointUrls'].ARM`            |
+| [Azure Key Vault](https://docs.microsoft.com/en-us/rest/api/keyvault/) | `https://vault.azure.net` | `$azAPICallConf['azAPIEndpointUrls'].KeyVault`       |
+| [Log Analytics](https://docs.microsoft.com/en-us/rest/api/loganalytics/) | `https://api.loganalytics.io/v1` | `$azAPICallConf['azAPIEndpointUrls'].LogAnalytics`   |
+| [Storage (blob)](https://learn.microsoft.com/en-us/rest/api/storageservices/) | `https://<storageAccountName>.blob.core.windows.net` | https://_storageAccountName_.blob.`$($azAPICallConf['azAPIEndpointUrls'].Storage)`   |
 
 Add a new endpoint -> setAzureEnvironment.ps1
 
