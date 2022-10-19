@@ -618,9 +618,19 @@ function AzAPICallErrorHandler {
     }
 
     elseif ($catchResult.error.code -like '*ExpiredAuthenticationToken*' -or $catchResult.error.code -like '*Authentication_ExpiredToken*' -or $catchResult.error.code -like '*InvalidAuthenticationToken*') {
+        $maxTriesCreateToken = 7
+        $sleepSecCreateToken = @(1, 1, 1, 2, 3, 5, 10, 20, 30)[$tryCounter]
+        if ($tryCounter -gt 1) {
+            if ($tryCounter -gt $maxTriesCreateToken) {
+                Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) '$($catchResult.error.code)' | '$($catchResult.error.message)' - requesting new bearer token ($targetEndpoint) - EXIT"
+                Logging -preventWriteOutput $true -logMessage "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository)" -logMessageForegroundColor 'Yellow'
+                Throw 'Error - check the last console output for details'
+            }
+            Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) '$($catchResult.error.code)' | '$($catchResult.error.message)' - requesting new bearer token ($targetEndpoint) - sleep $($sleepSecCreateToken) seconds and try again"
+            Start-Sleep -Seconds $sleepSecCreateToken
+        }
         Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) '$($catchResult.error.code)' | '$($catchResult.error.message)' - requesting new bearer token ($targetEndpoint)"
         createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
-        # TODO: embed retry functionality here
     }
 
     elseif (($getARMManagedIdentityUserAssignedFederatedIdentityCredentials -and $actualStatusCode -eq 405) -or ($getARMManagedIdentityUserAssignedFederatedIdentityCredentials -and $actualStatusCode -eq 404)) {
@@ -1198,7 +1208,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.42' }
+function getAzAPICallVersion { return '1.1.43' }
 
 function getJWTDetails {
     <#

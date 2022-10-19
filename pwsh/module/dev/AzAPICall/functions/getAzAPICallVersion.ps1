@@ -1,1 +1,1 @@
-function getAzAPICallVersion { return '1.1.42' }
+function getAzAPICallVersion { return '1.1.43' }
