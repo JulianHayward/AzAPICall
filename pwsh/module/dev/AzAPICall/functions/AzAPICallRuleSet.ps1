@@ -465,22 +465,31 @@ function AzAPICallErrorHandler {
                 ($catchResult.error.code -like '*ResourceGroupNotFound*') -or
                 ($catchResult.code -like '*ResourceGroupNotFound*') -or
                 ($catchResult.code -eq 'ResourceTypeNotSupported') -or
-                ($catchResult.code -eq 'ResourceProviderNotSupported')
+                ($catchResult.code -eq 'ResourceProviderNotSupported') -or
+                ($catchResult.message -like '*invalid character*')
         )
     ) {
-        if ($catchResult.error.code -like '*ResourceNotFound*' -or $catchResult.code -like '*ResourceNotFound*') {
-            Logging -preventWriteOutput $true -logMessage "  ResourceGone | The resourceId '$($resourceId)' seems meanwhile deleted."
+        if ($catchResult.message -like '*invalid character*') {
+            Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult)  | The resourceId '$($resourceId)' will be skipped"
             $response = @{
                 action    = 'return' #break or return or returnCollection
-                returnMsg = 'meanwhile_deleted_ResourceNotFound'
+                returnMsg = 'skipResource'
+            }
+            return $response
+        }
+        if ($catchResult.error.code -like '*ResourceNotFound*' -or $catchResult.code -like '*ResourceNotFound*') {
+            Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult)  | The resourceId '$($resourceId)' will be skipped"
+            $response = @{
+                action    = 'return' #break or return or returnCollection
+                returnMsg = 'skipResource'
             }
             return $response
         }
         if ($catchResult.error.code -like '*ResourceGroupNotFound*' -or $catchResult.code -like '*ResourceGroupNotFound*') {
-            Logging -preventWriteOutput $true -logMessage "  ResourceGone | ResourceGroup not found - the resourceId '$($resourceId)' seems meanwhile deleted."
+            Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult)  | The resourceId '$($resourceId)' will be skipped"
             $response = @{
                 action    = 'return' #break or return or returnCollection
-                returnMsg = 'meanwhile_deleted_ResourceGroupNotFound'
+                returnMsg = 'skipResource'
             }
             return $response
         }
