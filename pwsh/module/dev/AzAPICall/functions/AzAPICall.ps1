@@ -295,6 +295,10 @@
                 }
                 else {
                     debugAzAPICall -debugMessage "apiStatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))"
+                    if ($actualStatusCode -eq $skipOnErrorCode) {
+                        debugAzAPICall -debugMessage "skipOnErrorCode: '$($skipOnErrorCode)' == apiStatusCode: '$($actualStatusCode)' -> skip"
+                        break
+                    }
                     $function:AzAPICallErrorHandler = $AzAPICallConfiguration['AzAPICallRuleSet'].AzAPICallErrorHandler
                     $AzAPICallErrorHandlerResponse = AzAPICallErrorHandler -AzAPICallConfiguration $AzAPICallConfiguration -uri $uri -catchResult $catchResult -currentTask $currentTask -tryCounter $tryCounter -retryAuthorizationFailed $retryAuthorizationFailed
                     switch ($AzAPICallErrorHandlerResponse.action) {
