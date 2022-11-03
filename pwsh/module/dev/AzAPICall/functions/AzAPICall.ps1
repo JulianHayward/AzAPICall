@@ -30,6 +30,15 @@
     .PARAMETER validateAccess
     Parameter description
 
+    .PARAMETER skipOnErrorCode
+    Parameter description
+
+    .PARAMETER unhandledErrorAction
+    Parameter description
+      Used to either "Stop" (Default) or "Continue" when encountering an Unhandled Error
+        "Stop" Throws the Error which terminates processing
+        "Continue" outputs the error and continues processing
+
     .PARAMETER noPaging
     Parameter description
 
@@ -87,6 +96,10 @@
 
         [Parameter()]
         [string]
+        $unhandledErrorAction,
+
+        [Parameter()]
+        [string]
         $saResourceGroupName
     )
 
@@ -116,6 +129,7 @@
         }
     }
     if ($validateAccess) { $noPaging = $true }
+    If (-not $unhandledErrorAction) { $unhandledErrorAction = 'Stop' }
 
     $tryCounter = 0
     $tryCounterUnexpectedError = 0
@@ -300,7 +314,7 @@
                         break
                     }
                     $function:AzAPICallErrorHandler = $AzAPICallConfiguration['AzAPICallRuleSet'].AzAPICallErrorHandler
-                    $AzAPICallErrorHandlerResponse = AzAPICallErrorHandler -AzAPICallConfiguration $AzAPICallConfiguration -uri $uri -catchResult $catchResult -currentTask $currentTask -tryCounter $tryCounter -retryAuthorizationFailed $retryAuthorizationFailed
+                    $AzAPICallErrorHandlerResponse = AzAPICallErrorHandler -AzAPICallConfiguration $AzAPICallConfiguration -uri $uri -catchResult $catchResult -currentTask $currentTask -tryCounter $tryCounter -retryAuthorizationFailed $retryAuthorizationFailed -unhandledErrorAction:$unhandledErrorAction
                     switch ($AzAPICallErrorHandlerResponse.action) {
                         'break' { break }
                         'return' { return [string]$AzAPICallErrorHandlerResponse.returnMsg }
