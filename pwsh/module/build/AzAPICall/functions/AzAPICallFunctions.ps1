@@ -30,6 +30,15 @@ function AzAPICall {
     .PARAMETER validateAccess
     Parameter description
 
+    .PARAMETER skipOnErrorCode
+    Parameter description
+
+    .PARAMETER unhandledErrorAction
+    Parameter description
+      Used to either "Stop" (Default) or "Continue" when encountering an Unhandled Error
+        "Stop" Throws the Error which terminates processing
+        "Continue" outputs the error and continues processing
+
     .PARAMETER noPaging
     Parameter description
 
@@ -87,6 +96,10 @@ function AzAPICall {
 
         [Parameter()]
         [string]
+        $unhandledErrorAction,
+
+        [Parameter()]
+        [string]
         $saResourceGroupName
     )
 
@@ -116,6 +129,7 @@ function AzAPICall {
         }
     }
     if ($validateAccess) { $noPaging = $true }
+    If (-not $unhandledErrorAction) { $unhandledErrorAction = 'Stop' }
 
     $tryCounter = 0
     $tryCounterUnexpectedError = 0
@@ -300,7 +314,7 @@ function AzAPICall {
                         break
                     }
                     $function:AzAPICallErrorHandler = $AzAPICallConfiguration['AzAPICallRuleSet'].AzAPICallErrorHandler
-                    $AzAPICallErrorHandlerResponse = AzAPICallErrorHandler -AzAPICallConfiguration $AzAPICallConfiguration -uri $uri -catchResult $catchResult -currentTask $currentTask -tryCounter $tryCounter -retryAuthorizationFailed $retryAuthorizationFailed
+                    $AzAPICallErrorHandlerResponse = AzAPICallErrorHandler -AzAPICallConfiguration $AzAPICallConfiguration -uri $uri -catchResult $catchResult -currentTask $currentTask -tryCounter $tryCounter -retryAuthorizationFailed $retryAuthorizationFailed -unhandledErrorAction:$unhandledErrorAction
                     switch ($AzAPICallErrorHandlerResponse.action) {
                         'break' { break }
                         'return' { return [string]$AzAPICallErrorHandlerResponse.returnMsg }
@@ -513,7 +527,13 @@ function AzAPICall {
 
 function AzAPICallErrorHandler {
     #Logging -preventWriteOutput $true -logMessage ' * BuiltIn RuleSet'
-
+    #unhandledErrorAction -unhandledErrorAction "Stop" (Default) or "Continue" # Stop Throws the Error
+    param (
+        $unhandledErrorAction
+    )
+    If (-not $unhandledErrorAction) {
+        $unhandledErrorAction = 'Stop' # Default to Stop
+    }
     switch ($uri) {
         #ARM
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/Microsoft.PolicyInsights/policyStates/latest/summarize*" } { $getARMPolicyComplianceStates = $true }
@@ -1062,7 +1082,7 @@ function AzAPICallErrorHandler {
         else {
             Logging -preventWriteOutput $true -logMessage '- - - - - - - - - - - - - - - - - - - - '
             Logging -preventWriteOutput $true -logMessage "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository) and provide the following dump" -logMessageForegroundColor 'Yellow'
-            Logging -preventWriteOutput $true -logMessage "$currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - EXIT"
+            Logging -preventWriteOutput $true -logMessage "$currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - BreakOnError"
             Logging -preventWriteOutput $true -logMessage 'Parameters:'
             foreach ($htParameter in ($AzApiCallConfiguration['htParameters'].Keys | Sort-Object)) {
                 Logging -preventWriteOutput $true -logMessage "$($htParameter):$($AzApiCallConfiguration['htParameters'].($htParameter))"
@@ -1070,7 +1090,12 @@ function AzAPICallErrorHandler {
             if ($getARMCostManagement) {
                 Logging -preventWriteOutput $true -logMessage 'If Consumption data is not that important for you, do not use parameter: -DoAzureConsumption (however, please still report the issue - thank you)'
             }
-            Throw 'Error - check the last console output for details'
+            If ($unhandledErrorAction -eq 'Continue') {
+                break
+            }
+            else {
+                Throw 'Error - check the last console output for details'
+            }
         }
     }
 }
@@ -1221,7 +1246,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.45' }
+function getAzAPICallVersion { return '1.1.47' }
 
 function getJWTDetails {
     <#
