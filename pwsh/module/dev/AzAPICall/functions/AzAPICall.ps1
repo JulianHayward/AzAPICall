@@ -505,14 +505,15 @@
         }
         else {
             debugAzAPICall -debugMessage 'unexpectedError: true'
-            if ($tryCounterUnexpectedError -lt 11) {
-                $sleepSec = @(1, 2, 3, 5, 7, 10, 13, 17, 20, 25, 30, 40, 50, 55, 60)[$tryCounterUnexpectedError]
-                Logging -preventWriteOutput $true -logMessage " $currentTask #$tryCounterUnexpectedError 'Unexpected Error' occurred (trying 10 times); sleep $sleepSec seconds"
+            $maxtryUnexpectedError = 11
+            if ($tryCounterUnexpectedError -lt $maxtryUnexpectedError) {
+                $sleepSecUnexpectedError = @(1, 2, 3, 5, 7, 10, 13, 17, 20, 25, 30, 40, 50, 55, 60)[$tryCounterUnexpectedError]
+                Logging -preventWriteOutput $true -logMessage " $currentTask #$tryCounterUnexpectedError 'Unexpected Error' occurred (trying 10 times); sleep $sleepSecUnexpectedError seconds"
                 Logging -preventWriteOutput $true -logMessage $catchResult
-                Start-Sleep -Seconds $sleepSec
+                Start-Sleep -Seconds $sleepSecUnexpectedError
             }
             else {
-                Logging -preventWriteOutput $true -logMessage " $currentTask #$tryCounterUnexpectedError 'Unexpected Error' occurred (tried 5 times)/exit"
+                Logging -preventWriteOutput $true -logMessage " $currentTask #$tryCounterUnexpectedError 'Unexpected Error' occurred (tried $tryCounterUnexpectedError times)/exit"
                 Throw 'Error - check the last console output for details'
             }
         }

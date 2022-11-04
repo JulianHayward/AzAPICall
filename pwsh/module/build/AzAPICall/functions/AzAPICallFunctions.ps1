@@ -505,14 +505,15 @@ function AzAPICall {
         }
         else {
             debugAzAPICall -debugMessage 'unexpectedError: true'
-            if ($tryCounterUnexpectedError -lt 11) {
-                $sleepSec = @(1, 2, 3, 5, 7, 10, 13, 17, 20, 25, 30, 40, 50, 55, 60)[$tryCounterUnexpectedError]
-                Logging -preventWriteOutput $true -logMessage " $currentTask #$tryCounterUnexpectedError 'Unexpected Error' occurred (trying 10 times); sleep $sleepSec seconds"
+            $maxtryUnexpectedError = 11
+            if ($tryCounterUnexpectedError -lt $maxtryUnexpectedError) {
+                $sleepSecUnexpectedError = @(1, 2, 3, 5, 7, 10, 13, 17, 20, 25, 30, 40, 50, 55, 60)[$tryCounterUnexpectedError]
+                Logging -preventWriteOutput $true -logMessage " $currentTask #$tryCounterUnexpectedError 'Unexpected Error' occurred (trying 10 times); sleep $sleepSecUnexpectedError seconds"
                 Logging -preventWriteOutput $true -logMessage $catchResult
-                Start-Sleep -Seconds $sleepSec
+                Start-Sleep -Seconds $sleepSecUnexpectedError
             }
             else {
-                Logging -preventWriteOutput $true -logMessage " $currentTask #$tryCounterUnexpectedError 'Unexpected Error' occurred (tried 5 times)/exit"
+                Logging -preventWriteOutput $true -logMessage " $currentTask #$tryCounterUnexpectedError 'Unexpected Error' occurred (tried $tryCounterUnexpectedError times)/exit"
                 Throw 'Error - check the last console output for details'
             }
         }
@@ -1082,7 +1083,11 @@ function AzAPICallErrorHandler {
         else {
             Logging -preventWriteOutput $true -logMessage '- - - - - - - - - - - - - - - - - - - - '
             Logging -preventWriteOutput $true -logMessage "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository) and provide the following dump" -logMessageForegroundColor 'Yellow'
-            Logging -preventWriteOutput $true -logMessage "$currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - BreakOnError"
+            $unhandledErrorActionPhrase = 'Stop'
+            if ($unhandledErrorAction -eq 'Continue') {
+                $unhandledErrorActionPhrase = 'Continue'
+            }
+            Logging -preventWriteOutput $true -logMessage "$currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'> - (plain : $catchResult) - $unhandledErrorActionPhrase"
             Logging -preventWriteOutput $true -logMessage 'Parameters:'
             foreach ($htParameter in ($AzApiCallConfiguration['htParameters'].Keys | Sort-Object)) {
                 Logging -preventWriteOutput $true -logMessage "$($htParameter):$($AzApiCallConfiguration['htParameters'].($htParameter))"
@@ -1090,7 +1095,7 @@ function AzAPICallErrorHandler {
             if ($getARMCostManagement) {
                 Logging -preventWriteOutput $true -logMessage 'If Consumption data is not that important for you, do not use parameter: -DoAzureConsumption (however, please still report the issue - thank you)'
             }
-            If ($unhandledErrorAction -eq 'Continue') {
+            if ($unhandledErrorAction -eq 'Continue') {
                 break
             }
             else {
@@ -1246,7 +1251,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.47' }
+function getAzAPICallVersion { return '1.1.48' }
 
 function getJWTDetails {
     <#
