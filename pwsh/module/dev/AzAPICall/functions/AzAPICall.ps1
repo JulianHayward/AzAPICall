@@ -68,6 +68,7 @@
 
         [Parameter()]
         [string]
+        [ValidateSet('StatusCode', 'Headers', 'Content', 'ContentProperties')]
         $listenOn,
 
         [Parameter()]
@@ -96,7 +97,8 @@
 
         [Parameter()]
         [string]
-        $unhandledErrorAction,
+        [ValidateSet('Stop', 'Continue')]
+        $unhandledErrorAction = 'Stop',
 
         [Parameter()]
         [string]
@@ -129,7 +131,6 @@
         }
     }
     if ($validateAccess) { $noPaging = $true }
-    If (-not $unhandledErrorAction) { $unhandledErrorAction = 'Stop' }
 
     $tryCounter = 0
     $tryCounterUnexpectedError = 0
@@ -247,14 +248,27 @@
                     Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) '$($catchResult.error.code)' | '$($catchResult.error.message)' - requesting new bearer token ($targetEndpoint)"
                     createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
                 }
-                elseif ($targetEndpoint -eq 'Storage' -and $catchResult -like '*AuthorizationFailure*' -or $catchResult -like '*AuthorizationPermissionDenied*' -or $catchResult -like '*name or service not known*') {
-                    if ($catchResult -like '*AuthorizationPermissionDenied*') {
-                        Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> $catchResult -> returning string 'AuthorizationPermissionDenied'"
+                elseif ($targetEndpoint -eq 'Storage' -and $catchResult -like '*AuthorizationFailure*' -or $catchResult -like '*AuthorizationPermissionDenied*' -or $catchResult -like '*AuthorizationPermissionMismatch*' -or $catchResult -like '*name or service not known*') {
+                    if ($catchResult -like '*AuthorizationPermissionDenied*' -or $catchResult -like '*AuthorizationPermissionMismatch*') {
+                        if ($catchResult -like '*AuthorizationPermissionDenied*') {
+                            Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> $catchResult -> returning string 'AuthorizationPermissionDenied'"
+                        }
+                        if ($catchResult -like '*AuthorizationPermissionMismatch*') {
+                            Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> $catchResult -> returning string 'AuthorizationPermissionMismatch' - this error might occur due to only recently applied RBAC permissions"
+                        }
+
                         if ($saResourceGroupName) {
                             Logging -preventWriteOutput $true -logMessage "  $currentTask - Contribution request: please verify if the Storage Account's ResourceGroup '$($saResourceGroupName)' is a managed Resource Group, if yes please check if the Resource Group Name is listed here: https://github.com/JulianHayward/AzSchnitzels/blob/main/info/managedResourceGroups.txt"
                         }
-                        return 'AuthorizationPermissionDenied'
+
+                        if ($catchResult -like '*AuthorizationPermissionDenied*') {
+                            return 'AuthorizationPermissionDenied'
+                        }
+                        if ($catchResult -like '*AuthorizationPermissionMismatch*') {
+                            return 'AuthorizationPermissionMismatch'
+                        }
                     }
+
                     if ($catchResult -like '*AuthorizationFailure*') {
                         Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> $catchResult -> returning string 'AuthorizationFailure'"
                         return 'AuthorizationFailure'
@@ -314,11 +328,11 @@
                         break
                     }
                     $function:AzAPICallErrorHandler = $AzAPICallConfiguration['AzAPICallRuleSet'].AzAPICallErrorHandler
-                    $AzAPICallErrorHandlerResponse = AzAPICallErrorHandler -AzAPICallConfiguration $AzAPICallConfiguration -uri $uri -catchResult $catchResult -currentTask $currentTask -tryCounter $tryCounter -retryAuthorizationFailed $retryAuthorizationFailed -unhandledErrorAction:$unhandledErrorAction
+                    $AzAPICallErrorHandlerResponse = AzAPICallErrorHandler -AzAPICallConfiguration $AzAPICallConfiguration -uri $uri -catchResult $catchResult -currentTask $currentTask -tryCounter $tryCounter -retryAuthorizationFailed $retryAuthorizationFailed
                     switch ($AzAPICallErrorHandlerResponse.action) {
                         'break' { break }
-                        'return' { return [string]$AzAPICallErrorHandlerResponse.returnMsg }
-                        'returnCollection' { return [PSCustomObject]$apiCallResultsCollection }
+                        'return' { return $AzAPICallErrorHandlerResponse.returnVar }
+                        'returnCollection' { return $apiCallResultsCollection }
                     }
                 }
             }
@@ -343,13 +357,13 @@
                     $azAPIRequestConvertedFromJson = ($azAPIRequest.Content | ConvertFrom-Json)
                 }
 
-                if ($listenOn -eq 'headers') {
-                    debugAzAPICall -debugMessage "listenOn=headers ($((($azAPIRequest.Headers)).count))"
+                if ($listenOn -eq 'Headers') {
+                    debugAzAPICall -debugMessage "listenOn=Headers ($((($azAPIRequest.Headers)).count))"
                     $null = $apiCallResultsCollection.Add($azAPIRequest.Headers)
                 }
 
                 if ($listenOn -eq 'Content') {
-                    debugAzAPICall -debugMessage "listenOn=content ($((($azAPIRequestConvertedFromJson)).count))"
+                    debugAzAPICall -debugMessage "listenOn=Content ($((($azAPIRequestConvertedFromJson)).count))"
                     if ($uri -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/providers/Microsoft.ResourceGraph/*") {
                         $null = $apiCallResultsCollection.AddRange($azAPIRequestConvertedFromJson.data)
                     }
@@ -363,19 +377,20 @@
                     return [int32]$actualStatusCode
                 }
                 elseif ($listenOn -eq 'ContentProperties') {
+                    debugAzAPICall -debugMessage "listenOn=ContentProperties ($(($azAPIRequestConvertedFromJson.properties.rows).count))"
                     if (($azAPIRequestConvertedFromJson.properties.rows).Count -gt 0) {
                         $apiCallResultsCollection.Add($azAPIRequestConvertedFromJson)
                     }
                 }
                 else {
                     if (($azAPIRequestConvertedFromJson).value) {
-                        debugAzAPICall -debugMessage "listenOn=default(value) value exists ($((($azAPIRequestConvertedFromJson).value).count))"
+                        debugAzAPICall -debugMessage "listenOn=Default(Value) value exists ($((($azAPIRequestConvertedFromJson).value).count))"
                         foreach ($entry in $azAPIRequestConvertedFromJson.value) {
                             $null = $apiCallResultsCollection.Add($entry)
                         }
                     }
                     else {
-                        debugAzAPICall -debugMessage 'listenOn=default(value) value not exists; return empty array'
+                        debugAzAPICall -debugMessage 'listenOn=Default(Value) value not exists; return empty array'
                     }
                 }
 
@@ -508,7 +523,7 @@
             $maxtryUnexpectedError = 11
             if ($tryCounterUnexpectedError -lt $maxtryUnexpectedError) {
                 $sleepSecUnexpectedError = @(1, 2, 3, 5, 7, 10, 13, 17, 20, 25, 30, 40, 50, 55, 60)[$tryCounterUnexpectedError]
-                Logging -preventWriteOutput $true -logMessage " $currentTask #$tryCounterUnexpectedError 'Unexpected Error' occurred (trying 10 times); sleep $sleepSecUnexpectedError seconds"
+                Logging -preventWriteOutput $true -logMessage " $currentTask #$tryCounterUnexpectedError 'Unexpected Error' occurred (trying $maxtryUnexpectedError times); sleep $sleepSecUnexpectedError seconds"
                 Logging -preventWriteOutput $true -logMessage $catchResult
                 Start-Sleep -Seconds $sleepSecUnexpectedError
             }
