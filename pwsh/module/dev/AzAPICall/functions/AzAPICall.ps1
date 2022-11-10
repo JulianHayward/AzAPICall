@@ -221,6 +221,7 @@
             $actualStatusCodePhrase = 'OK'
         }
         catch {
+            $errorPlain = $_
             if (-not [string]::IsNullOrWhiteSpace($_.Exception.Response.StatusCode)) {
                 if ([int32]($_.Exception.Response.StatusCode.Value__)) {
                     $actualStatusCode = $_.Exception.Response.StatusCode.Value__
@@ -279,6 +280,11 @@
                     }
                 }
                 else {
+                    Logging -preventWriteOutput $true -logMessage "$currentTask try #$($tryCounterUnexpectedError) 'Unexpected Error' occurred - errorPlain:"
+                    $errorPlain | Out-String
+                    Logging -preventWriteOutput $true -logMessage "$currentTask try #$($tryCounterUnexpectedError) 'Unexpected Error' occurred - `$_:"
+                    $_ | Out-String
+
                     $unexpectedError = $true
                 }
             }
@@ -523,13 +529,20 @@
             $maxtryUnexpectedError = 11
             if ($tryCounterUnexpectedError -lt $maxtryUnexpectedError) {
                 $sleepSecUnexpectedError = @(1, 2, 3, 5, 7, 10, 13, 17, 20, 25, 30, 40, 50, 55, 60)[$tryCounterUnexpectedError]
-                Logging -preventWriteOutput $true -logMessage " $currentTask #$tryCounterUnexpectedError 'Unexpected Error' occurred (trying $maxtryUnexpectedError times); sleep $sleepSecUnexpectedError seconds"
+                Logging -preventWriteOutput $true -logMessage "$currentTask try #$($tryCounterUnexpectedError) 'Unexpected Error' occurred (trying $maxtryUnexpectedError times); sleep $sleepSecUnexpectedError seconds"
                 Logging -preventWriteOutput $true -logMessage $catchResult
                 Start-Sleep -Seconds $sleepSecUnexpectedError
             }
             else {
-                Logging -preventWriteOutput $true -logMessage " $currentTask #$tryCounterUnexpectedError 'Unexpected Error' occurred (tried $tryCounterUnexpectedError times)/exit"
-                Throw 'Error - check the last console output for details'
+                Logging -preventWriteOutput $true -logMessage -logMessageForegroundColor DarkRed "$currentTask try #$($tryCounterUnexpectedError) 'Unexpected Error' occurred (tried $tryCounterUnexpectedError times) - unhandledErrorAction: $unhandledErrorAction"
+                switch ($unhandledErrorAction) {
+                    'Continue' {
+                        break
+                    }
+                    'Stop' {
+                        Throw 'Error - check the last console output for details'
+                    }
+                }
             }
         }
     }

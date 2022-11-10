@@ -221,6 +221,7 @@ function AzAPICall {
             $actualStatusCodePhrase = 'OK'
         }
         catch {
+            $errorPlain = $_
             if (-not [string]::IsNullOrWhiteSpace($_.Exception.Response.StatusCode)) {
                 if ([int32]($_.Exception.Response.StatusCode.Value__)) {
                     $actualStatusCode = $_.Exception.Response.StatusCode.Value__
@@ -279,6 +280,11 @@ function AzAPICall {
                     }
                 }
                 else {
+                    Logging -preventWriteOutput $true -logMessage "$currentTask try #$($tryCounterUnexpectedError) 'Unexpected Error' occurred - errorPlain:"
+                    $errorPlain | Out-String
+                    Logging -preventWriteOutput $true -logMessage "$currentTask try #$($tryCounterUnexpectedError) 'Unexpected Error' occurred - `$_:"
+                    $_ | Out-String
+
                     $unexpectedError = $true
                 }
             }
@@ -523,13 +529,20 @@ function AzAPICall {
             $maxtryUnexpectedError = 11
             if ($tryCounterUnexpectedError -lt $maxtryUnexpectedError) {
                 $sleepSecUnexpectedError = @(1, 2, 3, 5, 7, 10, 13, 17, 20, 25, 30, 40, 50, 55, 60)[$tryCounterUnexpectedError]
-                Logging -preventWriteOutput $true -logMessage " $currentTask #$tryCounterUnexpectedError 'Unexpected Error' occurred (trying $maxtryUnexpectedError times); sleep $sleepSecUnexpectedError seconds"
+                Logging -preventWriteOutput $true -logMessage "$currentTask try #$($tryCounterUnexpectedError) 'Unexpected Error' occurred (trying $maxtryUnexpectedError times); sleep $sleepSecUnexpectedError seconds"
                 Logging -preventWriteOutput $true -logMessage $catchResult
                 Start-Sleep -Seconds $sleepSecUnexpectedError
             }
             else {
-                Logging -preventWriteOutput $true -logMessage " $currentTask #$tryCounterUnexpectedError 'Unexpected Error' occurred (tried $tryCounterUnexpectedError times)/exit"
-                Throw 'Error - check the last console output for details'
+                Logging -preventWriteOutput $true -logMessage -logMessageForegroundColor DarkRed "$currentTask try #$($tryCounterUnexpectedError) 'Unexpected Error' occurred (tried $tryCounterUnexpectedError times) - unhandledErrorAction: $unhandledErrorAction"
+                switch ($unhandledErrorAction) {
+                    'Continue' {
+                        break
+                    }
+                    'Stop' {
+                        Throw 'Error - check the last console output for details'
+                    }
+                }
             }
         }
     }
@@ -723,7 +736,8 @@ function AzAPICallErrorHandler {
                     Logging -preventWriteOutput $true -logMessage "$($htParameter):$($AzApiCallConfiguration['htParameters'].($htParameter))"
                 }
                 $script:retryAuthorizationFailedCounter = $null
-                Throw 'Error: check the last console output for details'
+                #Throw 'Error: check the last console output for details'
+                $exitMsg = 'AzAPICall: exit'
             }
             else {
                 if ($retryAuthorizationFailedCounter -gt 2) {
@@ -738,19 +752,29 @@ function AzAPICallErrorHandler {
     }
 
     elseif ($catchResult.error.code -like '*ExpiredAuthenticationToken*' -or $catchResult.error.code -like '*Authentication_ExpiredToken*' -or $catchResult.error.code -like '*InvalidAuthenticationToken*') {
-        $maxTriesCreateToken = 7
-        $sleepSecCreateToken = @(1, 1, 1, 2, 3, 5, 10, 20, 30)[$tryCounter]
-        if ($tryCounter -gt 1) {
+        if ($catchResult.error.code -eq 'InvalidAuthenticationTokenTenant') {
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - Wrong tenant, skipping this request - break"
+            break
+        }
+        else {
+            $maxTriesCreateToken = 7
+            $sleepSecCreateToken = @(1, 1, 1, 2, 3, 5, 10, 20, 30)[$tryCounter]
+            #if ($tryCounter -gt 1) {
             if ($tryCounter -gt $maxTriesCreateToken) {
                 Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token ($targetEndpoint) - EXIT"
                 Logging -preventWriteOutput $true -logMessage "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository)" -logMessageForegroundColor 'Yellow'
-                Throw 'Error - check the last console output for details'
+                #Throw 'Error - check the last console output for details'
+                $exitMsg = 'AzAPICall: exit'
             }
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token ($targetEndpoint) - sleep $($sleepSecCreateToken) seconds and try again"
-            Start-Sleep -Seconds $sleepSecCreateToken
+            else {
+                Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token ($targetEndpoint) - sleep $($sleepSecCreateToken) seconds and try again"
+                Start-Sleep -Seconds $sleepSecCreateToken
+                #Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token ($targetEndpoint)"
+                createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
+            }
+            #}
+
         }
-        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token ($targetEndpoint)"
-        createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
     }
 
     elseif (($getARMManagedIdentityUserAssignedFederatedIdentityCredentials -and $actualStatusCode -eq 405) -or ($getARMManagedIdentityUserAssignedFederatedIdentityCredentials -and $actualStatusCode -eq 404)) {
@@ -890,10 +914,14 @@ function AzAPICallErrorHandler {
         $sleepSec = @(1, 3, 5, 7, 10, 12, 20, 30, 40, 45)[$tryCounter]
         if ($tryCounter -gt $maxTries) {
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: exit"
-            Throw 'Error - check the last console output for details'
+            #Throw 'Error - check the last console output for details'
+            $exitMsg = 'AzAPICall: exit'
         }
-        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: sleeping $($sleepSec) seconds"
-        Start-Sleep -Seconds $sleepSec
+        else {
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: sleeping $($sleepSec) seconds"
+            Start-Sleep -Seconds $sleepSec
+        }
+
     }
 
     elseif ($currentTask -eq 'Checking AAD UserType' -and $catchResult.error.code -like '*Authorization_RequestDenied*') {
@@ -922,7 +950,8 @@ function AzAPICallErrorHandler {
             foreach ($htParameter in ($AzApiCallConfiguration['htParameters'].Keys | Sort-Object)) {
                 Logging -preventWriteOutput $true -logMessage "$($htParameter):$($AzApiCallConfiguration['htParameters'].($htParameter))"
             }
-            Throw 'Authorization_RequestDenied'
+            #Throw 'Authorization_RequestDenied'
+            $exitMsg = 'AzAPICall: Authorization_RequestDenied exit'
         }
     }
 
@@ -931,7 +960,8 @@ function AzAPICallErrorHandler {
         Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: exit"
         Logging -preventWriteOutput $true -logMessage 'Tenant seems hardened (AAD External Identities / Guest user access = most restrictive) -> https://docs.microsoft.com/en-us/azure/active-directory/enterprise-users/users-restrict-guest-permissions'
         Logging -preventWriteOutput $true -logMessage "AAD Role 'Directory readers' is required for your Guest User Account!"
-        Throw 'Error - check the last console output for details'
+        #Throw 'Error - check the last console output for details'
+        $exitMsg = 'AzAPICall: Guest_Authorization_RequestDenied exit'
     }
 
     elseif ($catchResult.error.code -like '*BlueprintNotFound*') {
@@ -1042,15 +1072,20 @@ function AzAPICallErrorHandler {
         return $response
     }
 
+
     elseif ($catchResult.error.code -eq 'InsufficientPermissions' -or $catchResult.error.code -eq 'ClientCertificateValidationFailure' -or $catchResult.error.code -eq 'GatewayAuthenticationFailed' -or $catchResult.message -eq 'An error has occurred.' -or $catchResult.error.code -eq 'GeneralError') {
         $maxTries = 7
         $sleepSec = @(1, 3, 5, 7, 10, 12, 20, 30, 40, 45)[$tryCounter]
         if ($tryCounter -gt $maxTries) {
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: exit"
-            Throw 'Error - check the last console output for details'
+            #Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: exit"
+            $exitMsg = 'AzAPICall: exit'
+            #Throw 'Error - check the last console output for details'
         }
-        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: sleeping $($sleepSec) seconds"
-        Start-Sleep -Seconds $sleepSec
+        else {
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: sleeping $($sleepSec) seconds"
+            Start-Sleep -Seconds $sleepSec
+        }
+
     }
 
     elseif (($getARMMDfC -or $getARMMdFCSecurityContacts) -and $catchResult.error.code -eq 'Subscription Not Registered') {
@@ -1166,7 +1201,7 @@ function AzAPICallErrorHandler {
             }
             else {
                 $sleepSec = @(3, 7, 12, 20, 30, 45, 60)[$tryCounter]
-                Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: try again in $sleepSec second(s)"
+                Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: try again in $sleepSec second(s)"unhandledErrorAction
                 Start-Sleep -Seconds $sleepSec
             }
         }
@@ -1186,16 +1221,19 @@ function AzAPICallErrorHandler {
             if ($getARMCostManagement) {
                 Logging -preventWriteOutput $true -logMessage 'If Consumption data is not that important for you, do not use parameter: -DoAzureConsumption (however, please still report the issue - thank you)'
             }
-            switch ($unhandledErrorAction) {
-                'Continue' {
-                    break
-                }
-                'Stop' {
-                    Throw 'Error - check the last console output for details'
-                }
-            }
         }
     }
+
+    Logging -preventWriteOutput $true -logMessage -logMessageForegroundColor DarkRed "$defaultErrorInfo $exitMsg - unhandledErrorAction: $unhandledErrorAction"
+    switch ($unhandledErrorAction) {
+        'Continue' {
+            break
+        }
+        'Stop' {
+            Throw 'Error - check the last console output for details'
+        }
+    }
+
 }
 $script:funcAzAPICallErrorHandler = $function:AzAPICallErrorHandler.ToString()
 function createBearerToken {
@@ -1344,7 +1382,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.49' }
+function getAzAPICallVersion { return '1.1.50' }
 
 function getJWTDetails {
     <#
