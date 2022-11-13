@@ -43,7 +43,7 @@ function AzAPICallErrorHandler {
             return $response
         }
         elseif ($catchResult.error.code -eq 'InvalidAuthenticationTokenTenant' -and $actualStatusCode -eq 401) {
-            $pattern = "$($azapicallconf['azAPIEndpointUrls'].ARM)/subscriptions/(.*?)\?api-version=2020-01-01"
+            $pattern = "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/subscriptions/(.*?)\?api-version=2020-01-01"
             if ([regex]::Match($uri, $pattern).Groups[1].Value) {
                 $ObjectGuid = [System.Guid]::empty
                 if ([System.Guid]::TryParse([regex]::Match($uri, $pattern).Groups[1].Value, [System.Management.Automation.PSReference]$ObjectGuid)) {
@@ -66,7 +66,6 @@ function AzAPICallErrorHandler {
                         $result = [regex]::Match($catchResult.error.message, $patternTenants).Groups[1].Value
                         $results = $result -split ','
                         foreach ($resultTenants in $results) {
-                            Write-Host $resultTenants -ForegroundColor DarkGray
                             $pattern = 'https://sts.windows.net/(.*?)/'
                             if ([System.Guid]::TryParse([regex]::Match($resultTenants, $pattern).Groups[1].Value, [System.Management.Automation.PSReference]$ObjectGuid)) {
                                 $return.Add([regex]::Match($resultTenants, $pattern).Groups[1].Value)
@@ -670,14 +669,15 @@ function AzAPICallErrorHandler {
         }
     }
 
-    Logging -preventWriteOutput $true -logMessage -logMessageForegroundColor DarkRed "$defaultErrorInfo $exitMsg - unhandledErrorAction: $unhandledErrorAction"
-    switch ($unhandledErrorAction) {
-        'Continue' {
-            break
+    Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo $exitMsg - unhandledErrorAction: $unhandledErrorAction" -logMessageForegroundColor 'DarkRed'
+    if ($unhandledErrorAction -eq 'Continue') {
+        $response = @{
+            action = 'break'
         }
-        'Stop' {
-            Throw 'Error - check the last console output for details'
-        }
+        return $response
+    }
+    else {
+        Throw 'Error - check the last console output for details'
     }
 
 }
