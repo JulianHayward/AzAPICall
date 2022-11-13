@@ -134,6 +134,7 @@
 
     $tryCounter = 0
     $tryCounterUnexpectedError = 0
+    $tryCounterConnectionRelatedError = 0
     $retryAuthorizationFailed = 5
     #$retryAuthorizationFailedCounter = 0
     $apiCallResultsCollection = [System.Collections.ArrayList]@()
@@ -177,6 +178,7 @@
         }
 
         $unexpectedError = $false
+        $connectionRelatedError = $false
 
         if ($targetEndpoint -eq 'Storage') {
             $Header = @{
@@ -221,67 +223,76 @@
             $actualStatusCodePhrase = 'OK'
         }
         catch {
-            if (-not [string]::IsNullOrWhiteSpace($_.Exception.Response.StatusCode)) {
-                if ([int32]($_.Exception.Response.StatusCode.Value__)) {
-                    $actualStatusCode = $_.Exception.Response.StatusCode.Value__
-                }
-                else {
-                    $actualStatusCode = 'n/a'
-                }
-
-                $actualStatusCodePhrase = $_.Exception.Response.StatusCode
+            $rawException = $_
+            if ($rawException.tostring() -eq 'No such host is known.' -or $rawException.tostring() -eq 'Connection timed out') {
+                $tryCounterConnectionRelatedError++
+                $connectionRelatedError = $true
+                $connectionRelatedErrorPhrase = $rawException
             }
             else {
-                $actualStatusCodePhrase = 'n/a'
-            }
-
-            try {
-                $catchResultPlain = $_.ErrorDetails.Message
-                if ($catchResultPlain) {
-                    $catchResult = $catchResultPlain | ConvertFrom-Json -ErrorAction Stop
-                }
-            }
-            catch {
-                $catchResult = $catchResultPlain
-                $tryCounterUnexpectedError++
-                if ($targetEndpoint -eq 'Storage' -and $catchResult -like '*InvalidAuthenticationInfoServer*The token is expired.') {
-                    Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) '$($catchResult.error.code)' | '$($catchResult.error.message)' - requesting new bearer token ($targetEndpoint)"
-                    createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
-                }
-                elseif ($targetEndpoint -eq 'Storage' -and $catchResult -like '*AuthorizationFailure*' -or $catchResult -like '*AuthorizationPermissionDenied*' -or $catchResult -like '*AuthorizationPermissionMismatch*' -or $catchResult -like '*name or service not known*') {
-                    if ($catchResult -like '*AuthorizationPermissionDenied*' -or $catchResult -like '*AuthorizationPermissionMismatch*') {
-                        if ($catchResult -like '*AuthorizationPermissionDenied*') {
-                            Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> $catchResult -> returning string 'AuthorizationPermissionDenied'"
-                        }
-                        if ($catchResult -like '*AuthorizationPermissionMismatch*') {
-                            Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> $catchResult -> returning string 'AuthorizationPermissionMismatch' - this error might occur due to only recently applied RBAC permissions"
-                        }
-
-                        if ($saResourceGroupName) {
-                            Logging -preventWriteOutput $true -logMessage "  $currentTask - Contribution request: please verify if the Storage Account's ResourceGroup '$($saResourceGroupName)' is a managed Resource Group, if yes please check if the Resource Group Name is listed here: https://github.com/JulianHayward/AzSchnitzels/blob/main/info/managedResourceGroups.txt"
-                        }
-
-                        if ($catchResult -like '*AuthorizationPermissionDenied*') {
-                            return 'AuthorizationPermissionDenied'
-                        }
-                        if ($catchResult -like '*AuthorizationPermissionMismatch*') {
-                            return 'AuthorizationPermissionMismatch'
-                        }
+                if (-not [string]::IsNullOrWhiteSpace($rawException.Exception.Response.StatusCode)) {
+                    if ([int32]($rawException.Exception.Response.StatusCode.Value__)) {
+                        $actualStatusCode = $rawException.Exception.Response.StatusCode.Value__
                     }
-
-                    if ($catchResult -like '*AuthorizationFailure*') {
-                        Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> $catchResult -> returning string 'AuthorizationFailure'"
-                        return 'AuthorizationFailure'
+                    else {
+                        $actualStatusCode = 'n/a'
                     }
-                    if ($catchResult -like '*name or service not known*') {
-                        Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> $catchResult -> returning string 'ResourceUnavailable'"
-                        return 'ResourceUnavailable'
-                    }
+                    $actualStatusCodePhrase = $rawException.Exception.Response.StatusCode
                 }
                 else {
-                    $unexpectedError = $true
+                    $actualStatusCodePhrase = 'n/a'
+                }
+
+                try {
+                    $catchResultPlain = $rawException.ErrorDetails.Message
+                    if ($catchResultPlain) {
+                        $catchResult = $catchResultPlain | ConvertFrom-Json -ErrorAction Stop
+                    }
+                }
+                catch {
+                    $catchResult = $catchResultPlain
+                    $tryCounterUnexpectedError++
+                    if ($targetEndpoint -eq 'Storage' -and $catchResult -like '*InvalidAuthenticationInfoServer*The token is expired.') {
+                        Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) '$($catchResult.error.code)' | '$($catchResult.error.message)' - requesting new bearer token ($targetEndpoint)"
+                        createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
+                    }
+                    elseif ($targetEndpoint -eq 'Storage' -and $catchResult -like '*AuthorizationFailure*' -or $catchResult -like '*AuthorizationPermissionDenied*' -or $catchResult -like '*AuthorizationPermissionMismatch*' -or $catchResult -like '*name or service not known*') {
+                        if ($catchResult -like '*AuthorizationPermissionDenied*' -or $catchResult -like '*AuthorizationPermissionMismatch*') {
+                            if ($catchResult -like '*AuthorizationPermissionDenied*') {
+                                Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> $catchResult -> returning string 'AuthorizationPermissionDenied'"
+                            }
+                            if ($catchResult -like '*AuthorizationPermissionMismatch*') {
+                                Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> $catchResult -> returning string 'AuthorizationPermissionMismatch' - this error might occur due to only recently applied RBAC permissions"
+                            }
+
+                            if ($saResourceGroupName) {
+                                Logging -preventWriteOutput $true -logMessage "  $currentTask - Contribution request: please verify if the Storage Account's ResourceGroup '$($saResourceGroupName)' is a managed Resource Group, if yes please check if the Resource Group Name is listed here: https://github.com/JulianHayward/AzSchnitzels/blob/main/info/managedResourceGroups.txt"
+                            }
+
+                            if ($catchResult -like '*AuthorizationPermissionDenied*') {
+                                return 'AuthorizationPermissionDenied'
+                            }
+                            if ($catchResult -like '*AuthorizationPermissionMismatch*') {
+                                return 'AuthorizationPermissionMismatch'
+                            }
+                        }
+
+                        if ($catchResult -like '*AuthorizationFailure*') {
+                            Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> $catchResult -> returning string 'AuthorizationFailure'"
+                            return 'AuthorizationFailure'
+                        }
+                        if ($catchResult -like '*name or service not known*') {
+                            Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> $catchResult -> returning string 'ResourceUnavailable'"
+                            return 'ResourceUnavailable'
+                        }
+                    }
+                    else {
+                        Logging -preventWriteOutput $true -logMessage "$currentTask try #$($tryCounterUnexpectedError) $($rawException)"
+                        $unexpectedError = $true
+                    }
                 }
             }
+
         }
         $endAPICall = Get-Date
         $durationAPICall = New-TimeSpan -Start $startAPICall -End $endAPICall
@@ -300,6 +311,7 @@
                 Method                               = $method
                 TryCounter                           = $tryCounter
                 TryCounterUnexpectedError            = $tryCounterUnexpectedError
+                TryCounterConnectionRelatedError     = $tryCounterConnectionRelatedError
                 RetryAuthorizationFailedCounter      = $retryAuthorizationFailedCounter
                 RestartDueToDuplicateNextlinkCounter = $restartDueToDuplicateNextlinkCounter
                 TimeStamp                            = $tstmp
@@ -315,7 +327,7 @@
         }
 
         debugAzAPICall -debugMessage $message
-        if ($unexpectedError -eq $false) {
+        if ($unexpectedError -eq $false -and $connectionRelatedError -eq $false) {
             debugAzAPICall -debugMessage 'unexpectedError: false'
             if ($actualStatusCode -notin 200..204) {
                 if ($listenOn -eq 'StatusCode') {
@@ -329,11 +341,27 @@
                     }
                     $function:AzAPICallErrorHandler = $AzAPICallConfiguration['AzAPICallRuleSet'].AzAPICallErrorHandler
                     $AzAPICallErrorHandlerResponse = AzAPICallErrorHandler -AzAPICallConfiguration $AzAPICallConfiguration -uri $uri -catchResult $catchResult -currentTask $currentTask -tryCounter $tryCounter -retryAuthorizationFailed $retryAuthorizationFailed
-                    switch ($AzAPICallErrorHandlerResponse.action) {
-                        'break' { break }
-                        'return' { return $AzAPICallErrorHandlerResponse.returnVar }
-                        'returnCollection' { return $apiCallResultsCollection }
+                    # switch ($AzAPICallErrorHandlerResponse.action) {
+                    #     'break' { break }
+                    #     'return' { return $AzAPICallErrorHandlerResponse.returnVar }
+                    #     'returnCollection' { return $apiCallResultsCollection }
+                    # }
+                    if ($AzAPICallErrorHandlerResponse.action -eq 'break' -or $AzAPICallErrorHandlerResponse.action -eq 'return' -or $AzAPICallErrorHandlerResponse.action -eq 'returnCollection') {
+                        if ($AzAPICallErrorHandlerResponse.action -eq 'break') {
+                            break
+                        }
+                        if ($AzAPICallErrorHandlerResponse.action -eq 'return') {
+                            return $AzAPICallErrorHandlerResponse.returnVar
+                        }
+                        if ($AzAPICallErrorHandlerResponse.action -eq 'returnCollection') {
+                            return $apiCallResultsCollection
+                        }
                     }
+                    else {
+                        Logging -preventWriteOutput $true -logMessage "`$AzAPICallErrorHandlerResponse.action unexpected (`$AzAPICallErrorHandlerResponse.action = '$($AzAPICallErrorHandlerResponse.action)') - breaking" -logMessageForegroundColor 'darkred'
+                        break
+                    }
+
                 }
             }
             else {
@@ -519,18 +547,48 @@
             }
         }
         else {
-            debugAzAPICall -debugMessage 'unexpectedError: true'
-            $maxtryUnexpectedError = 11
-            if ($tryCounterUnexpectedError -lt $maxtryUnexpectedError) {
-                $sleepSecUnexpectedError = @(1, 2, 3, 5, 7, 10, 13, 17, 20, 25, 30, 40, 50, 55, 60)[$tryCounterUnexpectedError]
-                Logging -preventWriteOutput $true -logMessage " $currentTask #$tryCounterUnexpectedError 'Unexpected Error' occurred (trying $maxtryUnexpectedError times); sleep $sleepSecUnexpectedError seconds"
-                Logging -preventWriteOutput $true -logMessage $catchResult
-                Start-Sleep -Seconds $sleepSecUnexpectedError
+
+
+            if ($connectionRelatedError) {
+                debugAzAPICall -debugMessage 'connectionRelatedError: true'
+                $maxtryCounterConnectionRelatedError = 6
+                if ($tryCounterConnectionRelatedError -lt ($maxtryCounterConnectionRelatedError + 1)) {
+                    $sleepSecConnectionRelatedError = @(1, 1, 2, 4, 8, 16, 32, 64, 128)[$tryCounterConnectionRelatedError]
+                    Logging -preventWriteOutput $true -logMessage "$currentTask try #$($tryCounterConnectionRelatedError) 'connectionRelatedError' occurred '$connectionRelatedErrorPhrase' (trying $maxtryCounterConnectionRelatedError times); sleep $sleepSecConnectionRelatedError seconds"
+                    #Logging -preventWriteOutput $true -logMessage $catchResult
+                    Start-Sleep -Seconds $sleepSecConnectionRelatedError
+                }
+                else {
+                    Logging -preventWriteOutput $true -logMessage "$currentTask try #$($tryCounterConnectionRelatedError) 'connectionRelatedError' occurred '$connectionRelatedErrorPhrase' (tried $($tryCounterConnectionRelatedError - 1) times) - unhandledErrorAction: $unhandledErrorAction" -logMessageForegroundColor 'DarkRed'
+                    if ($unhandledErrorAction -eq 'Continue') {
+                        break
+                    }
+                    else {
+                        Throw 'Error - check the last console output for details'
+                    }
+                }
             }
-            else {
-                Logging -preventWriteOutput $true -logMessage " $currentTask #$tryCounterUnexpectedError 'Unexpected Error' occurred (tried $tryCounterUnexpectedError times)/exit"
-                Throw 'Error - check the last console output for details'
+
+            if ($unexpectedError) {
+                debugAzAPICall -debugMessage 'unexpectedError: true'
+                $maxtryUnexpectedError = 6
+                if ($tryCounterUnexpectedError -lt ($maxtryUnexpectedError + 1)) {
+                    $sleepSecUnexpectedError = @(1, 1, 2, 4, 8, 16, 32, 64, 128)[$tryCounterUnexpectedError]
+                    Logging -preventWriteOutput $true -logMessage "$currentTask try #$($tryCounterUnexpectedError) 'unexpectedError' occurred (trying $maxtryUnexpectedError times); sleep $sleepSecUnexpectedError seconds"
+                    Logging -preventWriteOutput $true -logMessage $catchResult
+                    Start-Sleep -Seconds $sleepSecUnexpectedError
+                }
+                else {
+                    Logging -preventWriteOutput $true -logMessage "$currentTask try #$($tryCounterUnexpectedError) 'unexpectedError' occurred (tried $($tryCounterUnexpectedError - 1) times) - unhandledErrorAction: $unhandledErrorAction" -logMessageForegroundColor 'DarkRed'
+                    if ($unhandledErrorAction -eq 'Continue') {
+                        break
+                    }
+                    else {
+                        Throw 'Error - check the last console output for details'
+                    }
+                }
             }
+
         }
     }
     until(
