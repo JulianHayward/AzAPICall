@@ -102,6 +102,7 @@ By default, endPoints return results in batches of e.g. `100`. You can increase 
 | writeMethod		| `string`	| Write method. Debug, Error, Host, Information, Output, Progress, Verbose, Warning (default: host) | 		   |
 | debugWriteMethod		| `string`	| Write method in case of wanted or enforced debug. Debug, Error, Host, Information, Output, Progress, Verbose, Warning (default: host) | 		   |
 | AzAPICallCustomRuleSet | `object`	| wip |  |
+| skipAzContextSubscriptionValidation | `object`	| In case you don't have RBAC permissions on a subscription/resourcegroup/resource. If this `switch`-parameter won't be used, you will get an error message while the `Get-AzContext`-validation. Otherwise, a subscription is expected to be set as a default for the context. |  |
 
 ### AzAPICall Tracking
 
