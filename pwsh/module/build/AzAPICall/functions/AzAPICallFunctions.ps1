@@ -1503,15 +1503,19 @@ function initAzAPICall {
 
         [Parameter()]
         [ValidateSet('Debug', 'Error', 'Host', 'Information', 'Output', 'Progress', 'Verbose', 'Warning')]
-        $writeMethod = 'Host',
+        $WriteMethod = 'Host',
 
         [Parameter()]
         [ValidateSet('Debug', 'Error', 'Host', 'Information', 'Output', 'Progress', 'Verbose', 'Warning')]
-        $debugWriteMethod = 'Host',
+        $DebugWriteMethod = 'Host',
 
         [Parameter()]
         [string]
         $SubscriptionId4AzContext,
+
+        [Parameter()]
+        [bool]
+        $SkipAzContextSubscriptionValidation = $false,
 
         [Parameter()]
         [string]
@@ -1519,17 +1523,13 @@ function initAzAPICall {
 
         [Parameter()]
         [object]
-        $AzAPICallCustomRuleSet,
-
-        [Parameter()]
-        [switch]
-        $skipAzContextSubscriptionValidation
+        $AzAPICallCustomRuleSet
     )
 
     $AzAPICallConfiguration = @{}
     $AzAPICallConfiguration['htParameters'] = @{}
-    $AzAPICallConfiguration['htParameters'].writeMethod = $writeMethod
-    $AzAPICallConfiguration['htParameters'].debugWriteMethod = $debugWriteMethod
+    $AzAPICallConfiguration['htParameters'].writeMethod = $WriteMethod
+    $AzAPICallConfiguration['htParameters'].debugWriteMethod = $DebugWriteMethod
 
     $AzAPICallVersion = getAzAPICallVersion
     Logging -preventWriteOutput $true -logMessage " AzAPICall $AzAPICallVersion"
@@ -1552,26 +1552,21 @@ function initAzAPICall {
     $AzAPICallConfiguration['arrayAPICallTracking'] = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $AzAPICallConfiguration['htBearerAccessToken'] = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
 
-    if ($skipAzContextSubscriptionValidation) {
-        Logging -preventWriteOutput $true -logMessage ' Skip Az context validation'
+    Logging -preventWriteOutput $true -logMessage ' Get Az context'
+    try {
+        $AzAPICallConfiguration['checkContext'] = Get-AzContext -ErrorAction Stop
     }
-    else {
-        Logging -preventWriteOutput $true -logMessage ' Get Az context'
-        try {
-            $AzAPICallConfiguration['checkContext'] = Get-AzContext -ErrorAction Stop
-        }
-        catch {
-            $_
-            Logging -preventWriteOutput $true -logMessage '  Get Az context failed' -logMessageWriteMethod 'Error'
-            Throw 'Error - check the last console output for details'
-        }
+    catch {
+        $_
+        Logging -preventWriteOutput $true -logMessage '  Get Az context failed' -logMessageWriteMethod 'Error'
+        Throw 'Error - check the last console output for details'
+    }
 
-        if (-not $AzAPICallConfiguration['checkContext']) {
-            Logging -preventWriteOutput $true -logMessage '  Get Az context failed: No context found. Please connect to Azure (run: Connect-AzAccount -tenantId <tenantId>) and re-run the script' -logMessageWriteMethod 'Error'
-            Throw 'Error - check the last console output for details'
-        }
-        Logging -preventWriteOutput $true -logMessage '  Get Az context succeeded' -logMessageForegroundColor 'Green'
+    if (-not $AzAPICallConfiguration['checkContext']) {
+        Logging -preventWriteOutput $true -logMessage '  Get Az context failed: No context found. Please connect to Azure (run: Connect-AzAccount -tenantId <tenantId>) and re-run the script' -logMessageWriteMethod 'Error'
+        Throw 'Error - check the last console output for details'
     }
+    Logging -preventWriteOutput $true -logMessage '  Get Az context succeeded' -logMessageForegroundColor 'Green'
 
     $AzAPICallConfiguration = setAzureEnvironment -AzAPICallConfiguration $AzAPICallConfiguration
 
@@ -1579,6 +1574,13 @@ function initAzAPICall {
     Logging -preventWriteOutput $true -logMessage "  Az context AccountId: '$($AzAPICallConfiguration['checkContext'].Account.Id)'" -logMessageForegroundColor 'Yellow'
     Logging -preventWriteOutput $true -logMessage "  Az context AccountType: '$($AzAPICallConfiguration['checkContext'].Account.Type)'" -logMessageForegroundColor 'Yellow'
     $AzApiCallConfiguration['htParameters'].accountType = $($AzAPICallConfiguration['checkContext'].Account.Type)
+
+    if ($SubscriptionId4AzContext -match ('^(\{){0,1}[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}(\}){0,1}$') -and $SkipAzContextSubscriptionValidation -eq $true) {
+        Logging -preventWriteOutput $true -logMessage " Contradictory use of parameters: `$SubscriptionId4AzContext == $($SubscriptionId4AzContext) AND `$SkipAzContextSubscriptionValidation == '$($SkipAzContextSubscriptionValidation)'" -logMessageForegroundColor 'DarkRed'
+        Logging -preventWriteOutput $true -logMessage " Setting parameter `$SkipAzContextSubscriptionValidation to '`$false'" -logMessageForegroundColor 'DarkRed'
+        $SkipAzContextSubscriptionValidation = $false
+        Logging -preventWriteOutput $true -logMessage " Parameter `$SkipAzContextSubscriptionValidation == '$($SkipAzContextSubscriptionValidation)'" -logMessageForegroundColor 'DarkRed'
+    }
 
     if ($SubscriptionId4AzContext -match ('^(\{){0,1}[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}(\}){0,1}$')) {
         Logging -preventWriteOutput $true -logMessage "  Parameter -SubscriptionId4AzContext: '$SubscriptionId4AzContext'"
@@ -1607,7 +1609,7 @@ function initAzAPICall {
         }
     }
 
-    if (-not $AzAPICallConfiguration['checkContext'].Subscription -and -not $skipAzContextSubscriptionValidation) {
+    if (-not $AzAPICallConfiguration['checkContext'].Subscription -and $SkipAzContextSubscriptionValidation -eq $false) {
         $AzAPICallConfiguration['checkContext'] | Format-List | Out-String
         Logging -preventWriteOutput $true -logMessage '  Check Az context failed: Az context is not set to any Subscription'
         Logging -preventWriteOutput $true -logMessage '  Set Az context to a subscription by running: Set-AzContext -subscription <subscriptionId> (run Get-AzSubscription to get the list of available Subscriptions). When done re-run the script'
@@ -1617,8 +1619,11 @@ function initAzAPICall {
     }
     else {
         Logging -preventWriteOutput $true -logMessage "   Az context Tenant: '$($AzAPICallConfiguration['checkContext'].Tenant.Id)'" -logMessageForegroundColor 'Yellow'
-        if (-not $skipAzContextSubscriptionValidation) {
+        if ($SkipAzContextSubscriptionValidation -eq $false) {
             Logging -preventWriteOutput $true -logMessage "   Az context Subscription: $($AzAPICallConfiguration['checkContext'].Subscription.Name) [$($AzAPICallConfiguration['checkContext'].Subscription.Id)] (state: $($AzAPICallConfiguration['checkContext'].Subscription.State))" -logMessageForegroundColor 'Yellow'
+        }
+        else {
+            Logging -preventWriteOutput $true -logMessage "   Az context Subscription check skipped (`$SkipAzContextSubscriptionValidation == $($SkipAzContextSubscriptionValidation))" -logMessageForegroundColor 'Yellow'
         }
         Logging -preventWriteOutput $true -logMessage '  Az context check succeeded' -logMessageForegroundColor 'Green'
     }
