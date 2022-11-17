@@ -229,7 +229,6 @@ else {
         }
     }
 }
-
 #endregion customRuleSet
 
 #region initAZAPICall
@@ -237,9 +236,10 @@ Write-Host "Splat for 'initAzAPICall'"
 $parameters4AzAPICallModule = @{
     #SubscriptionId4AzContext = $null #enter subscriptionId for AzContext
     DebugAzAPICall   = $true
-    writeMethod      = 'Host'
-    debugWriteMethod = 'Host'
+    WriteMethod      = 'Host'
+    DebugWriteMethod = 'Host'
     #AzAPICallCustomRuleSet = $AzAPICallCustomRuleSet #enable if custom ruleSet shall apply
+    #SkipAzContextSubscriptionValidation = $true #Use if the account doesn´t have any permissions on Management Groups, Subscriptions, Resource Groups or Resources
 }
 
 Write-Host "Initialize 'AzAPICall'"

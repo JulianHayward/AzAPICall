@@ -36,8 +36,9 @@ Initialize AzAPICall
 $parameters4AzAPICallModule = @{
     #SubscriptionId4AzContext = $null #specify Subscription Id
     #DebugAzAPICall = $true
-    #writeMethod = 'Output' #Debug, Error, Host, Information, Output, Progress, Verbose, Warning (default: host)
-    #debugWriteMethod = 'Warning' #Debug, Error, Host, Information, Output, Progress, Verbose, Warning (default: host)
+    #WriteMethod = 'Output' #Debug, Error, Host, Information, Output, Progress, Verbose, Warning (default: host)
+    #DebugWriteMethod = 'Warning' #Debug, Error, Host, Information, Output, Progress, Verbose, Warning (default: host)
+    #SkipAzContextSubscriptionValidation = $true #Use if the account doesn´t have any permissions on Management Groups, Subscriptions, Resource Groups or Resources
 }
 $azAPICallConf = initAzAPICall @parameters4AzAPICallModule
 ```
@@ -99,9 +100,10 @@ By default, endPoints return results in batches of e.g. `100`. You can increase 
 | ----------------------------- | :-------: | ------------------------------------------------------------------------------------- | :------: |
 | DebugAzAPICall			    | `bool`	| Set to `true` to enable debug output                | 		   |
 | SubscriptionId4AzContext		| `string`	| Specify if specific subscription should be used for the AzContext (Subscription Id / GUID) | 		   |
-| writeMethod		| `string`	| Write method. Debug, Error, Host, Information, Output, Progress, Verbose, Warning (default: host) | 		   |
-| debugWriteMethod		| `string`	| Write method in case of wanted or enforced debug. Debug, Error, Host, Information, Output, Progress, Verbose, Warning (default: host) | 		   |
+| WriteMethod		| `string`	| Write method. Debug, Error, Host, Information, Output, Progress, Verbose, Warning (default: host) | 		   |
+| DebugWriteMethod		| `string`	| Write method in case of wanted or enforced debug. Debug, Error, Host, Information, Output, Progress, Verbose, Warning (default: host) | 		   |
 | AzAPICallCustomRuleSet | `object`	| wip |  |
+| SkipAzContextSubscriptionValidation | `bool`	| In case you don't have RBAC permissions on a subscription/resourcegroup/resource. If this `bool`-parameter won't be used, you will get an error message while the `Get-AzContext`-validation. Otherwise, a subscription is expected to be set as a default for the context. |  |
 
 ### AzAPICall Tracking
 
