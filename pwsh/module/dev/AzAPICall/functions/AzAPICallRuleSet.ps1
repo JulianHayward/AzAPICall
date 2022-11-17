@@ -1,7 +1,9 @@
 function AzAPICallErrorHandler {
     #Logging -preventWriteOutput $true -logMessage ' * BuiltIn RuleSet'
 
-    $defaultErrorInfo = "$currentTask try #$($tryCounter); return: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'>"
+    $doRetry = $false
+    $defaultErrorInfo = "[AzAPICallErrorHandler] $currentTask try #$($tryCounter); return: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'>"
+
     switch ($uri) {
         #ARM
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/Microsoft.PolicyInsights/policyStates/latest/summarize*" } { $getARMPolicyComplianceStates = $true }
@@ -109,7 +111,7 @@ function AzAPICallErrorHandler {
     #endregion getTenantId for subscriptionId
 
     if ($validateAccess -and ($catchResult.error.code -eq 'Authorization_RequestDenied' -or $actualStatusCode -eq 403 -or $actualStatusCode -eq 400)) {
-        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo" -logMessageForegroundColor 'DarkRed'
+        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: return 'failed'" -logMessageForegroundColor 'DarkRed'
         $response = @{
             action    = 'return' #break or return or returnCollection
             returnVar = 'failed'
@@ -124,7 +126,7 @@ function AzAPICallErrorHandler {
         )
     ) {
         if ($catchResult.error.code -like '*ResponseTooLarge*') {
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: Response too large, skipping this scope."
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: Response too large, skipping this scope - return 'ResponseTooLarge'"
             $response = @{
                 action    = 'return' #break or return
                 returnVar = 'ResponseTooLarge'
@@ -133,7 +135,7 @@ function AzAPICallErrorHandler {
         }
         if (-not $catchResult.error.code) {
             #seems API now returns null instead of 'ResponseTooLarge'
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: Response empty - handle like 'Response too large', skipping this scope."
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: Response empty - handle like 'Response too large', skipping this scope - return 'ResponseTooLarge'"
             $response = @{
                 action    = 'return' #break or return
                 returnVar = 'ResponseTooLarge'
@@ -143,7 +145,7 @@ function AzAPICallErrorHandler {
     }
 
     elseif ($catchResult.error.code -eq 'DisallowedProvider') {
-        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: skipping Subscription"
+        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: skipping Subscription - return 'DisallowedProvider'"
         $response = @{
             action    = 'return' #break or return or returnCollection
             returnVar = 'DisallowedProvider'
@@ -153,17 +155,19 @@ function AzAPICallErrorHandler {
 
     elseif ($catchResult.error.message -like '*The offer MS-AZR-0110P is not supported*') {
         Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: seems we´re hitting a malicious endpoint .. try again in $tryCounter second(s)"
+        $doRetry = $true
         Start-Sleep -Seconds $tryCounter
     }
 
     elseif ($catchResult.error.code -like '*GatewayTimeout*' -or $catchResult.error.code -like '*BadGatewayConnection*' -or $catchResult.error.code -like '*InvalidGatewayHost*' -or $catchResult.error.code -like '*ServerTimeout*' -or $catchResult.error.code -like '*ServiceUnavailable*' -or $catchResult.code -like '*ServiceUnavailable*' -or $catchResult.error.code -like '*MultipleErrorsOccurred*' -or $catchResult.code -like '*InternalServerError*' -or $catchResult.error.code -like '*InternalServerError*' -or $catchResult.error.code -like '*RequestTimeout*' -or $catchResult.error.code -like '*UnknownError*' -or $catchResult.error.code -eq '500') {
         Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: try again in $tryCounter second(s)"
+        $doRetry = $true
         Start-Sleep -Seconds $tryCounter
     }
 
     elseif ($catchResult.error.code -like '*AuthorizationFailed*') {
         if ($validateAccess) {
-            #Logging -preventWriteOutput $true -logMessage " $currentTask <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'>" -logMessageForegroundColor "DarkRed"
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: return 'failed'"
             $response = @{
                 action    = 'return' #break or return
                 returnVar = 'failed'
@@ -171,7 +175,7 @@ function AzAPICallErrorHandler {
             return $response
         }
         else {
-            $script:retryAuthorizationFailedCounter ++
+            $script:retryAuthorizationFailedCounter++
             if ($retryAuthorizationFailedCounter -gt $retryAuthorizationFailed) {
                 Logging -preventWriteOutput $true -logMessage '- - - - - - - - - - - - - - - - - - - - '
                 Logging -preventWriteOutput $true -logMessage "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository) and provide the following dump" -logMessageForegroundColor 'Yellow'
@@ -185,6 +189,7 @@ function AzAPICallErrorHandler {
                 $exitMsg = 'AzAPICall: exit'
             }
             else {
+                $doRetry = $true
                 if ($retryAuthorizationFailedCounter -gt 2) {
                     Start-Sleep -Seconds 5
                 }
@@ -213,6 +218,7 @@ function AzAPICallErrorHandler {
             }
             else {
                 Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token ($targetEndpoint) - sleep $($sleepSecCreateToken) seconds and try again"
+                $doRetry = $true
                 Start-Sleep -Seconds $sleepSecCreateToken
                 #Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token ($targetEndpoint)"
                 createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
@@ -225,7 +231,7 @@ function AzAPICallErrorHandler {
     elseif (($getARMManagedIdentityUserAssignedFederatedIdentityCredentials -and $actualStatusCode -eq 405) -or ($getARMManagedIdentityUserAssignedFederatedIdentityCredentials -and $actualStatusCode -eq 404)) {
         if ($getARMManagedIdentityUserAssignedFederatedIdentityCredentials -and $actualStatusCode -eq 405) {
             #https://learn.microsoft.com/en-us/azure/active-directory/develop/workload-identity-federation-considerations#errors
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: skipping resource Managed Identity (SupportForFederatedIdentityCredentialsNotEnabled)"
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: skipping resource Managed Identity - return 'SupportForFederatedIdentityCredentialsNotEnabled'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'SupportForFederatedIdentityCredentialsNotEnabled'
@@ -233,7 +239,7 @@ function AzAPICallErrorHandler {
             return $response
         }
         if ($getARMManagedIdentityUserAssignedFederatedIdentityCredentials -and $actualStatusCode -eq 404) {
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: skipping resource Managed Identity (NotFound)"
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: skipping resource Managed Identity (NotFound) - return 'NotFound'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'NotFound'
@@ -266,7 +272,7 @@ function AzAPICallErrorHandler {
         }
 
         if ($catchResult.error.code -eq 'AccountCostDisabled') {
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: seems Access to cost data has been disabled for this Account - skipping CostManagement"
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: seems Access to cost data has been disabled for this Account - skipping CostManagement - return 'AccountCostDisabled'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'AccountCostDisabled'
@@ -275,7 +281,7 @@ function AzAPICallErrorHandler {
         }
 
         if ($catchResult.error.message -like '*does not have any valid subscriptions*') {
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: seems there are no valid Subscriptions present - skipping CostManagement on MG level"
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: seems there are no valid Subscriptions present - skipping CostManagement on MG level - return 'NoValidSubscriptions'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'NoValidSubscriptions'
@@ -284,7 +290,7 @@ function AzAPICallErrorHandler {
         }
 
         if ($catchResult.error.code -eq 'Unauthorized') {
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: Unauthorized - handling as exception"
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: Unauthorized - handling as exception - return 'Unauthorized'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'Unauthorized'
@@ -293,7 +299,7 @@ function AzAPICallErrorHandler {
         }
 
         if ($catchResult.error.code -eq 'BadRequest' -and $catchResult.error.message -like '*The offer*is not supported*' -and $catchResult.error.message -notlike '*The offer MS-AZR-0110P is not supported*') {
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: Unauthorized - handling as exception"
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: Unauthorized - handling as exception - return 'OfferNotSupported'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'OfferNotSupported'
@@ -302,7 +308,7 @@ function AzAPICallErrorHandler {
         }
 
         if ($catchResult.error.code -eq 'BadRequest' -and $catchResult.error.message -like 'Invalid query definition*') {
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: Unauthorized - handling as exception"
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: Unauthorized - handling as exception - return 'InvalidQueryDefinition'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'InvalidQueryDefinition'
@@ -311,7 +317,7 @@ function AzAPICallErrorHandler {
         }
 
         if ($catchResult.error.code -eq 'BadRequest' -and $catchResult.error.message -like '*too many subscriptions*') {
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: seems there are too many Subscriptions present - skipping CostManagement on MG level"
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: seems there are too many Subscriptions present - skipping CostManagement on MG level - return 'tooManySubscriptions'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'tooManySubscriptions'
@@ -320,7 +326,7 @@ function AzAPICallErrorHandler {
         }
 
         if ($catchResult.error.code -eq 'NotFound' -and $catchResult.error.message -like '*have valid WebDirect/AIRS offer type*') {
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: Unauthorized - handling as exception"
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: handling as exception - return 'NonValidWebDirectAIRSOfferType'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'NonValidWebDirectAIRSOfferType'
@@ -329,6 +335,7 @@ function AzAPICallErrorHandler {
         }
 
         if ($catchResult.error.code -eq 'NotFound' -and $catchResult.error.message -like 'Cost management data is not supported for subscription(s)*') {
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: handling as exception - return 'NotFoundNotSupported'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'NotFoundNotSupported'
@@ -337,6 +344,7 @@ function AzAPICallErrorHandler {
         }
 
         if ($catchResult.error.code -eq 'IndirectCostDisabled') {
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: handling as exception - return 'IndirectCostDisabled'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'IndirectCostDisabled'
@@ -346,7 +354,7 @@ function AzAPICallErrorHandler {
     }
 
     elseif ($targetEndpoint -eq 'MicrosoftGraph' -and $catchResult.error.code -like '*Request_ResourceNotFound*') {
-        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: uncertain object status - skipping for now :)"
+        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: uncertain object status - skipping - return 'Request_ResourceNotFound'"
         $response = @{
             action    = 'return' #break or return
             returnVar = 'Request_ResourceNotFound'
@@ -364,13 +372,14 @@ function AzAPICallErrorHandler {
         }
         else {
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: sleeping $($sleepSec) seconds"
+            $doRetry = $true
             Start-Sleep -Seconds $sleepSec
         }
 
     }
 
     elseif ($currentTask -eq 'Checking AAD UserType' -and $catchResult.error.code -like '*Authorization_RequestDenied*') {
-        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: cannot get the executing user´s userType information (member/guest) - proceeding as 'unknown'"
+        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: cannot get the executing user´s userType information (member/guest) - return 'unknown'"
         $response = @{
             action    = 'return' #break or return or returnCollection
             returnVar = 'unknown'
@@ -380,7 +389,7 @@ function AzAPICallErrorHandler {
 
     elseif ($getMicrosoftGraphApplication -and $catchResult.error.code -like '*Authorization_RequestDenied*') {
         if ($AzApiCallConfiguration['htParameters'].userType -eq 'Guest') {
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: skip Application | Guest not enough permissions"
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: skip Application | Guest not enough permissions - return 'skipApplications'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'skipApplications'
@@ -410,7 +419,7 @@ function AzAPICallErrorHandler {
     }
 
     elseif ($catchResult.error.code -like '*BlueprintNotFound*') {
-        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: seems Blueprint definition is gone - skipping for now :)"
+        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: seems Blueprint definition is gone - skipping - return 'BlueprintNotFound'"
         $response = @{
             action    = 'return' #break or return or returnCollection
             returnVar = 'BlueprintNotFound'
@@ -419,6 +428,7 @@ function AzAPICallErrorHandler {
     }
 
     elseif ($catchResult.error.code -eq 'ResourceRequestsThrottled' -or $catchResult.error.code -eq '429' -or $catchResult.error.code -eq 'RateLimiting') {
+        $doRetry = $true
         $sleepSeconds = 11
         if ($catchResult.error.code -eq 'ResourceRequestsThrottled') {
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! sleeping $sleepSeconds seconds"
@@ -442,7 +452,7 @@ function AzAPICallErrorHandler {
         $sleepSec = @(1, 1, 2, 3, 5, 7, 9, 10, 13, 15, 20, 25, 30, 45, 60, 60, 60, 60)[$tryCounter]
         $maxTries = 15
         if ($tryCounter -gt $maxTries) {
-            Logging -preventWriteOutput $true -logMessage " $currentTask - capitulation after $maxTries attempts"
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: capitulation after $maxTries attempts - return 'capitulation'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'capitulation'
@@ -450,6 +460,7 @@ function AzAPICallErrorHandler {
             return $response
         }
         Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: try again (trying $maxTries times) in $sleepSec second(s)"
+        $doRetry = $true
         Start-Sleep -Seconds $sleepSec
     }
 
@@ -463,6 +474,7 @@ function AzAPICallErrorHandler {
                         )
     ) {
         if ($catchResult.error.code -eq 'ResourceNotOnboarded') {
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: return 'ResourceNotOnboarded'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'ResourceNotOnboarded'
@@ -470,6 +482,7 @@ function AzAPICallErrorHandler {
             return $response
         }
         if ($catchResult.error.code -eq 'TenantNotOnboarded') {
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: return 'TenantNotOnboarded'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'TenantNotOnboarded'
@@ -477,6 +490,7 @@ function AzAPICallErrorHandler {
             return $response
         }
         if ($catchResult.error.code -eq 'InvalidResourceType') {
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: return 'InvalidResourceType'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'InvalidResourceType'
@@ -484,6 +498,7 @@ function AzAPICallErrorHandler {
             return $response
         }
         if ($catchResult.error.code -eq 'InvalidResource') {
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: return 'InvalidResource'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'InvalidResource'
@@ -493,14 +508,16 @@ function AzAPICallErrorHandler {
     }
 
     elseif ($getARMRoleAssignmentScheduleInstances -and ($actualStatusCode -eq 400 -or $actualStatusCode -eq 500)) {
-        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: skipping"
+
         if ($catchResult.error.code -eq 'AadPremiumLicenseRequired') {
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: skipping - return 'AadPremiumLicenseRequired'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'AadPremiumLicenseRequired'
             }
         }
         else {
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: skipping - return 'RoleAssignmentScheduleInstancesError'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'RoleAssignmentScheduleInstancesError'
@@ -510,6 +527,7 @@ function AzAPICallErrorHandler {
     }
 
     elseif ($getARMDiagnosticSettingsMg -and $catchResult.error.code -eq 'InvalidResourceType') {
+        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: skipping - return 'InvalidResourceType'"
         $response = @{
             action    = 'return' #break or return or returnCollection
             returnVar = 'InvalidResourceType'
@@ -528,13 +546,14 @@ function AzAPICallErrorHandler {
         }
         else {
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: sleeping $($sleepSec) seconds"
+            $doRetry = $true
             Start-Sleep -Seconds $sleepSec
         }
 
     }
 
     elseif (($getARMMDfC -or $getARMMdFCSecurityContacts) -and $catchResult.error.code -eq 'Subscription Not Registered') {
-        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: skipping Subscription"
+        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: skipping Subscription - return 'SubscriptionNotRegistered'"
         $response = @{
             action    = 'return' #break or return or returnCollection
             returnVar = 'SubscriptionNotRegistered'
@@ -543,7 +562,7 @@ function AzAPICallErrorHandler {
     }
 
     elseif ($getARMMdFCSecurityContacts -and $actualStatusCode -eq 400) {
-        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: invalid MDfC Security Contacts configuration"
+        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: invalid MDfC Security Contacts configuration - return 'azgvzerrorMessage_$($catchResult.error.message)'"
         $response = @{
             action    = 'return' #break or return or returnCollection
             returnVar = "azgvzerrorMessage_$($catchResult.error.message)"
@@ -555,7 +574,7 @@ function AzAPICallErrorHandler {
         $sleepSec = @(1, 3, 7, 10, 15, 20, 30)[$tryCounter]
         $maxTries = 5
         if ($tryCounter -gt $maxTries) {
-            Logging -preventWriteOutput $true -logMessage " $currentTask - capitulation after $maxTries attempts"
+            Logging -preventWriteOutput $true -logMessage " $currentTask - capitulation after $maxTries attempts - return 'Request_UnsupportedQuery'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'Request_UnsupportedQuery'
@@ -563,6 +582,7 @@ function AzAPICallErrorHandler {
             return $response
         }
         Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: try again (trying $maxTries times) in $sleepSec second(s)"
+        $doRetry = $true
         Start-Sleep -Seconds $sleepSec
     }
 
@@ -577,7 +597,7 @@ function AzAPICallErrorHandler {
         )
     ) {
         if ($catchResult.message -like '*invalid character*') {
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: The resourceId '$($resourceId)' will be skipped"
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: The resourceId '$($resourceId)' will be skipped - return 'skipResource'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'skipResource'
@@ -585,7 +605,7 @@ function AzAPICallErrorHandler {
             return $response
         }
         if ($catchResult.error.code -like '*ResourceNotFound*' -or $catchResult.code -like '*ResourceNotFound*') {
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: The resourceId '$($resourceId)' will be skipped"
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: The resourceId '$($resourceId)' will be skipped - return 'skipResource'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'skipResource'
@@ -593,7 +613,7 @@ function AzAPICallErrorHandler {
             return $response
         }
         if ($catchResult.error.code -like '*ResourceGroupNotFound*' -or $catchResult.code -like '*ResourceGroupNotFound*') {
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: The resourceId '$($resourceId)' will be skipped"
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: The resourceId '$($resourceId)' will be skipped - return 'skipResource'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'skipResource'
@@ -601,6 +621,7 @@ function AzAPICallErrorHandler {
             return $response
         }
         if ($catchResult.code -eq 'ResourceTypeNotSupported' -or $catchResult.code -eq 'ResourceProviderNotSupported') {
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: return 'ResourceTypeOrResourceProviderNotSupported'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'ResourceTypeOrResourceProviderNotSupported'
@@ -610,7 +631,7 @@ function AzAPICallErrorHandler {
     }
 
     elseif ($getMicrosoftGraphServicePrincipalGetMemberGroups -and $catchResult.error.code -like '*Directory_ResultSizeLimitExceeded*') {
-        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: maximum number of groups exceeded, skipping; docs: https://docs.microsoft.com/pt-br/previous-versions/azure/ad/graph/api/functions-and-actions#getmembergroups-get-group-memberships-transitive--"
+        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: maximum number of groups exceeded, skipping; docs: https://docs.microsoft.com/pt-br/previous-versions/azure/ad/graph/api/functions-and-actions#getmembergroups-get-group-memberships-transitive-- - return 'Directory_ResultSizeLimitExceeded'"
         $response = @{
             action    = 'return' #break or return or returnCollection
             returnVar = 'Directory_ResultSizeLimitExceeded'
@@ -619,7 +640,7 @@ function AzAPICallErrorHandler {
     }
 
     elseif ($catchResult.error.code -eq 'RoleDefinitionDoesNotExist') {
-        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: RBAC RoleDefinition does not exist"
+        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: RBAC RoleDefinition does not exist - return 'RoleDefinitionDoesNotExist'"
         $response = @{
             action    = 'return' #break or return or returnCollection
             returnVar = 'RoleDefinitionDoesNotExist'
@@ -628,7 +649,7 @@ function AzAPICallErrorHandler {
     }
 
     elseif ($catchResult.error.code -eq 'ClassicAdministratorListFailed') {
-        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: ClassicAdministrators not applicable"
+        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: ClassicAdministrators not applicable - return 'ClassicAdministratorListFailed'"
         $response = @{
             action    = 'return' #break or return or returnCollection
             returnVar = 'ClassicAdministratorListFailed'
@@ -646,13 +667,15 @@ function AzAPICallErrorHandler {
             }
             else {
                 $sleepSec = @(3, 7, 12, 20, 30, 45, 60)[$tryCounter]
-                Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: try again in $sleepSec second(s)"unhandledErrorAction
+                Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: try again in $sleepSec second(s)"
+                $doRetry = $true
                 Start-Sleep -Seconds $sleepSec
             }
         }
         elseif (-not $catchResult.code -and -not $catchResult.error.code -and -not $catchResult.message -and -not $catchResult.error.message -and $catchResult -and $tryCounter -lt 6) {
             $sleepSec = @(3, 7, 12, 20, 30, 45, 60)[$tryCounter]
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: try again in $sleepSec second(s)"
+            $doRetry = $true
             Start-Sleep -Seconds $sleepSec
         }
         else {
@@ -669,15 +692,17 @@ function AzAPICallErrorHandler {
         }
     }
 
-    Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo $exitMsg - unhandledErrorAction: $unhandledErrorAction" -logMessageForegroundColor 'DarkRed'
-    if ($unhandledErrorAction -eq 'Continue') {
-        $response = @{
-            action = 'break'
+    if ($doRetry -eq $false) {
+        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo $exitMsg - unhandledErrorAction: $unhandledErrorAction" -logMessageForegroundColor 'DarkRed'
+        if ($unhandledErrorAction -eq 'Continue') {
+            $response = @{
+                action = 'break'
+            }
+            return $response
         }
-        return $response
-    }
-    else {
-        Throw 'Error - check the last console output for details'
+        else {
+            Throw 'Error - check the last console output for details'
+        }
     }
 
 }
