@@ -114,10 +114,10 @@ function AzAPICall {
 
         if ($doDebugAzAPICall -or $tryCounter -gt 3) {
             if ($doDebugAzAPICall) {
-                Logging -preventWriteOutput $true -logMessage "  DEBUGTASK: $currentTask -> $debugMessage" -logMessageWriteMethod $AzAPICallConfiguration['htParameters'].debugWriteMethod
+                Logging -preventWriteOutput $true -logMessage "  [AzAPICall] DEBUGTASK: $currentTask -> $debugMessage" -logMessageWriteMethod $AzAPICallConfiguration['htParameters'].debugWriteMethod
             }
             if (-not $doDebugAzAPICall -and $tryCounter -gt 3) {
-                Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> $debugMessage" -logMessageWriteMethod $AzAPICallConfiguration['htParameters'].debugWriteMethod
+                Logging -preventWriteOutput $true -logMessage "  [AzAPICall] Forced DEBUG: $currentTask -> $debugMessage" -logMessageWriteMethod $AzAPICallConfiguration['htParameters'].debugWriteMethod
             }
         }
     }
@@ -156,7 +156,7 @@ function AzAPICall {
 
     do {
         if ($uri -notlike 'https://*') {
-            Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> check uri: '$uri' - EXIT"
+            Logging -preventWriteOutput $true -logMessage "  [AzAPICall] Forced DEBUG: $currentTask -> check uri: '$uri' - EXIT"
             Throw "Error - check uri: '$uri'"
         }
 
@@ -166,7 +166,7 @@ function AzAPICall {
         }
         else {
             if (-not ($AzApiCallConfiguration['azAPIEndpoints']).($uriSplitted[2])) {
-                Logging -preventWriteOutput $true -logMessage "Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'" -logMessageForegroundColor 'Yellow'
+                Logging -preventWriteOutput $true -logMessage "[AzAPICall] Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'" -logMessageForegroundColor 'Yellow'
                 Logging -preventWriteOutput $true -logMessage "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository)" -logMessageForegroundColor 'Yellow'
                 Throw "Error - Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'"
             }
@@ -253,20 +253,20 @@ function AzAPICall {
                     $catchResult = $catchResultPlain
                     $tryCounterUnexpectedError++
                     if ($targetEndpoint -eq 'Storage' -and $catchResult -like '*InvalidAuthenticationInfoServer*The token is expired.') {
-                        Logging -preventWriteOutput $true -logMessage " $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) '$($catchResult.error.code)' | '$($catchResult.error.message)' - requesting new bearer token ($targetEndpoint)"
+                        Logging -preventWriteOutput $true -logMessage " [AzAPICall] $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) '$($catchResult.error.code)' | '$($catchResult.error.message)' - requesting new bearer token ($targetEndpoint)"
                         createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
                     }
                     elseif ($targetEndpoint -eq 'Storage' -and $catchResult -like '*AuthorizationFailure*' -or $catchResult -like '*AuthorizationPermissionDenied*' -or $catchResult -like '*AuthorizationPermissionMismatch*' -or $catchResult -like '*name or service not known*') {
                         if ($catchResult -like '*AuthorizationPermissionDenied*' -or $catchResult -like '*AuthorizationPermissionMismatch*') {
                             if ($catchResult -like '*AuthorizationPermissionDenied*') {
-                                Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> $catchResult -> returning string 'AuthorizationPermissionDenied'"
+                                Logging -preventWriteOutput $true -logMessage "  [AzAPICall] Forced DEBUG: $currentTask -> $catchResult -> returning string 'AuthorizationPermissionDenied'"
                             }
                             if ($catchResult -like '*AuthorizationPermissionMismatch*') {
-                                Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> $catchResult -> returning string 'AuthorizationPermissionMismatch' - this error might occur due to only recently applied RBAC permissions"
+                                Logging -preventWriteOutput $true -logMessage "  [AzAPICall] Forced DEBUG: $currentTask -> $catchResult -> returning string 'AuthorizationPermissionMismatch' - this error might occur due to only recently applied RBAC permissions"
                             }
 
                             if ($saResourceGroupName) {
-                                Logging -preventWriteOutput $true -logMessage "  $currentTask - Contribution request: please verify if the Storage Account's ResourceGroup '$($saResourceGroupName)' is a managed Resource Group, if yes please check if the Resource Group Name is listed here: https://github.com/JulianHayward/AzSchnitzels/blob/main/info/managedResourceGroups.txt"
+                                Logging -preventWriteOutput $true -logMessage "  [AzAPICall] $currentTask - Contribution request: please verify if the Storage Account's ResourceGroup '$($saResourceGroupName)' is a managed Resource Group, if yes please check if the Resource Group Name is listed here: https://github.com/JulianHayward/AzSchnitzels/blob/main/info/managedResourceGroups.txt"
                             }
 
                             if ($catchResult -like '*AuthorizationPermissionDenied*') {
@@ -278,16 +278,16 @@ function AzAPICall {
                         }
 
                         if ($catchResult -like '*AuthorizationFailure*') {
-                            Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> $catchResult -> returning string 'AuthorizationFailure'"
+                            Logging -preventWriteOutput $true -logMessage "  [AzAPICall] Forced DEBUG: $currentTask -> $catchResult -> returning string 'AuthorizationFailure'"
                             return 'AuthorizationFailure'
                         }
                         if ($catchResult -like '*name or service not known*') {
-                            Logging -preventWriteOutput $true -logMessage "  Forced DEBUG: $currentTask -> $catchResult -> returning string 'ResourceUnavailable'"
+                            Logging -preventWriteOutput $true -logMessage "  [AzAPICall] Forced DEBUG: $currentTask -> $catchResult -> returning string 'ResourceUnavailable'"
                             return 'ResourceUnavailable'
                         }
                     }
                     else {
-                        Logging -preventWriteOutput $true -logMessage "$currentTask try #$($tryCounterUnexpectedError) $($rawException)"
+                        Logging -preventWriteOutput $true -logMessage "[AzAPICall] $currentTask try #$($tryCounterUnexpectedError) $($rawException)"
                         $unexpectedError = $true
                     }
                 }
@@ -339,14 +339,14 @@ function AzAPICall {
                         debugAzAPICall -debugMessage "skipOnErrorCode: '$($skipOnErrorCode)' == apiStatusCode: '$($actualStatusCode)' -> skip"
                         break
                     }
+
                     $function:AzAPICallErrorHandler = $AzAPICallConfiguration['AzAPICallRuleSet'].AzAPICallErrorHandler
-                    $AzAPICallErrorHandlerResponse = AzAPICallErrorHandler -AzAPICallConfiguration $AzAPICallConfiguration -uri $uri -catchResult $catchResult -currentTask $currentTask -tryCounter $tryCounter -retryAuthorizationFailed $retryAuthorizationFailed
-                    # switch ($AzAPICallErrorHandlerResponse.action) {
-                    #     'break' { break }
-                    #     'return' { return $AzAPICallErrorHandlerResponse.returnVar }
-                    #     'returnCollection' { return $apiCallResultsCollection }
-                    # }
-                    if ($AzAPICallErrorHandlerResponse.action -eq 'break' -or $AzAPICallErrorHandlerResponse.action -eq 'return' -or $AzAPICallErrorHandlerResponse.action -eq 'returnCollection') {
+                    $AzAPICallErrorHandlerResponse = AzAPICallErrorHandler #-AzAPICallConfiguration $AzAPICallConfiguration -uri $uri -catchResult $catchResult -currentTask $currentTask -tryCounter $tryCounter -retryAuthorizationFailed $retryAuthorizationFailed
+
+                    if ($AzAPICallErrorHandlerResponse.action -eq 'retry' -or $AzAPICallErrorHandlerResponse.action -eq 'break' -or $AzAPICallErrorHandlerResponse.action -eq 'return' -or $AzAPICallErrorHandlerResponse.action -eq 'returnCollection') {
+                        if ($AzAPICallErrorHandlerResponse.action -eq 'retry') {
+                            debugAzAPICall -debugMessage "[AzAPICall] $currentTask - retry"
+                        }
                         if ($AzAPICallErrorHandlerResponse.action -eq 'break') {
                             break
                         }
@@ -358,7 +358,7 @@ function AzAPICall {
                         }
                     }
                     else {
-                        Logging -preventWriteOutput $true -logMessage "`$AzAPICallErrorHandlerResponse.action unexpected (`$AzAPICallErrorHandlerResponse.action = '$($AzAPICallErrorHandlerResponse.action)') - breaking" -logMessageForegroundColor 'darkred'
+                        Logging -preventWriteOutput $true -logMessage "[AzAPICall] `$AzAPICallErrorHandlerResponse.action unexpected (`$AzAPICallErrorHandlerResponse.action = '$($AzAPICallErrorHandlerResponse.action)') - breaking" -logMessageForegroundColor 'darkred'
                         break
                     }
 
@@ -428,15 +428,15 @@ function AzAPICall {
                         $isMore = $true
                         if ($uri -eq $azAPIRequestConvertedFromJson.nextLink) {
                             if ($restartDueToDuplicateNextlinkCounter -gt 3) {
-                                Logging -preventWriteOutput $true -logMessage " $currentTask restartDueToDuplicateNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
+                                Logging -preventWriteOutput $true -logMessage " [AzAPICall] $currentTask restartDueToDuplicateNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
                                 Throw 'Error - check the last console output for details'
                             }
                             else {
                                 $restartDueToDuplicateNextlinkCounter++
-                                Logging -preventWriteOutput $true -logMessage 'nextLinkLog: uri is equal to nextLinkUri'
-                                Logging -preventWriteOutput $true -logMessage "nextLinkLog: uri: $uri"
-                                Logging -preventWriteOutput $true -logMessage "nextLinkLog: nextLinkUri: $($azAPIRequestConvertedFromJson.nextLink)"
-                                Logging -preventWriteOutput $true -logMessage "nextLinkLog: re-starting (#$($restartDueToDuplicateNextlinkCounter)) '$currentTask'"
+                                Logging -preventWriteOutput $true -logMessage '[AzAPICall] nextLinkLog: uri is equal to nextLinkUri'
+                                Logging -preventWriteOutput $true -logMessage "[AzAPICall] nextLinkLog: uri: $uri"
+                                Logging -preventWriteOutput $true -logMessage "[AzAPICall] nextLinkLog: nextLinkUri: $($azAPIRequestConvertedFromJson.nextLink)"
+                                Logging -preventWriteOutput $true -logMessage "[AzAPICall] nextLinkLog: re-starting (#$($restartDueToDuplicateNextlinkCounter)) '$currentTask'"
                                 $apiCallResultsCollection = [System.Collections.ArrayList]@()
                                 $uri = $initialUri
                                 Start-Sleep -Seconds 10
@@ -459,7 +459,7 @@ function AzAPICall {
                                 if ($bodyHt.options.'$skiptoken') {
                                     if ($bodyHt.options.'$skiptoken' -eq $azAPIRequestConvertedFromJson.'$skipToken') {
                                         if ($restartDueToDuplicateNextlinkCounter -gt 3) {
-                                            Logging -preventWriteOutput $true -logMessage " $currentTask restartDueToDuplicateSkipTokenCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
+                                            Logging -preventWriteOutput $true -logMessage " [AzAPICall] $currentTask restartDueToDuplicateSkipTokenCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
                                             Throw 'Error - check the last console output for details'
                                         }
                                         else {
@@ -493,15 +493,15 @@ function AzAPICall {
                         $isMore = $true
                         if ($uri -eq $azAPIRequestConvertedFromJson.'@odata.nextLink') {
                             if ($restartDueToDuplicateNextlinkCounter -gt 3) {
-                                Logging -preventWriteOutput $true -logMessage " $currentTask restartDueToDuplicate@odataNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
+                                Logging -preventWriteOutput $true -logMessage " [AzAPICall] $currentTask restartDueToDuplicate@odataNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
                                 Throw 'Error - check the last console output for details'
                             }
                             else {
                                 $restartDueToDuplicateNextlinkCounter++
-                                Logging -preventWriteOutput $true -logMessage 'nextLinkLog: uri is equal to @odata.nextLinkUri'
-                                Logging -preventWriteOutput $true -logMessage "nextLinkLog: uri: $uri"
-                                Logging -preventWriteOutput $true -logMessage "nextLinkLog: @odata.nextLinkUri: $($azAPIRequestConvertedFromJson.'@odata.nextLink')"
-                                Logging -preventWriteOutput $true -logMessage "nextLinkLog: re-starting (#$($restartDueToDuplicateNextlinkCounter)) '$currentTask'"
+                                Logging -preventWriteOutput $true -logMessage '[AzAPICall] nextLinkLog: uri is equal to @odata.nextLinkUri'
+                                Logging -preventWriteOutput $true -logMessage "[AzAPICall] nextLinkLog: uri: $uri"
+                                Logging -preventWriteOutput $true -logMessage "[AzAPICall] nextLinkLog: @odata.nextLinkUri: $($azAPIRequestConvertedFromJson.'@odata.nextLink')"
+                                Logging -preventWriteOutput $true -logMessage "[AzAPICall] nextLinkLog: re-starting (#$($restartDueToDuplicateNextlinkCounter)) '$currentTask'"
                                 $apiCallResultsCollection = [System.Collections.ArrayList]@()
                                 $uri = $initialUri
                                 Start-Sleep -Seconds 10
@@ -517,15 +517,15 @@ function AzAPICall {
                         $isMore = $true
                         if ($uri -eq $azAPIRequestConvertedFromJson.properties.nextLink) {
                             if ($restartDueToDuplicateNextlinkCounter -gt 3) {
-                                Logging -preventWriteOutput $true -logMessage " $currentTask restartDueToDuplicateNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
+                                Logging -preventWriteOutput $true -logMessage " [AzAPICall] $currentTask restartDueToDuplicateNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
                                 Throw 'Error - check the last console output for details'
                             }
                             else {
                                 $restartDueToDuplicateNextlinkCounter++
-                                Logging -preventWriteOutput $true -logMessage 'nextLinkLog: uri is equal to nextLinkUri'
-                                Logging -preventWriteOutput $true -logMessage "nextLinkLog: uri: $uri"
-                                Logging -preventWriteOutput $true -logMessage "nextLinkLog: nextLinkUri: $($azAPIRequestConvertedFromJson.properties.nextLink)"
-                                Logging -preventWriteOutput $true -logMessage "nextLinkLog: re-starting (#$($restartDueToDuplicateNextlinkCounter)) '$currentTask'"
+                                Logging -preventWriteOutput $true -logMessage '[AzAPICall] nextLinkLog: uri is equal to nextLinkUri'
+                                Logging -preventWriteOutput $true -logMessage "[AzAPICall] nextLinkLog: uri: $uri"
+                                Logging -preventWriteOutput $true -logMessage "[AzAPICall] nextLinkLog: nextLinkUri: $($azAPIRequestConvertedFromJson.properties.nextLink)"
+                                Logging -preventWriteOutput $true -logMessage "[AzAPICall] nextLinkLog: re-starting (#$($restartDueToDuplicateNextlinkCounter)) '$currentTask'"
                                 $apiCallResultsCollection = [System.Collections.ArrayList]@()
                                 $uri = $initialUri
                                 Start-Sleep -Seconds 10
@@ -554,12 +554,12 @@ function AzAPICall {
                 $maxtryCounterConnectionRelatedError = 6
                 if ($tryCounterConnectionRelatedError -lt ($maxtryCounterConnectionRelatedError + 1)) {
                     $sleepSecConnectionRelatedError = @(1, 1, 2, 4, 8, 16, 32, 64, 128)[$tryCounterConnectionRelatedError]
-                    Logging -preventWriteOutput $true -logMessage "$currentTask try #$($tryCounterConnectionRelatedError) 'connectionRelatedError' occurred '$connectionRelatedErrorPhrase' (trying $maxtryCounterConnectionRelatedError times); sleep $sleepSecConnectionRelatedError seconds"
+                    Logging -preventWriteOutput $true -logMessage "[AzAPICall] $currentTask try #$($tryCounterConnectionRelatedError) 'connectionRelatedError' occurred '$connectionRelatedErrorPhrase' (trying $maxtryCounterConnectionRelatedError times); sleep $sleepSecConnectionRelatedError seconds"
                     #Logging -preventWriteOutput $true -logMessage $catchResult
                     Start-Sleep -Seconds $sleepSecConnectionRelatedError
                 }
                 else {
-                    Logging -preventWriteOutput $true -logMessage "$currentTask try #$($tryCounterConnectionRelatedError) 'connectionRelatedError' occurred '$connectionRelatedErrorPhrase' (tried $($tryCounterConnectionRelatedError - 1) times) - unhandledErrorAction: $unhandledErrorAction" -logMessageForegroundColor 'DarkRed'
+                    Logging -preventWriteOutput $true -logMessage "[AzAPICall] $currentTask try #$($tryCounterConnectionRelatedError) 'connectionRelatedError' occurred '$connectionRelatedErrorPhrase' (tried $($tryCounterConnectionRelatedError - 1) times) - unhandledErrorAction: $unhandledErrorAction" -logMessageForegroundColor 'DarkRed'
                     if ($unhandledErrorAction -eq 'Continue') {
                         break
                     }
@@ -574,12 +574,12 @@ function AzAPICall {
                 $maxtryUnexpectedError = 6
                 if ($tryCounterUnexpectedError -lt ($maxtryUnexpectedError + 1)) {
                     $sleepSecUnexpectedError = @(1, 1, 2, 4, 8, 16, 32, 64, 128)[$tryCounterUnexpectedError]
-                    Logging -preventWriteOutput $true -logMessage "$currentTask try #$($tryCounterUnexpectedError) 'unexpectedError' occurred (trying $maxtryUnexpectedError times); sleep $sleepSecUnexpectedError seconds"
+                    Logging -preventWriteOutput $true -logMessage "[AzAPICall] $currentTask try #$($tryCounterUnexpectedError) 'unexpectedError' occurred (trying $maxtryUnexpectedError times); sleep $sleepSecUnexpectedError seconds"
                     Logging -preventWriteOutput $true -logMessage $catchResult
                     Start-Sleep -Seconds $sleepSecUnexpectedError
                 }
                 else {
-                    Logging -preventWriteOutput $true -logMessage "$currentTask try #$($tryCounterUnexpectedError) 'unexpectedError' occurred (tried $($tryCounterUnexpectedError - 1) times) - unhandledErrorAction: $unhandledErrorAction" -logMessageForegroundColor 'DarkRed'
+                    Logging -preventWriteOutput $true -logMessage "[AzAPICall] $currentTask try #$($tryCounterUnexpectedError) 'unexpectedError' occurred (tried $($tryCounterUnexpectedError - 1) times) - unhandledErrorAction: $unhandledErrorAction" -logMessageForegroundColor 'DarkRed'
                     if ($unhandledErrorAction -eq 'Continue') {
                         break
                     }
@@ -756,12 +756,18 @@ function AzAPICallErrorHandler {
         Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: seems we´re hitting a malicious endpoint .. try again in $tryCounter second(s)"
         $doRetry = $true
         Start-Sleep -Seconds $tryCounter
+        $response = @{
+            action = 'retry' #break or return or returnCollection or retry
+        }
     }
 
     elseif ($catchResult.error.code -like '*GatewayTimeout*' -or $catchResult.error.code -like '*BadGatewayConnection*' -or $catchResult.error.code -like '*InvalidGatewayHost*' -or $catchResult.error.code -like '*ServerTimeout*' -or $catchResult.error.code -like '*ServiceUnavailable*' -or $catchResult.code -like '*ServiceUnavailable*' -or $catchResult.error.code -like '*MultipleErrorsOccurred*' -or $catchResult.code -like '*InternalServerError*' -or $catchResult.error.code -like '*InternalServerError*' -or $catchResult.error.code -like '*RequestTimeout*' -or $catchResult.error.code -like '*UnknownError*' -or $catchResult.error.code -eq '500') {
         Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: try again in $tryCounter second(s)"
         $doRetry = $true
         Start-Sleep -Seconds $tryCounter
+        $response = @{
+            action = 'retry' #break or return or returnCollection or retry
+        }
     }
 
     elseif ($catchResult.error.code -like '*AuthorizationFailed*') {
@@ -791,9 +797,16 @@ function AzAPICallErrorHandler {
                 $doRetry = $true
                 if ($retryAuthorizationFailedCounter -gt 2) {
                     Start-Sleep -Seconds 5
+                    $response = @{
+                        action = 'retry' #break or return or returnCollection or retry
+                    }
+
                 }
                 if ($retryAuthorizationFailedCounter -gt 3) {
                     Start-Sleep -Seconds 10
+                    $response = @{
+                        action = 'retry' #break or return or returnCollection or retry
+                    }
                 }
                 Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: not reasonable, retry #$retryAuthorizationFailedCounter of $retryAuthorizationFailed"
             }
@@ -821,6 +834,9 @@ function AzAPICallErrorHandler {
                 Start-Sleep -Seconds $sleepSecCreateToken
                 #Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token ($targetEndpoint)"
                 createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
+                $response = @{
+                    action = 'retry' #break or return or returnCollection or retry
+                }
             }
             #}
 
@@ -973,6 +989,9 @@ function AzAPICallErrorHandler {
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: sleeping $($sleepSec) seconds"
             $doRetry = $true
             Start-Sleep -Seconds $sleepSec
+            $response = @{
+                action = 'retry' #break or return or returnCollection or retry
+            }
         }
 
     }
@@ -1032,6 +1051,9 @@ function AzAPICallErrorHandler {
         if ($catchResult.error.code -eq 'ResourceRequestsThrottled') {
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! sleeping $sleepSeconds seconds"
             Start-Sleep -Seconds $sleepSeconds
+            $response = @{
+                action = 'retry' #break or return or returnCollection or retry
+            }
         }
         if ($catchResult.error.code -eq '429') {
             if ($catchResult.error.message -like '*60 seconds*') {
@@ -1039,11 +1061,17 @@ function AzAPICallErrorHandler {
             }
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! sleeping $sleepSeconds seconds"
             Start-Sleep -Seconds $sleepSeconds
+            $response = @{
+                action = 'retry' #break or return or returnCollection or retry
+            }
         }
         if ($catchResult.error.code -eq 'RateLimiting') {
             $sleepSeconds = 5
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! sleeping $sleepSeconds seconds"
             Start-Sleep -Seconds $sleepSeconds
+            $response = @{
+                action = 'retry' #break or return or returnCollection or retry
+            }
         }
     }
 
@@ -1061,6 +1089,9 @@ function AzAPICallErrorHandler {
         Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: try again (trying $maxTries times) in $sleepSec second(s)"
         $doRetry = $true
         Start-Sleep -Seconds $sleepSec
+        $response = @{
+            action = 'retry' #break or return or returnCollection or retry
+        }
     }
 
     elseif (
@@ -1147,8 +1178,10 @@ function AzAPICallErrorHandler {
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: sleeping $($sleepSec) seconds"
             $doRetry = $true
             Start-Sleep -Seconds $sleepSec
+            $response = @{
+                action = 'retry' #break or return or returnCollection or retry
+            }
         }
-
     }
 
     elseif (($getARMMDfC -or $getARMMdFCSecurityContacts) -and $catchResult.error.code -eq 'Subscription Not Registered') {
@@ -1183,6 +1216,9 @@ function AzAPICallErrorHandler {
         Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: try again (trying $maxTries times) in $sleepSec second(s)"
         $doRetry = $true
         Start-Sleep -Seconds $sleepSec
+        $response = @{
+            action = 'retry' #break or return or returnCollection or retry
+        }
     }
 
     elseif ($getARMDiagnosticSettingsResource -and (
@@ -1269,6 +1305,9 @@ function AzAPICallErrorHandler {
                 Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: try again in $sleepSec second(s)"
                 $doRetry = $true
                 Start-Sleep -Seconds $sleepSec
+                $response = @{
+                    action = 'retry' #break or return or returnCollection or retry
+                }
             }
         }
         elseif (-not $catchResult.code -and -not $catchResult.error.code -and -not $catchResult.message -and -not $catchResult.error.message -and $catchResult -and $tryCounter -lt 6) {
@@ -1276,6 +1315,9 @@ function AzAPICallErrorHandler {
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: try again in $sleepSec second(s)"
             $doRetry = $true
             Start-Sleep -Seconds $sleepSec
+            $response = @{
+                action = 'retry' #break or return or returnCollection or retry
+            }
         }
         else {
             Logging -preventWriteOutput $true -logMessage '- - - - - - - - - - - - - - - - - - - - '
@@ -1452,7 +1494,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.52' }
+function getAzAPICallVersion { return '1.1.53' }
 
 function getJWTDetails {
     <#

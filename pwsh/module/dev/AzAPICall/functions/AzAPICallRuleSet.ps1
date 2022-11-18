@@ -157,12 +157,18 @@ function AzAPICallErrorHandler {
         Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: seems we´re hitting a malicious endpoint .. try again in $tryCounter second(s)"
         $doRetry = $true
         Start-Sleep -Seconds $tryCounter
+        $response = @{
+            action = 'retry' #break or return or returnCollection or retry
+        }
     }
 
     elseif ($catchResult.error.code -like '*GatewayTimeout*' -or $catchResult.error.code -like '*BadGatewayConnection*' -or $catchResult.error.code -like '*InvalidGatewayHost*' -or $catchResult.error.code -like '*ServerTimeout*' -or $catchResult.error.code -like '*ServiceUnavailable*' -or $catchResult.code -like '*ServiceUnavailable*' -or $catchResult.error.code -like '*MultipleErrorsOccurred*' -or $catchResult.code -like '*InternalServerError*' -or $catchResult.error.code -like '*InternalServerError*' -or $catchResult.error.code -like '*RequestTimeout*' -or $catchResult.error.code -like '*UnknownError*' -or $catchResult.error.code -eq '500') {
         Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: try again in $tryCounter second(s)"
         $doRetry = $true
         Start-Sleep -Seconds $tryCounter
+        $response = @{
+            action = 'retry' #break or return or returnCollection or retry
+        }
     }
 
     elseif ($catchResult.error.code -like '*AuthorizationFailed*') {
@@ -192,9 +198,16 @@ function AzAPICallErrorHandler {
                 $doRetry = $true
                 if ($retryAuthorizationFailedCounter -gt 2) {
                     Start-Sleep -Seconds 5
+                    $response = @{
+                        action = 'retry' #break or return or returnCollection or retry
+                    }
+
                 }
                 if ($retryAuthorizationFailedCounter -gt 3) {
                     Start-Sleep -Seconds 10
+                    $response = @{
+                        action = 'retry' #break or return or returnCollection or retry
+                    }
                 }
                 Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: not reasonable, retry #$retryAuthorizationFailedCounter of $retryAuthorizationFailed"
             }
@@ -222,6 +235,9 @@ function AzAPICallErrorHandler {
                 Start-Sleep -Seconds $sleepSecCreateToken
                 #Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token ($targetEndpoint)"
                 createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
+                $response = @{
+                    action = 'retry' #break or return or returnCollection or retry
+                }
             }
             #}
 
@@ -374,6 +390,9 @@ function AzAPICallErrorHandler {
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: sleeping $($sleepSec) seconds"
             $doRetry = $true
             Start-Sleep -Seconds $sleepSec
+            $response = @{
+                action = 'retry' #break or return or returnCollection or retry
+            }
         }
 
     }
@@ -433,6 +452,9 @@ function AzAPICallErrorHandler {
         if ($catchResult.error.code -eq 'ResourceRequestsThrottled') {
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! sleeping $sleepSeconds seconds"
             Start-Sleep -Seconds $sleepSeconds
+            $response = @{
+                action = 'retry' #break or return or returnCollection or retry
+            }
         }
         if ($catchResult.error.code -eq '429') {
             if ($catchResult.error.message -like '*60 seconds*') {
@@ -440,11 +462,17 @@ function AzAPICallErrorHandler {
             }
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! sleeping $sleepSeconds seconds"
             Start-Sleep -Seconds $sleepSeconds
+            $response = @{
+                action = 'retry' #break or return or returnCollection or retry
+            }
         }
         if ($catchResult.error.code -eq 'RateLimiting') {
             $sleepSeconds = 5
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! sleeping $sleepSeconds seconds"
             Start-Sleep -Seconds $sleepSeconds
+            $response = @{
+                action = 'retry' #break or return or returnCollection or retry
+            }
         }
     }
 
@@ -462,6 +490,9 @@ function AzAPICallErrorHandler {
         Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: try again (trying $maxTries times) in $sleepSec second(s)"
         $doRetry = $true
         Start-Sleep -Seconds $sleepSec
+        $response = @{
+            action = 'retry' #break or return or returnCollection or retry
+        }
     }
 
     elseif (
@@ -548,8 +579,10 @@ function AzAPICallErrorHandler {
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: sleeping $($sleepSec) seconds"
             $doRetry = $true
             Start-Sleep -Seconds $sleepSec
+            $response = @{
+                action = 'retry' #break or return or returnCollection or retry
+            }
         }
-
     }
 
     elseif (($getARMMDfC -or $getARMMdFCSecurityContacts) -and $catchResult.error.code -eq 'Subscription Not Registered') {
@@ -584,6 +617,9 @@ function AzAPICallErrorHandler {
         Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: try again (trying $maxTries times) in $sleepSec second(s)"
         $doRetry = $true
         Start-Sleep -Seconds $sleepSec
+        $response = @{
+            action = 'retry' #break or return or returnCollection or retry
+        }
     }
 
     elseif ($getARMDiagnosticSettingsResource -and (
@@ -670,6 +706,9 @@ function AzAPICallErrorHandler {
                 Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: try again in $sleepSec second(s)"
                 $doRetry = $true
                 Start-Sleep -Seconds $sleepSec
+                $response = @{
+                    action = 'retry' #break or return or returnCollection or retry
+                }
             }
         }
         elseif (-not $catchResult.code -and -not $catchResult.error.code -and -not $catchResult.message -and -not $catchResult.error.message -and $catchResult -and $tryCounter -lt 6) {
@@ -677,6 +716,9 @@ function AzAPICallErrorHandler {
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: try again in $sleepSec second(s)"
             $doRetry = $true
             Start-Sleep -Seconds $sleepSec
+            $response = @{
+                action = 'retry' #break or return or returnCollection or retry
+            }
         }
         else {
             Logging -preventWriteOutput $true -logMessage '- - - - - - - - - - - - - - - - - - - - '
