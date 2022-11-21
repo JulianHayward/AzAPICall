@@ -604,7 +604,7 @@ function AzAPICallErrorHandler {
     $defaultErrorInfo = "[AzAPICallErrorHandler] $currentTask try #$($tryCounter); return: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'>"
 
     switch ($uri) {
-        #ARM
+        #ARMss
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/Microsoft.PolicyInsights/policyStates/latest/summarize*" } { $getARMPolicyComplianceStates = $true }
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/Microsoft.Authorization/roleAssignmentScheduleInstances*" } { $getARMRoleAssignmentScheduleInstances = $true }
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/providers/Microsoft.Management/managementGroups/*/providers/microsoft.insights/diagnosticSettings*" } { $getARMDiagnosticSettingsMg = $true }
@@ -759,6 +759,7 @@ function AzAPICallErrorHandler {
         $response = @{
             action = 'retry' #break or return or returnCollection or retry
         }
+        return $response
     }
 
     elseif ($catchResult.error.code -like '*GatewayTimeout*' -or $catchResult.error.code -like '*BadGatewayConnection*' -or $catchResult.error.code -like '*InvalidGatewayHost*' -or $catchResult.error.code -like '*ServerTimeout*' -or $catchResult.error.code -like '*ServiceUnavailable*' -or $catchResult.code -like '*ServiceUnavailable*' -or $catchResult.error.code -like '*MultipleErrorsOccurred*' -or $catchResult.code -like '*InternalServerError*' -or $catchResult.error.code -like '*InternalServerError*' -or $catchResult.error.code -like '*RequestTimeout*' -or $catchResult.error.code -like '*UnknownError*' -or $catchResult.error.code -eq '500') {
@@ -768,6 +769,7 @@ function AzAPICallErrorHandler {
         $response = @{
             action = 'retry' #break or return or returnCollection or retry
         }
+        return $response
     }
 
     elseif ($catchResult.error.code -like '*AuthorizationFailed*') {
@@ -800,13 +802,14 @@ function AzAPICallErrorHandler {
                     $response = @{
                         action = 'retry' #break or return or returnCollection or retry
                     }
-
+                    return $response
                 }
                 if ($retryAuthorizationFailedCounter -gt 3) {
                     Start-Sleep -Seconds 10
                     $response = @{
                         action = 'retry' #break or return or returnCollection or retry
                     }
+                    return $response
                 }
                 Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: not reasonable, retry #$retryAuthorizationFailedCounter of $retryAuthorizationFailed"
             }
@@ -837,6 +840,7 @@ function AzAPICallErrorHandler {
                 $response = @{
                     action = 'retry' #break or return or returnCollection or retry
                 }
+                return $response
             }
             #}
 
@@ -992,6 +996,7 @@ function AzAPICallErrorHandler {
             $response = @{
                 action = 'retry' #break or return or returnCollection or retry
             }
+            return $response
         }
 
     }
@@ -1054,6 +1059,7 @@ function AzAPICallErrorHandler {
             $response = @{
                 action = 'retry' #break or return or returnCollection or retry
             }
+            return $response
         }
         if ($catchResult.error.code -eq '429') {
             if ($catchResult.error.message -like '*60 seconds*') {
@@ -1064,6 +1070,7 @@ function AzAPICallErrorHandler {
             $response = @{
                 action = 'retry' #break or return or returnCollection or retry
             }
+            return $response
         }
         if ($catchResult.error.code -eq 'RateLimiting') {
             $sleepSeconds = 5
@@ -1072,6 +1079,7 @@ function AzAPICallErrorHandler {
             $response = @{
                 action = 'retry' #break or return or returnCollection or retry
             }
+            return $response
         }
     }
 
@@ -1092,6 +1100,7 @@ function AzAPICallErrorHandler {
         $response = @{
             action = 'retry' #break or return or returnCollection or retry
         }
+        return $response
     }
 
     elseif (
@@ -1145,6 +1154,7 @@ function AzAPICallErrorHandler {
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'AadPremiumLicenseRequired'
             }
+            return $response
         }
         else {
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: skipping - return 'RoleAssignmentScheduleInstancesError'"
@@ -1152,8 +1162,8 @@ function AzAPICallErrorHandler {
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'RoleAssignmentScheduleInstancesError'
             }
+            return $response
         }
-        return $response
     }
 
     elseif ($getARMDiagnosticSettingsMg -and $catchResult.error.code -eq 'InvalidResourceType') {
@@ -1181,6 +1191,7 @@ function AzAPICallErrorHandler {
             $response = @{
                 action = 'retry' #break or return or returnCollection or retry
             }
+            return $response
         }
     }
 
@@ -1219,6 +1230,7 @@ function AzAPICallErrorHandler {
         $response = @{
             action = 'retry' #break or return or returnCollection or retry
         }
+        return $response
     }
 
     elseif ($getARMDiagnosticSettingsResource -and (
@@ -1308,6 +1320,7 @@ function AzAPICallErrorHandler {
                 $response = @{
                     action = 'retry' #break or return or returnCollection or retry
                 }
+                return $response
             }
         }
         elseif (-not $catchResult.code -and -not $catchResult.error.code -and -not $catchResult.message -and -not $catchResult.error.message -and $catchResult -and $tryCounter -lt 6) {
@@ -1318,6 +1331,7 @@ function AzAPICallErrorHandler {
             $response = @{
                 action = 'retry' #break or return or returnCollection or retry
             }
+            return $response
         }
         else {
             Logging -preventWriteOutput $true -logMessage '- - - - - - - - - - - - - - - - - - - - '
@@ -1494,7 +1508,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.53' }
+function getAzAPICallVersion { return '1.1.54' }
 
 function getJWTDetails {
     <#
