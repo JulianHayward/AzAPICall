@@ -223,28 +223,27 @@ function AzAPICallErrorHandler {
             break
         }
         else {
-            $maxTriesCreateToken = 7
-            $sleepSecCreateToken = @(1, 1, 1, 2, 3, 5, 10, 20, 30)[$tryCounter]
+            # $maxTriesCreateToken = 7
+            # $sleepSecCreateToken = @(1, 1, 1, 2, 3, 5, 10, 20, 30)[$tryCounter]
             #if ($tryCounter -gt 1) {
-            if ($tryCounter -gt $maxTriesCreateToken) {
-                Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token ($targetEndpoint) - EXIT"
-                Logging -preventWriteOutput $true -logMessage "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository)" -logMessageForegroundColor 'Yellow'
-                #Throw 'Error - check the last console output for details'
-                $exitMsg = 'AzAPICall: exit'
+            # if ($tryCounter -gt $maxTriesCreateToken) {
+            #     Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token ($targetEndpoint) - EXIT"
+            #     Logging -preventWriteOutput $true -logMessage "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository)" -logMessageForegroundColor 'Yellow'
+            #     #Throw 'Error - check the last console output for details'
+            #     $exitMsg = 'AzAPICall: exit'
+            # }
+            # else {
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token ($targetEndpoint) - sleep 5 second and try again"
+            $doRetry = $true
+            Start-Sleep -Seconds 5
+            #Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token ($targetEndpoint)"
+            createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
+            $response = @{
+                action = 'retry' #break or return or returnCollection or retry
             }
-            else {
-                Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token ($targetEndpoint) - sleep $($sleepSecCreateToken) seconds and try again"
-                $doRetry = $true
-                Start-Sleep -Seconds $sleepSecCreateToken
-                #Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token ($targetEndpoint)"
-                createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
-                $response = @{
-                    action = 'retry' #break or return or returnCollection or retry
-                }
-                return $response
-            }
+            return $response
             #}
-
+            #}
         }
     }
 
