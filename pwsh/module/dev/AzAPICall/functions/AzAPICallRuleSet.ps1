@@ -119,6 +119,17 @@ function AzAPICallErrorHandler {
         return $response
     }
 
+    elseif ($currentTask -like 'Getting Resource for PSRule*') {
+        if ($catchResult.error.code -eq 'ResourceGroupNotFound' -or $catchResult.error.code -eq 'ResourceNotFound') {
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - return 'ResourceOrResourcegroupNotFound'"
+            $response = @{
+                action    = 'return' #break or return
+                returnVar = 'ResourceOrResourcegroupNotFound'
+            }
+            return $response
+        }
+    }
+
     elseif (
         $getARMPolicyComplianceStates -and (
             $catchResult.error.code -like '*ResponseTooLarge*' -or
@@ -450,11 +461,14 @@ function AzAPICallErrorHandler {
         return $response
     }
 
-    elseif ($catchResult.error.code -eq 'ResourceRequestsThrottled' -or $catchResult.error.code -eq '429' -or $catchResult.error.code -eq 'RateLimiting') {
+    elseif (($actualStatusCode -eq 429 -and $catchResult.error.code -eq 'OperationNotAllowed') -or $catchResult.error.code -eq 'ResourceRequestsThrottled' -or $catchResult.error.code -eq '429' -or $catchResult.error.code -eq 'RateLimiting') {
         $doRetry = $true
         $sleepSeconds = 11
-        if ($catchResult.error.code -eq 'ResourceRequestsThrottled') {
+        if ($catchResult.error.code -eq 'ResourceRequestsThrottled' -or ($actualStatusCode -eq 429 -and $catchResult.error.code -eq 'OperationNotAllowed')) {
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! sleeping $sleepSeconds seconds"
+            if ($actualStatusCode -eq 429 -and $catchResult.error.code -eq 'OperationNotAllowed') {
+                Write-Host $($catchResult | ConvertTo-Json -Depth 99) -ForegroundColor DarkGreen
+            }
             Start-Sleep -Seconds $sleepSeconds
             $response = @{
                 action = 'retry' #break or return or returnCollection or retry
