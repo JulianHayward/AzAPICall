@@ -625,10 +625,11 @@ function AzAPICallErrorHandler {
 
     #region getTenantId for subscriptionId
     if ($currentTask -like "getTenantId for subscriptionId '*'" -and $uri -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/subscriptions/*" ) {
-        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: trying to return Tenant Id (arrayList)"
+        Logging -preventWriteOutput $true -logMessage "[AzAPICallErrorHandler] $currentTask"
         $return = [System.Collections.ArrayList]@()
         if ($catchResult.error.code -eq 'SubscriptionNotFound' -and $actualStatusCode -eq 404) {
             $null = $return.Add('SubscriptionNotFound Tenant unknown')
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: return '$($return)'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = $return
@@ -637,6 +638,7 @@ function AzAPICallErrorHandler {
         }
         elseif ($catchResult.error.code -eq 'AuthorizationFailed' -and $actualStatusCode -eq 403) {
             $null = $return.Add($AzApiCallConfiguration['checkcontext'].tenant.id)
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: return '$($return)'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = $return
@@ -654,6 +656,7 @@ function AzAPICallErrorHandler {
 
                         if ([regex]::Match($catchResult.error.message, $patternTenant).Groups[1].Value) {
                             $null = $return.Add([regex]::Match($catchResult.error.message, $patternTenant).Groups[1].Value)
+                            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: return '$($return)'"
                             $response = @{
                                 action    = 'return' #break or return or returnCollection
                                 returnVar = $return
@@ -672,7 +675,7 @@ function AzAPICallErrorHandler {
                                 $return.Add([regex]::Match($resultTenants, $pattern).Groups[1].Value)
                             }
                         }
-
+                        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: return '$($return -join ', ')'"
                         $response = @{
                             action    = 'return' #break or return or returnCollection
                             returnVar = $return
@@ -682,6 +685,7 @@ function AzAPICallErrorHandler {
                 }
                 else {
                     $null = $return.Add('Tenant unknown')
+                    Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: return '$($return)'"
                     $response = @{
                         action    = 'return' #break or return or returnCollection
                         returnVar = $return
@@ -691,6 +695,7 @@ function AzAPICallErrorHandler {
             }
             else {
                 $null = $return.Add("Tenant unknown - unexpected uri '$uri' for currentTask '$currentTask'")
+                Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: return '$($return)'"
                 $response = @{
                     action    = 'return' #break or return or returnCollection
                     returnVar = $return
@@ -700,6 +705,7 @@ function AzAPICallErrorHandler {
         }
         else {
             $null = $return.Add('unexpected')
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: return '$($return)'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = $return
@@ -1521,7 +1527,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.57' }
+function getAzAPICallVersion { return '1.1.58' }
 
 function getJWTDetails {
     <#
