@@ -24,6 +24,44 @@ function AzAPICallErrorHandler {
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/*/roleManagement/directory/roleAssignmentScheduleInstances*" } { $getMicrosoftGraphRoleAssignmentScheduleInstances = $true }
     }
 
+
+    if ($catchResult.error.code -like '*GatewayTimeout*' -or $catchResult.error.code -like '*BadGatewayConnection*' -or $catchResult.error.code -like '*InvalidGatewayHost*' -or $catchResult.error.code -like '*ServerTimeout*' -or $catchResult.error.code -like '*ServiceUnavailable*' -or $catchResult.code -like '*ServiceUnavailable*' -or $catchResult.error.code -like '*MultipleErrorsOccurred*' -or $catchResult.code -like '*InternalServerError*' -or $catchResult.error.code -like '*InternalServerError*' -or $catchResult.error.code -like '*RequestTimeout*' -or $catchResult.error.code -like '*UnknownError*' -or $catchResult.error.code -eq '500') {
+        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: try again in $tryCounter second(s)"
+        $doRetry = $true
+        Start-Sleep -Seconds $tryCounter
+        $response = @{
+            action = 'retry' #break or return or returnCollection or retry
+        }
+        return $response
+    }
+
+    if ($catchResult.error.code -like '*ExpiredAuthenticationToken*' -or $catchResult.error.code -like '*Authentication_ExpiredToken*' -or $catchResult.error.code -like '*InvalidAuthenticationToken*') {
+        if ($catchResult.error.code -eq 'InvalidAuthenticationTokenTenant') {
+            if ($currentTask -like "getTenantId for subscriptionId '*'") {
+                #handeled in #region getTenantId for subscriptionId
+            }
+            else {
+                Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - Wrong tenant, skipping this request - break"
+                $response = @{
+                    action = 'break'
+                }
+                return $response
+            }
+
+        }
+        else {
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token ($targetEndpoint) - sleep 5 second and try again"
+            $doRetry = $true
+            Start-Sleep -Seconds 5
+            #Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token ($targetEndpoint)"
+            createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
+            $response = @{
+                action = 'retry' #break or return or returnCollection or retry
+            }
+            return $response
+        }
+    }
+
     #region getTenantId for subscriptionId
     if ($currentTask -like "getTenantId for subscriptionId '*'" -and $uri -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/subscriptions/*" ) {
         Logging -preventWriteOutput $true -logMessage "[AzAPICallErrorHandler] $currentTask"
@@ -125,17 +163,6 @@ function AzAPICallErrorHandler {
         return $response
     }
 
-    elseif ($currentTask -like 'Getting Resource for PSRule*') {
-        if ($catchResult.error.code -eq 'ResourceGroupNotFound' -or $catchResult.error.code -eq 'ResourceNotFound') {
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - return 'ResourceOrResourcegroupNotFound'"
-            $response = @{
-                action    = 'return' #break or return
-                returnVar = 'ResourceOrResourcegroupNotFound'
-            }
-            return $response
-        }
-    }
-
     elseif (
         $getARMPolicyComplianceStates -and (
             $catchResult.error.code -like '*ResponseTooLarge*' -or
@@ -180,14 +207,15 @@ function AzAPICallErrorHandler {
         return $response
     }
 
-    elseif ($catchResult.error.code -like '*GatewayTimeout*' -or $catchResult.error.code -like '*BadGatewayConnection*' -or $catchResult.error.code -like '*InvalidGatewayHost*' -or $catchResult.error.code -like '*ServerTimeout*' -or $catchResult.error.code -like '*ServiceUnavailable*' -or $catchResult.code -like '*ServiceUnavailable*' -or $catchResult.error.code -like '*MultipleErrorsOccurred*' -or $catchResult.code -like '*InternalServerError*' -or $catchResult.error.code -like '*InternalServerError*' -or $catchResult.error.code -like '*RequestTimeout*' -or $catchResult.error.code -like '*UnknownError*' -or $catchResult.error.code -eq '500') {
-        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: try again in $tryCounter second(s)"
-        $doRetry = $true
-        Start-Sleep -Seconds $tryCounter
-        $response = @{
-            action = 'retry' #break or return or returnCollection or retry
+    elseif ($currentTask -like 'Getting Resource Properties*') {
+        if ($catchResult.error.code -eq 'ResourceGroupNotFound' -or $catchResult.error.code -eq 'ResourceNotFound') {
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - return 'ResourceOrResourcegroupNotFound'"
+            $response = @{
+                action    = 'return' #break or return
+                returnVar = 'ResourceOrResourcegroupNotFound'
+            }
+            return $response
         }
-        return $response
     }
 
     elseif ($catchResult.error.code -like '*AuthorizationFailed*') {
@@ -231,36 +259,6 @@ function AzAPICallErrorHandler {
                 }
                 Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: not reasonable, retry #$retryAuthorizationFailedCounter of $retryAuthorizationFailed"
             }
-        }
-    }
-
-    elseif ($catchResult.error.code -like '*ExpiredAuthenticationToken*' -or $catchResult.error.code -like '*Authentication_ExpiredToken*' -or $catchResult.error.code -like '*InvalidAuthenticationToken*') {
-        if ($catchResult.error.code -eq 'InvalidAuthenticationTokenTenant') {
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - Wrong tenant, skipping this request - break"
-            break
-        }
-        else {
-            # $maxTriesCreateToken = 7
-            # $sleepSecCreateToken = @(1, 1, 1, 2, 3, 5, 10, 20, 30)[$tryCounter]
-            #if ($tryCounter -gt 1) {
-            # if ($tryCounter -gt $maxTriesCreateToken) {
-            #     Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token ($targetEndpoint) - EXIT"
-            #     Logging -preventWriteOutput $true -logMessage "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository)" -logMessageForegroundColor 'Yellow'
-            #     #Throw 'Error - check the last console output for details'
-            #     $exitMsg = 'AzAPICall: exit'
-            # }
-            # else {
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token ($targetEndpoint) - sleep 5 second and try again"
-            $doRetry = $true
-            Start-Sleep -Seconds 5
-            #Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token ($targetEndpoint)"
-            createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
-            $response = @{
-                action = 'retry' #break or return or returnCollection or retry
-            }
-            return $response
-            #}
-            #}
         }
     }
 
@@ -594,7 +592,6 @@ function AzAPICallErrorHandler {
         }
         return $response
     }
-
 
     elseif ($catchResult.error.code -eq 'InsufficientPermissions' -or $catchResult.error.code -eq 'ClientCertificateValidationFailure' -or $catchResult.error.code -eq 'GatewayAuthenticationFailed' -or $catchResult.message -eq 'An error has occurred.' -or $catchResult.error.code -eq 'GeneralError') {
         $maxTries = 7

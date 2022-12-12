@@ -382,7 +382,38 @@
                     }
                 }
                 else {
-                    $azAPIRequestConvertedFromJson = ($azAPIRequest.Content | ConvertFrom-Json)
+                    try {
+                        $azAPIRequestConvertedFromJson = ($azAPIRequest.Content | ConvertFrom-Json)
+                    }
+                    catch {
+                        if ($_.Exception.Message -like '*different casing*') {
+                            Logging -preventWriteOutput $true -logMessage "[AzAPICall] '$currentTask' uri='$uri' Command 'ConvertFrom-Json' failed: $($_.Exception.Message)" -logMessageForegroundColor 'darkred'
+                            Logging -preventWriteOutput $true -logMessage "[AzAPICall] '$currentTask' uri='$uri' Trying command 'ConvertFrom-Json -AsHashtable'" -logMessageForegroundColor 'darkred'
+                            try {
+                                $azAPIRequestConvertedFromJsonAsHashTable = ($azAPIRequest.Content | ConvertFrom-Json -AsHashtable)
+                                Logging -preventWriteOutput $true -logMessage "[AzAPICall] '$currentTask' uri='$uri' Command 'ConvertFrom-Json -AsHashtable' succeeded. Presenting dump for further investigation on the resource. Please file an issue at the AzGovViz GitHub repository (aka.ms/AzGovViz) and provide the dump (scrub subscription Id and company identifyable names) - Thank you!" -logMessageForegroundColor 'darkred'
+                                $azAPIRequestConvertedFromJsonAsHashTable | ConvertTo-Json -Depth 99
+                                if ($currentTask -like 'Getting Resource Properties*') {
+                                    return 'convertfromJSONError'
+                                }
+                                Throw 'throwing'
+                            }
+                            catch {
+                                Logging -preventWriteOutput $true -logMessage "[AzAPICall] '$currentTask' uri='$uri' Command 'ConvertFrom-Json -AsHashtable' failed" -logMessageForegroundColor 'darkred'
+                                $_
+                                Logging -preventWriteOutput $true -logMessage "[AzAPICall] '$currentTask' uri='$uri' Command 'ConvertFrom-Json -AsHashtable' failed. Presenting dump for further investigation on the resource. Please file an issue at the AzGovViz GitHub repository (aka.ms/AzGovViz) and provide the dump (scrub subscription Id and company identifyable names) - Thank you!" -logMessageForegroundColor 'darkred'
+                                $azAPIRequest.Content
+                                if ($currentTask -like 'Getting Resource Properties*') {
+                                    return 'convertfromJSONError'
+                                }
+                                Throw 'throwing'
+                            }
+                        }
+                        else {
+                            $_
+                            Throw 'throwing'
+                        }
+                    }
                 }
 
                 if ($listenOn -eq 'Headers') {
