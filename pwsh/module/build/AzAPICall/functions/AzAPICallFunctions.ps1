@@ -656,13 +656,21 @@ function AzAPICallErrorHandler {
 
 
     if ($catchResult.error.code -like '*GatewayTimeout*' -or $catchResult.error.code -like '*BadGatewayConnection*' -or $catchResult.error.code -like '*InvalidGatewayHost*' -or $catchResult.error.code -like '*ServerTimeout*' -or $catchResult.error.code -like '*ServiceUnavailable*' -or $catchResult.code -like '*ServiceUnavailable*' -or $catchResult.error.code -like '*MultipleErrorsOccurred*' -or $catchResult.code -like '*InternalServerError*' -or $catchResult.error.code -like '*InternalServerError*' -or $catchResult.error.code -like '*RequestTimeout*' -or $catchResult.error.code -like '*UnknownError*' -or $catchResult.error.code -eq '500') {
-        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: try again in $tryCounter second(s)"
-        $doRetry = $true
-        Start-Sleep -Seconds $tryCounter
-        $response = @{
-            action = 'retry' #break or return or returnCollection or retry
+        $maxTries = 15
+        if ($tryCounter -gt $maxTries) {
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: exit"
+            #Throw 'Error - check the last console output for details'
+            $exitMsg = 'AzAPICall: exit'
         }
-        return $response
+        else {
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: try again in $tryCounter second(s)"
+            $doRetry = $true
+            Start-Sleep -Seconds $tryCounter
+            $response = @{
+                action = 'retry' #break or return or returnCollection or retry
+            }
+            return $response
+        }
     }
 
     if ($catchResult.error.code -like '*ExpiredAuthenticationToken*' -or $catchResult.error.code -like '*Authentication_ExpiredToken*' -or $catchResult.error.code -like '*InvalidAuthenticationToken*') {
@@ -1555,7 +1563,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.59' }
+function getAzAPICallVersion { return '1.1.60' }
 
 function getJWTDetails {
     <#
