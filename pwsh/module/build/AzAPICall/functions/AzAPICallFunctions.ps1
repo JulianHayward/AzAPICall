@@ -729,7 +729,7 @@ function AzAPICallErrorHandler {
                 if ([System.Guid]::TryParse([regex]::Match($uri, $pattern).Groups[1].Value, [System.Management.Automation.PSReference]$ObjectGuid)) {
 
                     if ($catchResult.error.message -like '*It must match the tenant*') {
-                        $patternTenant = "It must match the tenant 'https://sts.windows.net/(.*?)/'"
+                        $patternTenant = "It must match the tenant '$($AzAPICallConfiguration['azAPIEndpointUrls'].IssuerUri)/(.*?)/'"
 
                         if ([regex]::Match($catchResult.error.message, $patternTenant).Groups[1].Value) {
                             $null = $return.Add([regex]::Match($catchResult.error.message, $patternTenant).Groups[1].Value)
@@ -747,7 +747,7 @@ function AzAPICallErrorHandler {
                         $result = [regex]::Match($catchResult.error.message, $patternTenants).Groups[1].Value
                         $results = $result -split ','
                         foreach ($resultTenants in $results) {
-                            $pattern = 'https://sts.windows.net/(.*?)/'
+                            $pattern = "$($AzAPICallConfiguration['azAPIEndpointUrls'].IssuerUri)/(.*?)/"
                             if ([System.Guid]::TryParse([regex]::Match($resultTenants, $pattern).Groups[1].Value, [System.Management.Automation.PSReference]$ObjectGuid)) {
                                 $return.Add([regex]::Match($resultTenants, $pattern).Groups[1].Value)
                             }
@@ -1563,7 +1563,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.61' }
+function getAzAPICallVersion { return '1.1.62' }
 
 function getJWTDetails {
     <#
@@ -1859,6 +1859,12 @@ function setAzureEnvironment {
     $AzAPICallConfiguration['azAPIEndpointUrls'].Login = (testAvailable -Endpoint 'Login' -EnvironmentKey 'ActiveDirectoryAuthority' -EndpointUrl $AzApiCallConfiguration['checkContext'].Environment.ActiveDirectoryAuthority)
     $AzAPICallConfiguration['azAPIEndpointUrls'].Storage = (testAvailable -Endpoint 'Storage' -EnvironmentKey 'StorageEndpointSuffix' -EndpointUrl $AzApiCallConfiguration['checkContext'].Environment.StorageEndpointSuffix)
     $AzAPICallConfiguration['azAPIEndpointUrls'].StorageAuth = 'https://storage.azure.com'
+    if ($AzApiCallConfiguration['checkContext'].Environment.Name -eq 'AzureChinaCloud') {
+        $AzAPICallConfiguration['azAPIEndpointUrls'].IssuerUri = 'https://sts.chinacloudapi.cn'
+    }
+    else {
+        $AzAPICallConfiguration['azAPIEndpointUrls'].IssuerUri = 'https://sts.windows.net'
+    }
 
     #AzureEnvironmentRelatedTargetEndpoints
     $AzAPICallConfiguration['azAPIEndpoints'] = @{ }

@@ -99,7 +99,7 @@ function AzAPICallErrorHandler {
                 if ([System.Guid]::TryParse([regex]::Match($uri, $pattern).Groups[1].Value, [System.Management.Automation.PSReference]$ObjectGuid)) {
 
                     if ($catchResult.error.message -like '*It must match the tenant*') {
-                        $patternTenant = "It must match the tenant 'https://sts.windows.net/(.*?)/'"
+                        $patternTenant = "It must match the tenant '$($AzAPICallConfiguration['azAPIEndpointUrls'].IssuerUri)/(.*?)/'"
 
                         if ([regex]::Match($catchResult.error.message, $patternTenant).Groups[1].Value) {
                             $null = $return.Add([regex]::Match($catchResult.error.message, $patternTenant).Groups[1].Value)
@@ -117,7 +117,7 @@ function AzAPICallErrorHandler {
                         $result = [regex]::Match($catchResult.error.message, $patternTenants).Groups[1].Value
                         $results = $result -split ','
                         foreach ($resultTenants in $results) {
-                            $pattern = 'https://sts.windows.net/(.*?)/'
+                            $pattern = "$($AzAPICallConfiguration['azAPIEndpointUrls'].IssuerUri)/(.*?)/"
                             if ([System.Guid]::TryParse([regex]::Match($resultTenants, $pattern).Groups[1].Value, [System.Management.Automation.PSReference]$ObjectGuid)) {
                                 $return.Add([regex]::Match($resultTenants, $pattern).Groups[1].Value)
                             }
