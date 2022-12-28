@@ -396,7 +396,7 @@ function AzAPICall {
                                 if ($currentTask -like 'Getting Resource Properties*') {
                                     return 'convertfromJSONError'
                                 }
-                                Throw 'throwing'
+                                Throw 'throwing - Command ConvertFrom-Json failed (*different casing*)'
                             }
                             catch {
                                 Logging -preventWriteOutput $true -logMessage "[AzAPICall] '$currentTask' uri='$uri' Command 'ConvertFrom-Json -AsHashtable' failed" -logMessageForegroundColor 'darkred'
@@ -406,12 +406,14 @@ function AzAPICall {
                                 if ($currentTask -like 'Getting Resource Properties*') {
                                     return 'convertfromJSONError'
                                 }
-                                Throw 'throwing'
+                                Throw 'throwing - Command ConvertFrom-Json -AsHashtable failed (*different casing*)'
                             }
                         }
                         else {
-                            $_
-                            Throw 'throwing'
+                            Logging -preventWriteOutput $true -logMessage "[AzAPICall] '$currentTask' uri='$uri' Command 'ConvertFrom-Json' failed (not *different casing*). Please file an issue at the AzGovViz GitHub repository (aka.ms/AzGovViz) and provide a dump (scrub subscription Id and company identifyable names) of the resource (portal JSOn view) - Thank you!" -logMessageForegroundColor 'darkred'
+                            Write-Host $_.Exception.Message
+                            Write-Host $_
+                            Throw 'throwing - Command ConvertFrom-Json failed (not *different casing*)'
                         }
                     }
                 }
@@ -1563,7 +1565,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.62' }
+function getAzAPICallVersion { return '1.1.63' }
 
 function getJWTDetails {
     <#
