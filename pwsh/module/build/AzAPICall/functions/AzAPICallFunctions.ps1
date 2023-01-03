@@ -92,7 +92,7 @@ function AzAPICall {
         $AzAPICallConfiguration,
 
         [Parameter()]
-        [int32]
+        [int32[]]
         $skipOnErrorCode,
 
         [Parameter()]
@@ -335,8 +335,8 @@ function AzAPICall {
                 }
                 else {
                     debugAzAPICall -debugMessage "apiStatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))"
-                    if ($actualStatusCode -eq $skipOnErrorCode) {
-                        debugAzAPICall -debugMessage "skipOnErrorCode: '$($skipOnErrorCode)' == apiStatusCode: '$($actualStatusCode)' -> skip"
+                    if ($actualStatusCode -in $skipOnErrorCode) {
+                        debugAzAPICall -debugMessage "skipOnErrorCode: '$($skipOnErrorCode-join ', ')' == apiStatusCode: '$($actualStatusCode)' -> skip"
                         break
                     }
 
@@ -1565,7 +1565,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.63' }
+function getAzAPICallVersion { return '1.1.64' }
 
 function getJWTDetails {
     <#

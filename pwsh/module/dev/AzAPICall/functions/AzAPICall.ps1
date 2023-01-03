@@ -92,7 +92,7 @@
         $AzAPICallConfiguration,
 
         [Parameter()]
-        [int32]
+        [int32[]]
         $skipOnErrorCode,
 
         [Parameter()]
@@ -335,8 +335,8 @@
                 }
                 else {
                     debugAzAPICall -debugMessage "apiStatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))"
-                    if ($actualStatusCode -eq $skipOnErrorCode) {
-                        debugAzAPICall -debugMessage "skipOnErrorCode: '$($skipOnErrorCode)' == apiStatusCode: '$($actualStatusCode)' -> skip"
+                    if ($actualStatusCode -in $skipOnErrorCode) {
+                        debugAzAPICall -debugMessage "skipOnErrorCode: '$($skipOnErrorCode-join ', ')' == apiStatusCode: '$($actualStatusCode)' -> skip"
                         break
                     }
 
