@@ -1105,14 +1105,28 @@ function AzAPICallErrorHandler {
         return $response
     }
 
-    elseif (($actualStatusCode -eq 429 -and $catchResult.error.code -eq 'OperationNotAllowed') -or $catchResult.error.code -eq 'ResourceRequestsThrottled' -or $catchResult.error.code -eq '429' -or $catchResult.error.code -eq 'RateLimiting') {
+    elseif (($actualStatusCode -eq 429 -and $catchResult.error.code -eq 'OperationNotAllowed') -or
+        $catchResult.error.code -eq 'ResourceRequestsThrottled' -or
+        $catchResult.error.code -eq '429' -or
+        $catchResult.error.code -eq 'RateLimiting' -or
+        $catchResult.code -eq 'TooManyRequests' -or
+        $actualStatusCode -eq 429
+    ) {
         $doRetry = $true
-        $sleepSeconds = 11
-        if ($catchResult.error.code -eq 'ResourceRequestsThrottled' -or ($actualStatusCode -eq 429 -and $catchResult.error.code -eq 'OperationNotAllowed')) {
+        $sleepSeconds = 10
+        if ($actualStatusCode -eq 429 -and $catchResult.error.code -eq 'OperationNotAllowed') {
+            $sleepSeconds = ($sleepSeconds + $tryCounter)
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! sleeping $sleepSeconds seconds"
-            if ($actualStatusCode -eq 429 -and $catchResult.error.code -eq 'OperationNotAllowed') {
-                Write-Host $($catchResult | ConvertTo-Json -Depth 99) -ForegroundColor DarkGreen
+            Write-Host $($catchResult | ConvertTo-Json -Depth 99) -ForegroundColor DarkGreen
+            Start-Sleep -Seconds $sleepSeconds
+            $response = @{
+                action = 'retry' #break or return or returnCollection or retry
             }
+            return $response
+        }
+        if ($catchResult.error.code -eq 'ResourceRequestsThrottled') {
+            $sleepSeconds = ($sleepSeconds + $tryCounter)
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! sleeping $sleepSeconds seconds"
             Start-Sleep -Seconds $sleepSeconds
             $response = @{
                 action = 'retry' #break or return or returnCollection or retry
@@ -1121,7 +1135,7 @@ function AzAPICallErrorHandler {
         }
         if ($catchResult.error.code -eq '429') {
             if ($catchResult.error.message -like '*60 seconds*') {
-                $sleepSeconds = 60
+                $sleepSeconds = (60 + $tryCounter)
             }
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! sleeping $sleepSeconds seconds"
             Start-Sleep -Seconds $sleepSeconds
@@ -1131,7 +1145,8 @@ function AzAPICallErrorHandler {
             return $response
         }
         if ($catchResult.error.code -eq 'RateLimiting') {
-            $sleepSeconds = 5
+            $sleepSeconds = 4
+            $sleepSeconds = ($sleepSeconds + $tryCounter)
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! sleeping $sleepSeconds seconds"
             Start-Sleep -Seconds $sleepSeconds
             $response = @{
@@ -1139,6 +1154,24 @@ function AzAPICallErrorHandler {
             }
             return $response
         }
+        if ($catchResult.code -eq 'TooManyRequests') {
+            $sleepSeconds = 4
+            $sleepSeconds = ($sleepSeconds + $tryCounter)
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! sleeping $sleepSeconds seconds"
+            Start-Sleep -Seconds $sleepSeconds
+            $response = @{
+                action = 'retry' #break or return or returnCollection or retry
+            }
+            return $response
+        }
+
+        $sleepSeconds = ($sleepSeconds + $tryCounter)
+        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! sleeping $sleepSeconds seconds"
+        Start-Sleep -Seconds $sleepSeconds
+        $response = @{
+            action = 'retry' #break or return or returnCollection or retry
+        }
+        return $response
     }
 
     elseif ($getARMARG -and $catchResult.error.code -eq 'BadRequest') {
@@ -1565,7 +1598,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.64' }
+function getAzAPICallVersion { return '1.1.65' }
 
 function getJWTDetails {
     <#
