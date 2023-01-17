@@ -161,8 +161,12 @@
         }
 
         $uriSplitted = $uri.split('/')
-        if ($uriSplitted[2] -like "*$($AzAPICallConfiguration['azAPIEndpointUrls'].Storage)") {
+        if ($AzAPICallConfiguration['azAPIEndpointUrls'].Storage.where({ $uriSplitted -match $_ })) {
+            # if ($uriSplitted[2] -like "*$($AzAPICallConfiguration['azAPIEndpointUrls'].Storage)") {
             $targetEndpoint = 'Storage'
+        }
+        elseif ($uriSplitted[2] -like "*$($AzAPICallConfiguration['azAPIEndpointUrls'].Kusto)") {
+            $targetEndpoint = 'Kusto'
         }
         else {
             if (-not ($AzApiCallConfiguration['azAPIEndpoints']).($uriSplitted[2])) {
@@ -173,9 +177,18 @@
             $targetEndpoint = ($AzApiCallConfiguration['azAPIEndpoints']).($uriSplitted[2])
         }
 
-        if (-not $AzAPICallConfiguration['htBearerAccessToken'].($targetEndpoint)) {
-            createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
+        if ($targetEndpoint -eq 'Kusto') {
+            $targetCluster = "$($uriSplitted[0])//$($uriSplitted[2])"
+            if (-not $AzAPICallConfiguration['htBearerAccessToken'].($targetCluster)) {
+                createBearerToken -targetEndPoint $targetEndpoint -targetCluster $targetCluster -AzAPICallConfiguration $AzAPICallConfiguration
+            }
         }
+        else {
+            if (-not $AzAPICallConfiguration['htBearerAccessToken'].($targetEndpoint)) {
+                createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
+            }
+        }
+
 
         $unexpectedError = $false
         $connectionRelatedError = $false
@@ -188,10 +201,19 @@
             }
         }
         else {
-            $Header = @{
-                'Content-Type'  = 'application/json';
-                'Authorization' = "Bearer $($AzAPICallConfiguration['htBearerAccessToken'].$targetEndpoint)"
+            if ($targetEndpoint -eq 'Kusto') {
+                $Header = @{
+                    'Content-Type'  = 'application/json';
+                    'Authorization' = "Bearer $($AzAPICallConfiguration['htBearerAccessToken'].$targetCluster)"
+                }
             }
+            else {
+                $Header = @{
+                    'Content-Type'  = 'application/json';
+                    'Authorization' = "Bearer $($AzAPICallConfiguration['htBearerAccessToken'].$targetEndpoint)"
+                }
+            }
+
             if ($consistencyLevel) {
                 $Header = @{
                     'Content-Type'     = 'application/json';
@@ -457,7 +479,7 @@
 
                 $isMore = $false
                 if (-not $noPaging) {
-                    if ($azAPIRequestConvertedFromJson.nextLink) {
+                    if (-not [string]::IsNullOrWhiteSpace($azAPIRequestConvertedFromJson.nextLink)) {
                         $isMore = $true
                         if ($uri -eq $azAPIRequestConvertedFromJson.nextLink) {
                             if ($restartDueToDuplicateNextlinkCounter -gt 3) {
@@ -522,7 +544,7 @@
                         $notTryCounter = $true
                         debugAzAPICall -debugMessage "`$skipToken: $($azAPIRequestConvertedFromJson.'$skipToken')"
                     }
-                    elseif ($azAPIRequestConvertedFromJson.'@oData.nextLink') {
+                    elseif (-not [string]::IsNullOrWhiteSpace($azAPIRequestConvertedFromJson.'@oData.nextLink')) {
                         $isMore = $true
                         if ($uri -eq $azAPIRequestConvertedFromJson.'@odata.nextLink') {
                             if ($restartDueToDuplicateNextlinkCounter -gt 3) {

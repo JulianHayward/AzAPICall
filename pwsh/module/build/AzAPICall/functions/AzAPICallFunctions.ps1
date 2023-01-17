@@ -161,8 +161,12 @@ function AzAPICall {
         }
 
         $uriSplitted = $uri.split('/')
-        if ($uriSplitted[2] -like "*$($AzAPICallConfiguration['azAPIEndpointUrls'].Storage)") {
+        if ($AzAPICallConfiguration['azAPIEndpointUrls'].Storage.where({ $uriSplitted -match $_ })) {
+            # if ($uriSplitted[2] -like "*$($AzAPICallConfiguration['azAPIEndpointUrls'].Storage)") {
             $targetEndpoint = 'Storage'
+        }
+        elseif ($uriSplitted[2] -like "*$($AzAPICallConfiguration['azAPIEndpointUrls'].Kusto)") {
+            $targetEndpoint = 'Kusto'
         }
         else {
             if (-not ($AzApiCallConfiguration['azAPIEndpoints']).($uriSplitted[2])) {
@@ -173,9 +177,18 @@ function AzAPICall {
             $targetEndpoint = ($AzApiCallConfiguration['azAPIEndpoints']).($uriSplitted[2])
         }
 
-        if (-not $AzAPICallConfiguration['htBearerAccessToken'].($targetEndpoint)) {
-            createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
+        if ($targetEndpoint -eq 'Kusto') {
+            $targetCluster = "$($uriSplitted[0])//$($uriSplitted[2])"
+            if (-not $AzAPICallConfiguration['htBearerAccessToken'].($targetCluster)) {
+                createBearerToken -targetEndPoint $targetEndpoint -targetCluster $targetCluster -AzAPICallConfiguration $AzAPICallConfiguration
+            }
         }
+        else {
+            if (-not $AzAPICallConfiguration['htBearerAccessToken'].($targetEndpoint)) {
+                createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
+            }
+        }
+
 
         $unexpectedError = $false
         $connectionRelatedError = $false
@@ -188,10 +201,19 @@ function AzAPICall {
             }
         }
         else {
-            $Header = @{
-                'Content-Type'  = 'application/json';
-                'Authorization' = "Bearer $($AzAPICallConfiguration['htBearerAccessToken'].$targetEndpoint)"
+            if ($targetEndpoint -eq 'Kusto') {
+                $Header = @{
+                    'Content-Type'  = 'application/json';
+                    'Authorization' = "Bearer $($AzAPICallConfiguration['htBearerAccessToken'].$targetCluster)"
+                }
             }
+            else {
+                $Header = @{
+                    'Content-Type'  = 'application/json';
+                    'Authorization' = "Bearer $($AzAPICallConfiguration['htBearerAccessToken'].$targetEndpoint)"
+                }
+            }
+
             if ($consistencyLevel) {
                 $Header = @{
                     'Content-Type'     = 'application/json';
@@ -457,7 +479,7 @@ function AzAPICall {
 
                 $isMore = $false
                 if (-not $noPaging) {
-                    if ($azAPIRequestConvertedFromJson.nextLink) {
+                    if (-not [string]::IsNullOrWhiteSpace($azAPIRequestConvertedFromJson.nextLink)) {
                         $isMore = $true
                         if ($uri -eq $azAPIRequestConvertedFromJson.nextLink) {
                             if ($restartDueToDuplicateNextlinkCounter -gt 3) {
@@ -522,7 +544,7 @@ function AzAPICall {
                         $notTryCounter = $true
                         debugAzAPICall -debugMessage "`$skipToken: $($azAPIRequestConvertedFromJson.'$skipToken')"
                     }
-                    elseif ($azAPIRequestConvertedFromJson.'@oData.nextLink') {
+                    elseif (-not [string]::IsNullOrWhiteSpace($azAPIRequestConvertedFromJson.'@oData.nextLink')) {
                         $isMore = $true
                         if ($uri -eq $azAPIRequestConvertedFromJson.'@odata.nextLink') {
                             if ($restartDueToDuplicateNextlinkCounter -gt 3) {
@@ -1394,6 +1416,25 @@ function AzAPICallErrorHandler {
         return $response
     }
 
+    elseif ($targetEndPoint -eq 'Kusto' -and $actualStatusCode -eq '401') {
+        $maxTries = 7
+        if ($tryCounter -gt $maxTries) {
+            #Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: exit"
+            $exitMsg = "AzAPICall: exit (requesting new bearer token '$targetEndpoint' ($targetCluster) - max retry of '$maxTries' reached)"
+            #Throw 'Error - check the last console output for details'
+        }
+        else {
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token '$targetEndpoint' ($targetCluster) - sleep 2 second and try again (max retry: $maxTries)"
+            $doRetry = $true
+            createBearerToken -targetEndPoint 'Kusto' -TargetCluster $targetCluster -AzAPICallConfiguration $AzAPICallConfiguration
+            Start-Sleep -Seconds 2
+            $response = @{
+                action = 'retry' #break or return or returnCollection or retry
+            }
+            return $response
+        }
+    }
+
     else {
         if (-not $catchResult.code -and -not $catchResult.error.code -and -not $catchResult.message -and -not $catchResult.error.message -and -not $catchResult -and $tryCounter -lt 6) {
             if ($actualStatusCode -eq 204 -and $getARMCostManagement) {
@@ -1461,17 +1502,28 @@ function createBearerToken {
 
         [Parameter(Mandatory)]
         [object]
-        $AzAPICallConfiguration
+        $AzAPICallConfiguration,
+
+        [Parameter()]
+        [string]
+        $TargetCluster
     )
 
     if ($targetEndPoint -eq 'Storage') {
         Logging -logMessage " +Processing new bearer token request '$targetEndPoint' `"$($AzApiCallConfiguration['azAPIEndpointUrls'].$targetEndPoint)`" ($(($AzApiCallConfiguration['azAPIEndpointUrls']).StorageAuth))"
     }
+    elseif ($targetEndPoint -eq 'Kusto') {
+        if (-not $TargetCluster) {
+            Logging -logMessage " -targetEndPoint: '$targetEndPoint'; -targetCluster undefined: '$TargetCluster'"
+            throw " -targetEndPoint: '$targetEndPoint'; -targetCluster undefined: '$TargetCluster'"
+        }
+        Logging -logMessage " +Processing new bearer token request '$targetEndPoint' cluster '$TargetCluster'"
+    }
     else {
         Logging -logMessage " +Processing new bearer token request '$targetEndPoint' `"$($AzApiCallConfiguration['azAPIEndpointUrls'].$targetEndPoint)`""
     }
 
-    if (($AzApiCallConfiguration['azAPIEndpointUrls']).$targetEndPoint) {
+    if (($AzApiCallConfiguration['azAPIEndpointUrls']).$targetEndPoint -or $targetEndPoint -eq 'Kusto') {
         function setBearerAccessToken {
             param (
                 [Parameter(Mandatory)]
@@ -1484,10 +1536,20 @@ function createBearerToken {
 
                 [Parameter(Mandatory)]
                 [object]
-                $AzAPICallConfiguration
+                $AzAPICallConfiguration,
+
+                [Parameter()]
+                [string]
+                $TargetCluster
             )
 
-            $AzApiCallConfiguration['htBearerAccessToken'].$targetEndPoint = $createdBearerToken
+            if ($targetEndPoint -eq 'Kusto') {
+                $AzApiCallConfiguration['htBearerAccessToken'].$TargetCluster = $createdBearerToken
+            }
+            else {
+                $AzApiCallConfiguration['htBearerAccessToken'].$targetEndPoint = $createdBearerToken
+            }
+
             $dateTimeTokenCreated = (Get-Date -Format 'MM/dd/yyyy HH:mm:ss')
             $bearerDetails = getJWTDetails -token $createdBearerToken
             $bearerAccessTokenExpiryDateTime = $bearerDetails.expiryDateTime
@@ -1495,6 +1557,9 @@ function createBearerToken {
 
             if ($targetEndPoint -eq 'Storage') {
                 Logging -logMessage " +Bearer token '$targetEndPoint' ($(($AzApiCallConfiguration['azAPIEndpointUrls']).StorageAuth)): [tokenRequestProcessed: '$dateTimeTokenCreated']; [expiryDateTime: '$bearerAccessTokenExpiryDateTime']; [timeUntilExpiry: '$bearerAccessTokenTimeToExpiry']" -logMessageForegroundColor 'DarkGray'
+            }
+            elseif ($targetEndPoint -eq 'Kusto') {
+                Logging -logMessage " +Bearer token '$targetEndPoint' ($TargetCluster): [tokenRequestProcessed: '$dateTimeTokenCreated']; [expiryDateTime: '$bearerAccessTokenExpiryDateTime']; [timeUntilExpiry: '$bearerAccessTokenTimeToExpiry']" -logMessageForegroundColor 'DarkGray'
             }
             else {
                 Logging -logMessage " +Bearer token '$targetEndPoint': [tokenRequestProcessed: '$dateTimeTokenCreated']; [expiryDateTime: '$bearerAccessTokenExpiryDateTime']; [timeUntilExpiry: '$bearerAccessTokenTimeToExpiry']" -logMessageForegroundColor 'DarkGray'
@@ -1505,14 +1570,19 @@ function createBearerToken {
         try {
             if ($targetEndPoint -eq 'Storage') {
                 $tokenRequestEndPoint = ($AzApiCallConfiguration['azAPIEndpointUrls']).StorageAuth
+                $createdBearerToken = ([Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($azContext.Account, $azContext.Environment, $azContext.Tenant.id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "$tokenRequestEndPoint")).AccessToken
+                setBearerAccessToken -createdBearerToken $createdBearerToken -targetEndPoint $targetEndPoint -AzAPICallConfiguration $AzAPICallConfiguration
+            }
+            elseif ($targetEndPoint -eq 'Kusto') {
+                $tokenRequestEndPoint = $TargetCluster
+                $createdBearerToken = ([Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($azContext.Account, $azContext.Environment, $azContext.Tenant.id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "$tokenRequestEndPoint")).AccessToken
+                setBearerAccessToken -createdBearerToken $createdBearerToken -targetEndPoint $targetEndPoint -targetCluster $TargetCluster -AzAPICallConfiguration $AzAPICallConfiguration
             }
             else {
                 $tokenRequestEndPoint = ($AzApiCallConfiguration['azAPIEndpointUrls']).$targetEndPoint
+                $createdBearerToken = ([Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($azContext.Account, $azContext.Environment, $azContext.Tenant.id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "$tokenRequestEndPoint")).AccessToken
+                setBearerAccessToken -createdBearerToken $createdBearerToken -targetEndPoint $targetEndPoint -AzAPICallConfiguration $AzAPICallConfiguration
             }
-
-            $newBearerAccessTokenRequest = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($azContext.Account, $azContext.Environment, $azContext.Tenant.id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "$tokenRequestEndPoint")
-            $createdBearerToken = $newBearerAccessTokenRequest.AccessToken
-            setBearerAccessToken -createdBearerToken $createdBearerToken -targetEndPoint $targetEndPoint -AzAPICallConfiguration $AzAPICallConfiguration
         }
         catch {
             if (($AzApiCallConfiguration['htParameters']).codeRunPlatform -eq 'GitHubActions') {
@@ -1574,8 +1644,8 @@ function createBearerToken {
             }
 
             if ($dumpErrorProcessingNewBearerToken) {
-                Logging -logMessage "Likely your Azure credentials have not been set up or have expired, please run 'Connect-AzAccount -tenantId <tenantId>' to set up your Azure credentials." -logMessageForegroundColor 'DarkRed'
-                Logging -logMessage "It could also well be that there are multiple context in cache, please run 'Clear-AzContext' and then run 'Connect-AzAccount -tenantId <tenantId>'." -logMessageForegroundColor 'DarkRed'
+                Logging -logMessage "Likely your Azure credentials have not been set up or have expired, please run 'Connect-AzAccount -tenantId <tenantId>'" -logMessageForegroundColor 'DarkRed'
+                #Logging -logMessage "It could also well be that there are multiple context in cache, please run 'Clear-AzContext' and then run 'Connect-AzAccount -tenantId <tenantId>'." -logMessageForegroundColor 'DarkRed'
                 Logging -logMessage "-ERROR processing new bearer token request ($(($AzApiCallConfiguration['htParameters']).codeRunPlatform)) for targetEndPoint '$targetEndPoint' ($($AzApiCallConfiguration['azAPIEndpointUrls'].$targetEndPoint)): $_" -logMessageWriteMethod 'Error'
                 Throw 'Error - check the last console output for details'
             }
@@ -1583,7 +1653,7 @@ function createBearerToken {
     }
     else {
         Logging -logMessage "targetEndPoint: '$targetEndPoint' unknown" -logMessageWriteMethod 'Error'
-        throw
+        throw "targetEndPoint: '$targetEndPoint' unknown"
     }
 }
 function getAzAPICallFunctions {
@@ -1598,7 +1668,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.65' }
+function getAzAPICallVersion { return '1.1.66' }
 
 function getJWTDetails {
     <#
@@ -1892,7 +1962,12 @@ function setAzureEnvironment {
     $AzAPICallConfiguration['azAPIEndpointUrls'].LogAnalytics = (testAvailable -Endpoint 'LogAnalytics' -EnvironmentKey 'AzureOperationalInsightsEndpointResourceId' -EndpointUrl $AzApiCallConfiguration['checkContext'].Environment.AzureOperationalInsightsEndpointResourceId)
     $AzAPICallConfiguration['azAPIEndpointUrls'].MicrosoftGraph = (testAvailable -Endpoint 'MicrosoftGraph' -EnvironmentKey 'ExtendedProperties.MicrosoftGraphUrl' -EndpointUrl $AzApiCallConfiguration['checkContext'].Environment.ExtendedProperties.MicrosoftGraphUrl)
     $AzAPICallConfiguration['azAPIEndpointUrls'].Login = (testAvailable -Endpoint 'Login' -EnvironmentKey 'ActiveDirectoryAuthority' -EndpointUrl $AzApiCallConfiguration['checkContext'].Environment.ActiveDirectoryAuthority)
-    $AzAPICallConfiguration['azAPIEndpointUrls'].Storage = (testAvailable -Endpoint 'Storage' -EnvironmentKey 'StorageEndpointSuffix' -EndpointUrl $AzApiCallConfiguration['checkContext'].Environment.StorageEndpointSuffix)
+    #$AzAPICallConfiguration['azAPIEndpointUrls'].Storage = (testAvailable -Endpoint 'Storage' -EnvironmentKey 'StorageEndpointSuffix' -EndpointUrl $AzApiCallConfiguration['checkContext'].Environment.StorageEndpointSuffix)
+    $AzAPICallConfiguration['azAPIEndpointUrls'].Storage = [System.Collections.ArrayList]@()
+    $null = $AzAPICallConfiguration['azAPIEndpointUrls'].Storage.Add((testAvailable -Endpoint 'Storage' -EnvironmentKey 'StorageEndpointSuffix' -EndpointUrl $AzApiCallConfiguration['checkContext'].Environment.StorageEndpointSuffix))
+    $null = $AzAPICallConfiguration['azAPIEndpointUrls'].Storage.Add('storage.azure.net')
+    Write-Host "$($AzAPICallConfiguration['azAPIEndpointUrls'].Storage -join ', ')"
+    Logging -preventWriteOutput $true -logMessage "  Add to endpoint: 'Storage'; endpoint url: 'storage.azure.net'"
     $AzAPICallConfiguration['azAPIEndpointUrls'].StorageAuth = 'https://storage.azure.com'
     if ($AzApiCallConfiguration['checkContext'].Environment.Name -eq 'AzureChinaCloud') {
         $AzAPICallConfiguration['azAPIEndpointUrls'].IssuerUri = 'https://sts.chinacloudapi.cn'
@@ -1900,6 +1975,8 @@ function setAzureEnvironment {
     else {
         $AzAPICallConfiguration['azAPIEndpointUrls'].IssuerUri = 'https://sts.windows.net'
     }
+    $AzAPICallConfiguration['azAPIEndpointUrls'].Kusto = 'kusto.windows.net'
+    Logging -preventWriteOutput $true -logMessage "  Set endpoint: 'Kusto'; endpoint url: 'kusto.windows.net'"
 
     #AzureEnvironmentRelatedTargetEndpoints
     $AzAPICallConfiguration['azAPIEndpoints'] = @{ }

@@ -762,6 +762,25 @@ function AzAPICallErrorHandler {
         return $response
     }
 
+    elseif ($targetEndPoint -eq 'Kusto' -and $actualStatusCode -eq '401') {
+        $maxTries = 7
+        if ($tryCounter -gt $maxTries) {
+            #Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: exit"
+            $exitMsg = "AzAPICall: exit (requesting new bearer token '$targetEndpoint' ($targetCluster) - max retry of '$maxTries' reached)"
+            #Throw 'Error - check the last console output for details'
+        }
+        else {
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token '$targetEndpoint' ($targetCluster) - sleep 2 second and try again (max retry: $maxTries)"
+            $doRetry = $true
+            createBearerToken -targetEndPoint 'Kusto' -TargetCluster $targetCluster -AzAPICallConfiguration $AzAPICallConfiguration
+            Start-Sleep -Seconds 2
+            $response = @{
+                action = 'retry' #break or return or returnCollection or retry
+            }
+            return $response
+        }
+    }
+
     else {
         if (-not $catchResult.code -and -not $catchResult.error.code -and -not $catchResult.message -and -not $catchResult.error.message -and -not $catchResult -and $tryCounter -lt 6) {
             if ($actualStatusCode -eq 204 -and $getARMCostManagement) {
