@@ -1668,7 +1668,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.66' }
+function getAzAPICallVersion { return '1.1.67' }
 
 function getJWTDetails {
     <#
@@ -1962,11 +1962,9 @@ function setAzureEnvironment {
     $AzAPICallConfiguration['azAPIEndpointUrls'].LogAnalytics = (testAvailable -Endpoint 'LogAnalytics' -EnvironmentKey 'AzureOperationalInsightsEndpointResourceId' -EndpointUrl $AzApiCallConfiguration['checkContext'].Environment.AzureOperationalInsightsEndpointResourceId)
     $AzAPICallConfiguration['azAPIEndpointUrls'].MicrosoftGraph = (testAvailable -Endpoint 'MicrosoftGraph' -EnvironmentKey 'ExtendedProperties.MicrosoftGraphUrl' -EndpointUrl $AzApiCallConfiguration['checkContext'].Environment.ExtendedProperties.MicrosoftGraphUrl)
     $AzAPICallConfiguration['azAPIEndpointUrls'].Login = (testAvailable -Endpoint 'Login' -EnvironmentKey 'ActiveDirectoryAuthority' -EndpointUrl $AzApiCallConfiguration['checkContext'].Environment.ActiveDirectoryAuthority)
-    #$AzAPICallConfiguration['azAPIEndpointUrls'].Storage = (testAvailable -Endpoint 'Storage' -EnvironmentKey 'StorageEndpointSuffix' -EndpointUrl $AzApiCallConfiguration['checkContext'].Environment.StorageEndpointSuffix)
     $AzAPICallConfiguration['azAPIEndpointUrls'].Storage = [System.Collections.ArrayList]@()
     $null = $AzAPICallConfiguration['azAPIEndpointUrls'].Storage.Add((testAvailable -Endpoint 'Storage' -EnvironmentKey 'StorageEndpointSuffix' -EndpointUrl $AzApiCallConfiguration['checkContext'].Environment.StorageEndpointSuffix))
     $null = $AzAPICallConfiguration['azAPIEndpointUrls'].Storage.Add('storage.azure.net')
-    Write-Host "$($AzAPICallConfiguration['azAPIEndpointUrls'].Storage -join ', ')"
     Logging -preventWriteOutput $true -logMessage "  Add to endpoint: 'Storage'; endpoint url: 'storage.azure.net'"
     $AzAPICallConfiguration['azAPIEndpointUrls'].StorageAuth = 'https://storage.azure.com'
     if ($AzApiCallConfiguration['checkContext'].Environment.Name -eq 'AzureChinaCloud') {
