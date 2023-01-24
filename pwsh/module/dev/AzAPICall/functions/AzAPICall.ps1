@@ -161,7 +161,7 @@
         }
 
         $uriSplitted = $uri.split('/')
-        if ($AzAPICallConfiguration['azAPIEndpointUrls'].Storage.where({ $uriSplitted -match $_ })) {
+        if ($AzAPICallConfiguration['azAPIEndpointUrls'].Storage.where({ $uriSplitted[2] -match $_ })) {
             # if ($uriSplitted[2] -like "*$($AzAPICallConfiguration['azAPIEndpointUrls'].Storage)") {
             $targetEndpoint = 'Storage'
         }
@@ -180,7 +180,7 @@
         if ($targetEndpoint -eq 'Kusto') {
             $targetCluster = "$($uriSplitted[0])//$($uriSplitted[2])"
             if (-not $AzAPICallConfiguration['htBearerAccessToken'].($targetCluster)) {
-                createBearerToken -targetEndPoint $targetEndpoint -targetCluster $targetCluster -AzAPICallConfiguration $AzAPICallConfiguration
+                createBearerToken -targetEndPoint $targetEndpoint -TargetCluster $targetCluster -AzAPICallConfiguration $AzAPICallConfiguration
             }
         }
         else {

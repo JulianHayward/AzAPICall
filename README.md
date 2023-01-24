@@ -72,7 +72,7 @@ $azAPICallConf['htBearerAccessToken'].Storage
 | [ARM (Azure Resource Management)](https://docs.microsoft.com/en-us/rest/api/resources/) | `https://management.azure.com` | `$azAPICallConf['azAPIEndpointUrls'].ARM`            |
 | [Azure Key Vault](https://docs.microsoft.com/en-us/rest/api/keyvault/) | `https://vault.azure.net` | `$azAPICallConf['azAPIEndpointUrls'].KeyVault`       |
 | [Log Analytics](https://docs.microsoft.com/en-us/rest/api/loganalytics/) | `https://api.loganalytics.io/v1` | `$azAPICallConf['azAPIEndpointUrls'].LogAnalytics`   |
-| [Storage (blob)](https://learn.microsoft.com/en-us/rest/api/storageservices/) | `https://<storageAccountName>.blob.core.windows.net` | https://_storageAccountName_.blob.`$($azAPICallConf['azAPIEndpointUrls'].Storage)`   |
+| [Storage (blob)](https://learn.microsoft.com/en-us/rest/api/storageservices/) | `https://<storageAccountName>.blob.core.windows.net` / `https://<storageAccountName>.blob.storage.azure.net` | https://_storageAccountName_.blob.core.windows.net /  https://_storageAccountName_.blob.storage.azure.net |
 
 Add a new endpoint -> setAzureEnvironment.ps1
 

@@ -161,7 +161,7 @@ function AzAPICall {
         }
 
         $uriSplitted = $uri.split('/')
-        if ($AzAPICallConfiguration['azAPIEndpointUrls'].Storage.where({ $uriSplitted -match $_ })) {
+        if ($AzAPICallConfiguration['azAPIEndpointUrls'].Storage.where({ $uriSplitted[2] -match $_ })) {
             # if ($uriSplitted[2] -like "*$($AzAPICallConfiguration['azAPIEndpointUrls'].Storage)") {
             $targetEndpoint = 'Storage'
         }
@@ -180,7 +180,7 @@ function AzAPICall {
         if ($targetEndpoint -eq 'Kusto') {
             $targetCluster = "$($uriSplitted[0])//$($uriSplitted[2])"
             if (-not $AzAPICallConfiguration['htBearerAccessToken'].($targetCluster)) {
-                createBearerToken -targetEndPoint $targetEndpoint -targetCluster $targetCluster -AzAPICallConfiguration $AzAPICallConfiguration
+                createBearerToken -targetEndPoint $targetEndpoint -TargetCluster $targetCluster -AzAPICallConfiguration $AzAPICallConfiguration
             }
         }
         else {
@@ -1668,7 +1668,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.67' }
+function getAzAPICallVersion { return '1.1.68' }
 
 function getJWTDetails {
     <#
