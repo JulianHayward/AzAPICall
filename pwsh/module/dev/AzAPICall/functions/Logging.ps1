@@ -21,10 +21,8 @@
         $logMessageForegroundColor = 'Cyan'
     }
 
-    if (-not $logMessageWriteMethod -or $preventWriteOutput) {
-        if (-not $logMessageWriteMethod -and $logMessageWriteMethod -ne 'Output' ) {
-            $logMessageWriteMethod = 'Warning'
-        }
+    if (-not $logMessageWriteMethod -or ($preventWriteOutput -and $logMessageWriteMethod -eq 'Output')) {
+        $logMessageWriteMethod = 'Warning'
     }
 
     switch ($logMessageWriteMethod) {

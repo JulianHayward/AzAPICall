@@ -1668,7 +1668,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.68' }
+function getAzAPICallVersion { return '1.1.69' }
 
 function getJWTDetails {
     <#
@@ -1897,10 +1897,8 @@ function Logging {
         $logMessageForegroundColor = 'Cyan'
     }
 
-    if (-not $logMessageWriteMethod -or $preventWriteOutput) {
-        if (-not $logMessageWriteMethod -and $logMessageWriteMethod -ne 'Output' ) {
-            $logMessageWriteMethod = 'Warning'
-        }
+    if (-not $logMessageWriteMethod -or ($preventWriteOutput -and $logMessageWriteMethod -eq 'Output')) {
+        $logMessageWriteMethod = 'Warning'
     }
 
     switch ($logMessageWriteMethod) {
