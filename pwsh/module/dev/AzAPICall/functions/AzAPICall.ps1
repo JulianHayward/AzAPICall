@@ -444,8 +444,7 @@
                     debugAzAPICall -debugMessage "listenOn=Headers ($((($azAPIRequest.Headers)).count))"
                     $null = $apiCallResultsCollection.Add($azAPIRequest.Headers)
                 }
-
-                if ($listenOn -eq 'Content') {
+                elseif ($listenOn -eq 'Content') {
                     debugAzAPICall -debugMessage "listenOn=Content ($((($azAPIRequestConvertedFromJson)).count))"
                     if ($uri -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/providers/Microsoft.ResourceGraph/*") {
                         $null = $apiCallResultsCollection.AddRange($azAPIRequestConvertedFromJson.data)
