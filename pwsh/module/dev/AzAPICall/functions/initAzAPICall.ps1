@@ -134,7 +134,15 @@
         Logging -preventWriteOutput $true -logMessage '  Az context check succeeded' -logMessageForegroundColor 'Green'
     }
 
-    $AzApiCallConfiguration['htParameters'].userType = testUserType -AzApiCallConfiguration $AzAPICallConfiguration
+    $userInformation = testUserType -AzApiCallConfiguration $AzAPICallConfiguration
+    if ($userInformation -ne 'n/a') {
+        $AzApiCallConfiguration['htParameters'].userType = $userInformation.userType
+        $AzApiCallConfiguration['htParameters'].userObjectId = $userInformation.id
+    }
+    else {
+        $AzApiCallConfiguration['htParameters'].userType = $userInformation
+    }
+
 
     return $AzAPICallConfiguration
 }

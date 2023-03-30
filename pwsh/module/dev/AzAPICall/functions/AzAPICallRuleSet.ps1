@@ -2,7 +2,7 @@ function AzAPICallErrorHandler {
     #Logging -preventWriteOutput $true -logMessage ' * BuiltIn RuleSet'
 
     $doRetry = $false
-    $defaultErrorInfo = "[AzAPICallErrorHandler] $currentTask try #$($tryCounter); return: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'>"
+    $defaultErrorInfo = "[AzAPICallErrorHandler $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] $currentTask try #$($tryCounter); return: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'>"
 
     switch ($uri) {
         #ARMss
@@ -72,7 +72,7 @@ function AzAPICallErrorHandler {
 
     #region getTenantId for subscriptionId
     if ($currentTask -like "getTenantId for subscriptionId '*'" -and $uri -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/subscriptions/*" ) {
-        Logging -preventWriteOutput $true -logMessage "[AzAPICallErrorHandler] $currentTask"
+        Logging -preventWriteOutput $true -logMessage "[AzAPICallErrorHandler $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] $currentTask"
         $return = [System.Collections.ArrayList]@()
         if ($catchResult.error.code -eq 'SubscriptionNotFound' -and $actualStatusCode -eq 404) {
             $null = $return.Add('SubscriptionNotFound Tenant unknown')
