@@ -342,6 +342,10 @@
                 StatusCodePhrase                     = $actualStatusCodePhrase
             })
 
+        if ($rawExecption) {
+            $AzApiCallConfiguration['arrayAPICallTracking'] | Add-Member -MemberType NoteProperty -Name 'rawException' -Value $($rawException | ConvertTo-Json)
+        }
+
         $message = "attempt#$($tryCounter) processing: $($currenttask) uri: '$($uri)'"
 
         if ($body) {

@@ -340,6 +340,7 @@ function AzAPICall {
                 Duration                             = $durationAPICall.TotalSeconds
                 StatusCode                           = $actualStatusCode
                 StatusCodePhrase                     = $actualStatusCodePhrase
+                rawException                         = $rawException | ConvertTo-Json
             })
 
         $message = "attempt#$($tryCounter) processing: $($currenttask) uri: '$($uri)'"
@@ -1667,7 +1668,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.72' }
+function getAzAPICallVersion { return '1.1.73' }
 
 function getJWTDetails {
     <#
