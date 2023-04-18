@@ -340,8 +340,11 @@ function AzAPICall {
                 Duration                             = $durationAPICall.TotalSeconds
                 StatusCode                           = $actualStatusCode
                 StatusCodePhrase                     = $actualStatusCodePhrase
-                rawException                         = $rawException | ConvertTo-Json
             })
+
+        if ($rawException) {
+            $AzApiCallConfiguration['arrayAPICallTracking'][-1] | Add-Member -MemberType NoteProperty -Name 'rawException' -Value $($rawException | ConvertTo-Json -Depth 2)
+        }
 
         $message = "attempt#$($tryCounter) processing: $($currenttask) uri: '$($uri)'"
 

@@ -123,8 +123,22 @@ $azAPICallConf['arrayAPICallTracking'][0] | ConvertTo-Json
   "RetryAuthorizationFailedCounter": 0,
   "RestartDueToDuplicateNextlinkCounter": 0,
   "TimeStamp": "2022011316040343",
-  "Duration": 1.3137266
-}
+  "Duration": 1.3137266,
+  "StatusCode": 404,
+  "StatusCodePhrase": "NotFound",
+  "rawException": "{
+                    "Exception": {
+                      "Response": {
+                        "Version": "1.1",
+                        "Content": "System.Net.Http.HttpConnectionResponseContent",
+                        "StatusCode": 404,
+                        "ReasonPhrase": "Not Found",
+                        [..]
+                      },
+                      [..]
+                    },
+                    [..]
+                  }"
 ```
 As well you can see how fast a AzAPICall was responding:
 ```POWERSHELL
