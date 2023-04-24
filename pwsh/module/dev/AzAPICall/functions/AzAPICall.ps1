@@ -343,7 +343,7 @@
             })
 
         if ($rawException) {
-            $AzApiCallConfiguration['arrayAPICallTracking'][-1] | Add-Member -MemberType NoteProperty -Name 'rawException' -Value $($rawException | ConvertTo-Json -Depth 2)
+            $AzApiCallConfiguration['arrayAPICallTracking'][-1] | Add-Member -MemberType NoteProperty -Name 'rawException' -Value $rawException
         }
 
         $message = "attempt#$($tryCounter) processing: $($currenttask) uri: '$($uri)'"
