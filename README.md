@@ -43,10 +43,14 @@ $parameters4AzAPICallModule = @{
 $azAPICallConf = initAzAPICall @parameters4AzAPICallModule
 ```
 
-Use AzAPICall
-
+Use AzAPICall  
+Get AAD Groups:  
 ```POWERSHELL
 AzAPICall -uri "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/groups" -AzAPICallConfiguration $azAPICallConf
+```
+Get Azure Subscriptions:  
+```POWERSHELL
+AzAPICall -uri "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions?api-version=2020-01-01" -AzAPICallConfiguration $azAPICallConf
 ```
 [AzAPICallExample.ps1](pwsh/AzAPICallExample.ps1)
 
@@ -69,7 +73,7 @@ $azAPICallConf['htBearerAccessToken'].Storage
 | Endpoint | Endpoint URL (AzureCloud) | Variable |
 | ------------------------------ | -------------------- | -------------- |
 | [Microsoft Graph](https://docs.microsoft.com/en-us/graph/api/overview?view=graph-rest-1.0) | `https://graph.microsoft.com` | `$azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph` |
-| [ARM (Azure Resource Management)](https://docs.microsoft.com/en-us/rest/api/resources/) | `https://management.azure.com` | `$azAPICallConf['azAPIEndpointUrls'].ARM`            |
+| [ARM (Azure Resource Management)](https://docs.microsoft.com/en-us/rest/api/resources/) | `https://management.azure.com` (or regional: `https://westus.management.azure.com`) | `$azAPICallConf['azAPIEndpointUrls'].ARM`            |
 | [Azure Key Vault](https://docs.microsoft.com/en-us/rest/api/keyvault/) | `https://vault.azure.net` | `$azAPICallConf['azAPIEndpointUrls'].KeyVault`       |
 | [Log Analytics](https://docs.microsoft.com/en-us/rest/api/loganalytics/) | `https://api.loganalytics.io/v1` | `$azAPICallConf['azAPIEndpointUrls'].LogAnalytics`   |
 | [Storage (blob)](https://learn.microsoft.com/en-us/rest/api/storageservices/) | `https://<storageAccountName>.blob.core.windows.net` / `https://<storageAccountName>.blob.storage.azure.net` | https://_storageAccountName_.blob.core.windows.net /  https://_storageAccountName_.blob.storage.azure.net |

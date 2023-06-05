@@ -143,6 +143,7 @@
         $AzApiCallConfiguration['htParameters'].userType = $userInformation
     }
 
+    getARMLocations -AzApiCallConfiguration $AzAPICallConfiguration
 
     return $AzAPICallConfiguration
 }

@@ -162,7 +162,6 @@ function AzAPICall {
 
         $uriSplitted = $uri.split('/')
         if ($AzAPICallConfiguration['azAPIEndpointUrls'].Storage.where({ $uriSplitted[2] -match $_ })) {
-            # if ($uriSplitted[2] -like "*$($AzAPICallConfiguration['azAPIEndpointUrls'].Storage)") {
             $targetEndpoint = 'Storage'
         }
         elseif ($uriSplitted[2] -like "*$($AzAPICallConfiguration['azAPIEndpointUrls'].Kusto)") {
@@ -170,11 +169,32 @@ function AzAPICall {
         }
         else {
             if (-not ($AzApiCallConfiguration['azAPIEndpoints']).($uriSplitted[2])) {
-                Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'" -logMessageForegroundColor 'Yellow'
-                Logging -preventWriteOutput $true -logMessage "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository)" -logMessageForegroundColor 'Yellow'
-                Throw "Error - Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'"
+                if ($uriSplitted[2] -like "*.$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM.replace('https://',''))") {
+                    $armUriSplitted = $uriSplitted[2].split('.')
+                    if ($armUriSplitted[0] -in $AzApiCallConfiguration['htParameters'].ARMLocations) {
+                        if (($AzApiCallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].ARM).replace('https://', '')))) {
+                            #$targetEndpoint = 'ARM'
+                            $targetEndpoint = ($AzApiCallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].ARM).replace('https://', '')))
+                        }
+                        else {
+                            Throw "Error - Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'"
+                        }
+                    }
+                    else {
+                        Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'" -logMessageForegroundColor 'Yellow'
+                        Logging -preventWriteOutput $true -logMessage "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository)" -logMessageForegroundColor 'Yellow'
+                        Throw "Error - Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'"
+                    }
+                }
+                else {
+                    Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'" -logMessageForegroundColor 'Yellow'
+                    Logging -preventWriteOutput $true -logMessage "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository)" -logMessageForegroundColor 'Yellow'
+                    Throw "Error - Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'"
+                }
             }
-            $targetEndpoint = ($AzApiCallConfiguration['azAPIEndpoints']).($uriSplitted[2])
+            else {
+                $targetEndpoint = ($AzApiCallConfiguration['azAPIEndpoints']).($uriSplitted[2])
+            }
         }
 
         if ($targetEndpoint -eq 'Kusto') {
@@ -1659,6 +1679,28 @@ function createBearerToken {
         throw "targetEndPoint: '$targetEndPoint' unknown"
     }
 }
+function getARMLocations {
+    [CmdletBinding()]Param(
+        [Parameter(Mandatory)]
+        [object]
+        $AzAPICallConfiguration
+    )
+
+    $currentTask = 'Get ARM locations'
+    Logging -logMessage "  $currentTask"
+    $uri = "$(($AzAPICallConfiguration['azAPIEndpointUrls']).ARM)/subscriptions/$(($AzAPICallConfiguration['checkContext']).Subscription.Id)/locations?api-version=2020-01-01"
+    $method = 'GET'
+    $getARMLocations = AzAPICall -uri $uri -method $method -currentTask $currentTask -AzAPICallConfiguration $AzAPICallConfiguration
+
+    if ($getARMLocations.Count -gt 0) {
+        Logging -logMessage "   Get ARM locations succeeded (locations count: '$($getARMLocations.Count)')" -logMessageForegroundColor 'Green'
+        $AzApiCallConfiguration['htParameters'].ARMLocations = $getARMLocations.name
+    }
+    else {
+        Logging -logMessage "   Get ARM locations failed (locations count: '$($getARMLocations.Count)')"
+        Throw 'Error - check the last console output for details'
+    }
+}
 function getAzAPICallFunctions {
     $functions = @{
         funcAZAPICall         = $function:AzAPICall.ToString()
@@ -1671,7 +1713,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.73' }
+function getAzAPICallVersion { return '1.1.74' }
 
 function getJWTDetails {
     <#
@@ -1881,6 +1923,7 @@ function initAzAPICall {
         $AzApiCallConfiguration['htParameters'].userType = $userInformation
     }
 
+    getARMLocations -AzApiCallConfiguration $AzAPICallConfiguration
 
     return $AzAPICallConfiguration
 }
