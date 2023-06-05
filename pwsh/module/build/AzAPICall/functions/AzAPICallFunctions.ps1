@@ -342,6 +342,10 @@ function AzAPICall {
                 StatusCodePhrase                     = $actualStatusCodePhrase
             })
 
+        if ($rawException) {
+            $AzApiCallConfiguration['arrayAPICallTracking'][-1] | Add-Member -MemberType NoteProperty -Name 'rawException' -Value $rawException
+        }
+
         $message = "attempt#$($tryCounter) processing: $($currenttask) uri: '$($uri)'"
 
         if ($body) {
@@ -1667,7 +1671,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.72' }
+function getAzAPICallVersion { return '1.1.73' }
 
 function getJWTDetails {
     <#

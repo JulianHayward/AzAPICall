@@ -12,7 +12,7 @@
     RootModule        = 'AzAPICall.psm1'
 
     # Version number of this module.
-    ModuleVersion     = '1.1.72'
+    ModuleVersion     = '1.1.73'
 
     # Supported PSEditions
     # CompatiblePSEditions = @()
