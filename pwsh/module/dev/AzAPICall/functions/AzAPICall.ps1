@@ -244,6 +244,7 @@
         }
 
         $startAPICall = Get-Date
+        $rawException = $null
         try {
             if ($body) {
                 if ($AzApiCallConfiguration['htParameters'].codeRunPlatform -eq 'AzureAutomation') {
@@ -360,11 +361,8 @@
                 Duration                             = $durationAPICall.TotalSeconds
                 StatusCode                           = $actualStatusCode
                 StatusCodePhrase                     = $actualStatusCodePhrase
+                RawException                         = $rawException
             })
-
-        if ($rawException) {
-            $AzApiCallConfiguration['arrayAPICallTracking'][-1] | Add-Member -MemberType NoteProperty -Name 'rawException' -Value $rawException
-        }
 
         $message = "attempt#$($tryCounter) processing: $($currenttask) uri: '$($uri)'"
 

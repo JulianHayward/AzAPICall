@@ -244,6 +244,7 @@ function AzAPICall {
         }
 
         $startAPICall = Get-Date
+        $rawException = $null
         try {
             if ($body) {
                 if ($AzApiCallConfiguration['htParameters'].codeRunPlatform -eq 'AzureAutomation') {
@@ -360,11 +361,8 @@ function AzAPICall {
                 Duration                             = $durationAPICall.TotalSeconds
                 StatusCode                           = $actualStatusCode
                 StatusCodePhrase                     = $actualStatusCodePhrase
+                RawException                         = $rawException
             })
-
-        if ($rawException) {
-            $AzApiCallConfiguration['arrayAPICallTracking'][-1] | Add-Member -MemberType NoteProperty -Name 'rawException' -Value $rawException
-        }
 
         $message = "attempt#$($tryCounter) processing: $($currenttask) uri: '$($uri)'"
 
@@ -1713,7 +1711,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.74' }
+function getAzAPICallVersion { return '1.1.75' }
 
 function getJWTDetails {
     <#
