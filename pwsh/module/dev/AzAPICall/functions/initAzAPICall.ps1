@@ -20,10 +20,6 @@
         $SubscriptionId4AzContext,
 
         [Parameter()]
-        [string] # TODO: remeber documentation
-        $TenantId4AzContext,
-
-        [Parameter()]
         [bool]
         $SkipAzContextSubscriptionValidation = $false,
 
@@ -100,12 +96,7 @@
 
             Logging -preventWriteOutput $true -logMessage "  Setting Az context to SubscriptionId: '$SubscriptionId4AzContext'"
             try {
-                if ($null -eq $TenantId4AzContext) {
-                    $null = Set-AzContext -SubscriptionId $SubscriptionId4AzContext -ErrorAction Stop
-                }
-                else {
-                    $null = Set-AzContext -SubscriptionId $SubscriptionId4AzContext -TenantId $TenantId4AzContext -ErrorAction Stop
-                }
+                $null = Set-AzContext -SubscriptionId $SubscriptionId4AzContext -ErrorAction Stop
             }
             catch {
                 Logging -preventWriteOutput $true -logMessage $_
