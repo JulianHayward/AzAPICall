@@ -1798,7 +1798,7 @@ function initAzAPICall {
         $SubscriptionId4AzContext,
 
         [Parameter()]
-        [string] # TODO: remeber documentation
+        [string]
         $TenantId4AzContext,
 
         [Parameter()]
@@ -1883,7 +1883,7 @@ function initAzAPICall {
                 }
                 else {
                     $null = Set-AzContext -SubscriptionId $SubscriptionId4AzContext -TenantId $TenantId4AzContext -ErrorAction Stop
-                }            
+                }
             }
             catch {
                 Logging -preventWriteOutput $true -logMessage $_
