@@ -104,6 +104,7 @@ By default, endPoints return results in batches of e.g. `100`. You can increase 
 | ----------------------------- | :-------: | ------------------------------------------------------------------------------------- | :------: |
 | DebugAzAPICall			    | `bool`	| Set to `true` to enable debug output                | 		   |
 | SubscriptionId4AzContext		| `string`	| Specify if specific subscription should be used for the AzContext (Subscription Id / GUID) | 		   |
+| TenantId4AzContext		| `string`	| Specify Tenant be used for the AzContext (Tenant Id / GUID) | 		   |
 | WriteMethod		| `string`	| Write method. Debug, Error, Host, Information, Output, Progress, Verbose, Warning (default: host) | 		   |
 | DebugWriteMethod		| `string`	| Write method in case of wanted or enforced debug. Debug, Error, Host, Information, Output, Progress, Verbose, Warning (default: host) | 		   |
 | AzAPICallCustomRuleSet | `object`	| wip |  |
