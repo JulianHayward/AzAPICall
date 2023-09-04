@@ -1711,7 +1711,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.77' }
+function getAzAPICallVersion { return '1.1.78' }
 
 function getJWTDetails {
     <#
@@ -1863,18 +1863,19 @@ function initAzAPICall {
     Logging -preventWriteOutput $true -logMessage "  Az context AccountType: '$($AzAPICallConfiguration['checkContext'].Account.Type)'" -logMessageForegroundColor 'Yellow'
     $AzApiCallConfiguration['htParameters'].accountType = $($AzAPICallConfiguration['checkContext'].Account.Type)
 
-    <#
-    if ($SubscriptionId4AzContext -match ('^(\{){0,1}[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}(\}){0,1}$') -and $SkipAzContextSubscriptionValidation -eq $true) {
-        Logging -preventWriteOutput $true -logMessage " Contradictory use of parameters: `$SubscriptionId4AzContext==$($SubscriptionId4AzContext) AND `$SkipAzContextSubscriptionValidation=='$($SkipAzContextSubscriptionValidation)'" -logMessageForegroundColor 'DarkRed'
-        Logging -preventWriteOutput $true -logMessage " Setting parameter `$SkipAzContextSubscriptionValidation to '`$false'" -logMessageForegroundColor 'DarkRed'
-        $SkipAzContextSubscriptionValidation = $false
-        Logging -preventWriteOutput $true -logMessage " Parameter `$SkipAzContextSubscriptionValidation=='$($SkipAzContextSubscriptionValidation)'" -logMessageForegroundColor 'DarkRed'
-    }
-    #>
+    Logging -preventWriteOutput $true -logMessage "  Az context related parameters: -SubscriptionId4AzContext=='$SubscriptionId4AzContext'; -TenantId4AzContext=='$TenantId4AzContext'; -SkipAzContextSubscriptionValidation=='$($SkipAzContextSubscriptionValidation)'"
 
-    Logging -preventWriteOutput $true -logMessage "  Context related parameters: -SubscriptionId4AzContext=='$SubscriptionId4AzContext'; -TenantId4AzContext=='$TenantId4AzContext'; -SkipAzContextSubscriptionValidation=='$($SkipAzContextSubscriptionValidation)'"
+    if ($SubscriptionId4AzContext -and $SubscriptionId4AzContext -notmatch ('^(\{){0,1}[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}(\}){0,1}$') -and $SubscriptionId4AzContext -ne 'undefined') {
+        Logging -preventWriteOutput $true -logMessage "   Parameter -SubscriptionId4AzContext '$SubscriptionId4AzContext' is invalid, bypass use of the parameter" -logMessageForegroundColor 'Darkred'
+        $SubscriptionId4AzContext = $null
+    }
+    if ($TenantId4AzContext -and $TenantId4AzContext -notmatch ('^(\{){0,1}[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}(\}){0,1}$') -and $TenantId4AzContext -ne 'undefined') {
+        Logging -preventWriteOutput $true -logMessage "   Parameter -TenantId4AzContext '$TenantId4AzContext' is invalid, proceed with current Tenant Id: '$($AzAPICallConfiguration['checkContext'].Tenant.Id)'" -logMessageForegroundColor 'Darkred'
+        $TenantId4AzContext = $null
+    }
+
     $newAzContextSet = $false
-    if ($SubscriptionId4AzContext -match ('^(\{){0,1}[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}(\}){0,1}$')) {
+    if ($SubscriptionId4AzContext -and $SubscriptionId4AzContext -match ('^(\{){0,1}[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}(\}){0,1}$')) {
         if ($AzAPICallConfiguration['checkContext'].Subscription.Id -ne $SubscriptionId4AzContext) {
             try {
                 if ($TenantId4AzContext -and $TenantId4AzContext -match ('^(\{){0,1}[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}(\}){0,1}$')) {
@@ -1893,6 +1894,7 @@ function initAzAPICall {
                         $AzAPICallConfiguration['checkContext'] = Get-AzContext -ErrorAction Stop
                     }
                     else {
+                        Logging -preventWriteOutput $true -logMessage "  Az context is already set to TenantId: '$TenantId4AzContext'"
                         if ($SkipAzContextSubscriptionValidation -eq $false) {
                             testSubscription -SubscriptionId4Test $SubscriptionId4AzContext -AzAPICallConfiguration $AzAPICallConfiguration
                         }
@@ -1924,6 +1926,7 @@ function initAzAPICall {
             }
         }
         else {
+            Logging -preventWriteOutput $true -logMessage "  Az context is already set to SubscriptionId: '$SubscriptionId4AzContext'"
             if ($SkipAzContextSubscriptionValidation -eq $false) {
                 testSubscription -SubscriptionId4Test $SubscriptionId4AzContext -AzAPICallConfiguration $AzAPICallConfiguration
             }
@@ -1943,10 +1946,10 @@ function initAzAPICall {
                     }
                 }
                 else {
+                    Logging -preventWriteOutput $true -logMessage "  Az context is already set to TenantId: '$TenantId4AzContext'"
                     if (-not [string]::IsNullOrWhiteSpace($AzAPICallConfiguration['checkContext'].Subscription.Id) -and $SkipAzContextSubscriptionValidation -eq $false) {
                         testSubscription -SubscriptionId4Test $AzAPICallConfiguration['checkContext'].Subscription.Id -AzAPICallConfiguration $AzAPICallConfiguration
                     }
-                    Logging -preventWriteOutput $true -logMessage "  Stay with current Az context: Tenant:'$($AzAPICallConfiguration['checkContext'].Tenant.Id)' Subscription:'$($AzAPICallConfiguration['checkContext'].Subscription.Name) ($($AzAPICallConfiguration['checkContext'].Subscription.Id))'"
                 }
             }
             catch {
@@ -1957,14 +1960,14 @@ function initAzAPICall {
                 Logging -preventWriteOutput $true -logMessage "  New Az context: Tenant:'$($AzAPICallConfiguration['checkContext'].Tenant.Id)' Subscription:'$($AzAPICallConfiguration['checkContext'].Subscription.Name) ($($AzAPICallConfiguration['checkContext'].Subscription.Id))'"
             }
             else {
-                Logging -preventWriteOutput $true -logMessage "  Stay with current Az context (`$SkipAzContextSubscriptionValidation==$SkipAzContextSubscriptionValidation): $($AzAPICallConfiguration['checkContext'].Subscription.Name) ($($AzAPICallConfiguration['checkContext'].Subscription.Id))"
+                Logging -preventWriteOutput $true -logMessage "  Stay with current Az context: Tenant:'$($AzAPICallConfiguration['checkContext'].Tenant.Id)' Subscription:'$($AzAPICallConfiguration['checkContext'].Subscription.Name) ($($AzAPICallConfiguration['checkContext'].Subscription.Id))'"
             }
         }
         elseif (-not [string]::IsNullOrWhiteSpace($AzAPICallConfiguration['checkContext'].Subscription.Id) -and $SkipAzContextSubscriptionValidation -eq $false) {
             testSubscription -SubscriptionId4Test $AzAPICallConfiguration['checkContext'].Subscription.Id -AzAPICallConfiguration $AzAPICallConfiguration
         }
         else {
-            Logging -preventWriteOutput $true -logMessage "  Stay with current Az context (`$SkipAzContextSubscriptionValidation==$SkipAzContextSubscriptionValidation): $($AzAPICallConfiguration['checkContext'].Subscription.Name) ($($AzAPICallConfiguration['checkContext'].Subscription.Id))"
+            Logging -preventWriteOutput $true -logMessage "  Stay with current Az context: Tenant:'$($AzAPICallConfiguration['checkContext'].Tenant.Id)' Subscription:'$($AzAPICallConfiguration['checkContext'].Subscription.Name) ($($AzAPICallConfiguration['checkContext'].Subscription.Id))'"
         }
     }
 
@@ -1979,10 +1982,15 @@ function initAzAPICall {
     else {
         Logging -preventWriteOutput $true -logMessage "   Az context Tenant: '$($AzAPICallConfiguration['checkContext'].Tenant.Id)'" -logMessageForegroundColor 'Yellow'
         if ($SkipAzContextSubscriptionValidation -eq $false) {
-            Logging -preventWriteOutput $true -logMessage "   Az context Subscription: $($AzAPICallConfiguration['checkContext'].Subscription.Name) [$($AzAPICallConfiguration['checkContext'].Subscription.Id)] (state: $($AzAPICallConfiguration['checkContext'].Subscription.State))" -logMessageForegroundColor 'Yellow'
+            Logging -preventWriteOutput $true -logMessage "   Az context Subscription: '$($AzAPICallConfiguration['checkContext'].Subscription.Name) ($($AzAPICallConfiguration['checkContext'].Subscription.Id))' (state: $($AzAPICallConfiguration['checkContext'].Subscription.State))" -logMessageForegroundColor 'Yellow'
         }
         else {
-            Logging -preventWriteOutput $true -logMessage "   Az context Subscription check skipped (`$SkipAzContextSubscriptionValidation==$($SkipAzContextSubscriptionValidation))" -logMessageForegroundColor 'Yellow'
+            if ($AzAPICallConfiguration['checkContext'].Subscription) {
+                Logging -preventWriteOutput $true -logMessage "   Az context Subscription check skipped (`$SkipAzContextSubscriptionValidation==$($SkipAzContextSubscriptionValidation)); Subscription:'$($AzAPICallConfiguration['checkContext'].Subscription.Name) ($($AzAPICallConfiguration['checkContext'].Subscription.Id)); state: $($AzAPICallConfiguration['checkContext'].Subscription.State)'" -logMessageForegroundColor 'Yellow'
+            }
+            else {
+                Logging -preventWriteOutput $true -logMessage "   Az context Subscription check skipped (`$SkipAzContextSubscriptionValidation==$($SkipAzContextSubscriptionValidation)) - no Subscription in context" -logMessageForegroundColor 'Yellow'
+            }
         }
         Logging -preventWriteOutput $true -logMessage '  Az context check succeeded' -logMessageForegroundColor 'Green'
     }
@@ -2240,7 +2248,7 @@ function testSubscription {
         $AzAPICallConfiguration
     )
 
-    $currentTask = "Check Subscription: '$SubscriptionId4Test'"
+    $currentTask = "Check Subscription: '$SubscriptionId4Test' (criteria: quotaId notLike 'AAD*'; state==enabled)"
     Logging -logMessage "  $currentTask"
     $uri = "$(($AzAPICallConfiguration['azAPIEndpointUrls']).ARM)/subscriptions/$($SubscriptionId4Test)?api-version=2020-01-01"
     $method = 'GET'
@@ -2253,13 +2261,13 @@ function testSubscription {
         if ($testSubscription.state -ne 'Enabled') {
             Logging -logMessage "   SubscriptionId '$SubscriptionId4Test' state: '$($testSubscription.state)'"
         }
-        Logging -logMessage "   Subscription check - SubscriptionId: '$SubscriptionId4Test' - please define another Subscription (Subscription criteria: quotaId notLike 'AAD*'; state = enabled)"
+        Logging -logMessage "   Subscription check - SubscriptionId: '$SubscriptionId4Test' - please define another Subscription (Subscription criteria: quotaId notLike 'AAD*'; state==enabled)"
         Logging -logMessage "   Use parameter: -SubscriptionId4AzContext (e.g. -SubscriptionId4AzContext '66f7c01a-ca6c-4ec2-a80b-34cc2dbda7d7')"
         Throw 'Error - check the last console output for details'
     }
     else {
         $AzApiCallConfiguration['htParameters'].subscriptionQuotaId = $testSubscription.subscriptionPolicies.quotaId
-        Logging -logMessage "   Subscription check succeeded (quotaId: '$($testSubscription.subscriptionPolicies.quotaId)')" -logMessageForegroundColor 'Green'
+        Logging -logMessage "   Subscription check succeeded - quotaId: '$($testSubscription.subscriptionPolicies.quotaId)'; state: $($testSubscription.state)" -logMessageForegroundColor 'Green'
     }
 }
 function testUserType {
