@@ -101,30 +101,13 @@
         if ($AzAPICallConfiguration['checkContext'].Subscription.Id -ne $SubscriptionId4AzContext) {
             try {
                 if ($TenantId4AzContext -and $TenantId4AzContext -match ('^(\{){0,1}[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}(\}){0,1}$')) {
-                    if ($AzAPICallConfiguration['checkContext'].Tenant.Id -ne $TenantId4AzContext) {
-                        Logging -preventWriteOutput $true -logMessage "  Setting Az context to TenantId: '$TenantId4AzContext'"
-                        $null = Set-AzContext -TenantId $TenantId4AzContext -ErrorAction Stop
-                        $newAzContextSet = $true
-                        $AzAPICallConfiguration['checkContext'] = Get-AzContext -ErrorAction Stop
-
-                        if ($SkipAzContextSubscriptionValidation -eq $false) {
-                            testSubscription -SubscriptionId4Test $SubscriptionId4AzContext -AzAPICallConfiguration $AzAPICallConfiguration
-                        }
-                        Logging -preventWriteOutput $true -logMessage "  Setting Az context to SubscriptionId: '$SubscriptionId4AzContext'"
-                        $null = Set-AzContext -SubscriptionId $SubscriptionId4AzContext -ErrorAction Stop
-                        $newAzContextSet = $true
-                        $AzAPICallConfiguration['checkContext'] = Get-AzContext -ErrorAction Stop
+                    if ($SkipAzContextSubscriptionValidation -eq $false) {
+                        testSubscription -SubscriptionId4Test $SubscriptionId4AzContext -AzAPICallConfiguration $AzAPICallConfiguration
                     }
-                    else {
-                        Logging -preventWriteOutput $true -logMessage "  Az context is already set to TenantId: '$TenantId4AzContext'"
-                        if ($SkipAzContextSubscriptionValidation -eq $false) {
-                            testSubscription -SubscriptionId4Test $SubscriptionId4AzContext -AzAPICallConfiguration $AzAPICallConfiguration
-                        }
-                        Logging -preventWriteOutput $true -logMessage "  Setting Az context to SubscriptionId: '$SubscriptionId4AzContext'"
-                        $null = Set-AzContext -SubscriptionId $SubscriptionId4AzContext -ErrorAction Stop
-                        $newAzContextSet = $true
-                        $AzAPICallConfiguration['checkContext'] = Get-AzContext -ErrorAction Stop
-                    }
+                    Logging -preventWriteOutput $true -logMessage "  Setting Az context to SubscriptionId: '$SubscriptionId4AzContext', TenantId: '$TenantId4AzContext'"
+                    $null = Set-AzContext -SubscriptionId $SubscriptionId4AzContext -TenantId $TenantId4AzContext -ErrorAction Stop
+                    $newAzContextSet = $true
+                    $AzAPICallConfiguration['checkContext'] = Get-AzContext -ErrorAction Stop
                 }
                 else {
                     if ($SkipAzContextSubscriptionValidation -eq $false) {
