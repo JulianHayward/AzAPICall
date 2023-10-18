@@ -35,9 +35,10 @@ function AzAPICall {
 
     .PARAMETER unhandledErrorAction
     Parameter description
-      Used to either "Stop" (Default) or "Continue" when encountering an Unhandled Error
+      Used to either "Stop" (Default), "Continue", or "ContinueQuiet" when encountering an Unhandled Error
         "Stop" Throws the Error which terminates processing
-        "Continue" outputs the error and continues processing
+        "Continue" outputs the error with Parameter Dump and continues processing
+        "ContinueQuiet" outputs the error without Parameter Dump and continues processing
 
     .PARAMETER noPaging
     Parameter description
@@ -97,7 +98,7 @@ function AzAPICall {
 
         [Parameter()]
         [string]
-        [ValidateSet('Stop', 'Continue')]
+        [ValidateSet('Stop', 'Continue', 'ContinueQuiet')]
         $unhandledErrorAction = 'Stop',
 
         [Parameter()]
@@ -182,13 +183,13 @@ function AzAPICall {
                     }
                     else {
                         Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'" -logMessageForegroundColor 'Yellow'
-                        Logging -preventWriteOutput $true -logMessage "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository)" -logMessageForegroundColor 'Yellow'
+                        Logging -preventWriteOutput $true -logMessage "!c712e5a2 Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository)" -logMessageForegroundColor 'Yellow'
                         Throw "Error - Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'"
                     }
                 }
                 else {
                     Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'" -logMessageForegroundColor 'Yellow'
-                    Logging -preventWriteOutput $true -logMessage "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository)" -logMessageForegroundColor 'Yellow'
+                    Logging -preventWriteOutput $true -logMessage "!ab981d8f Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository)" -logMessageForegroundColor 'Yellow'
                     Throw "Error - Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'"
                 }
             }
@@ -374,7 +375,8 @@ function AzAPICall {
         if ($unexpectedError -eq $false -and $connectionRelatedError -eq $false) {
             debugAzAPICall -debugMessage 'unexpectedError: false'
             if ($actualStatusCode -notin 200..204) {
-                if ($listenOn -eq 'StatusCode') {
+                #if the token has exired it would only return statuscode 401 (ExpiredAuthenticationToken) and not the actual statuscode
+                if ($listenOn -eq 'StatusCode' -and ($actualStatusCode -ne 401 -and $catchResult.error.code -ne 'ExpiredAuthenticationToken')) {
                     return [int32]$actualStatusCode
                 }
                 else {
@@ -434,7 +436,7 @@ function AzAPICall {
                             Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] '$currentTask' uri='$uri' Command 'ConvertFrom-Json' failed: $($_.Exception.Message)" -logMessageForegroundColor 'darkred'
                             Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] '$currentTask' uri='$uri' Trying command 'ConvertFrom-Json -AsHashtable'" -logMessageForegroundColor 'darkred'
                             try {
-                                $azAPIRequestConvertedFromJsonAsHashTable = ($azAPIRequest.Content | ConvertFrom-Json -AsHashtable)
+                                $azAPIRequestConvertedFromJsonAsHashTable = ($azAPIRequest.Content | ConvertFrom-Json -AsHashtable -ErrorAction Stop)
                                 Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] '$currentTask' uri='$uri' Command 'ConvertFrom-Json -AsHashtable' succeeded. Please file an issue at the AzGovViz GitHub repository (aka.ms/AzGovViz) and provide a dump (scrub subscription Id and company identifyable names) of the resource (portal JSOn view) - Thank you!" -logMessageForegroundColor 'darkred'
                                 #$azAPIRequestConvertedFromJsonAsHashTable | ConvertTo-Json -Depth 99
                                 if ($currentTask -like 'Getting Resource Properties*') {
@@ -454,10 +456,17 @@ function AzAPICall {
                             }
                         }
                         else {
-                            Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] '$currentTask' uri='$uri' Command 'ConvertFrom-Json' failed (not *different casing*). Please file an issue at the AzGovViz GitHub repository (aka.ms/AzGovViz) and provide a dump (scrub subscription Id and company identifyable names) of the resource (portal JSOn view) - Thank you!" -logMessageForegroundColor 'darkred'
-                            Write-Host $_.Exception.Message
-                            Write-Host $_
-                            Throw 'throwing - Command ConvertFrom-Json failed (not *different casing*)'
+                            # Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] '$currentTask' uri='$uri' Command 'ConvertFrom-Json' failed (not *different casing*). Please file an issue at the AzGovViz GitHub repository (aka.ms/AzGovViz) and provide a dump (scrub subscription Id and company identifyable names) of the resource (portal JSOn view) - Thank you!" -logMessageForegroundColor 'darkred'
+                            # Write-Host $_.Exception.Message
+                            # Write-Host $_
+
+                            #Throw 'throwing - Command ConvertFrom-Json failed (not *different casing*)'
+                            $contentTypeName = 'unknown'
+                            if ($azAPIRequest.Content.GetType()) {
+                                $contentTypeName = "$($azAPIRequest.Content.GetType().Name) ($($azAPIRequest.Content.GetType().BaseType))"
+                            }
+                            Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] '$currentTask' uri='$uri' Returning response content (`$azAPIRequest.Content) as is [$contentTypeName]" -logMessageForegroundColor 'DarkGray'
+                            return $azAPIRequest.Content
                         }
                     }
                 }
@@ -636,7 +645,7 @@ function AzAPICall {
                 }
                 else {
                     Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] $currentTask try #$($tryCounterConnectionRelatedError) 'connectionRelatedError' occurred '$connectionRelatedErrorPhrase' (tried $($tryCounterConnectionRelatedError - 1) times) - unhandledErrorAction: $unhandledErrorAction" -logMessageForegroundColor 'DarkRed'
-                    if ($unhandledErrorAction -eq 'Continue') {
+                    if ($unhandledErrorAction -in @('Continue', 'ContinueQuiet')) {
                         break
                     }
                     else {
@@ -656,7 +665,7 @@ function AzAPICall {
                 }
                 else {
                     Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] $currentTask try #$($tryCounterUnexpectedError) 'unexpectedError' occurred (tried $($tryCounterUnexpectedError - 1) times) - unhandledErrorAction: $unhandledErrorAction" -logMessageForegroundColor 'DarkRed'
-                    if ($unhandledErrorAction -eq 'Continue') {
+                    if ($unhandledErrorAction -in @('Continue', 'ContinueQuiet')) {
                         break
                     }
                     else {
@@ -677,7 +686,7 @@ function AzAPICallErrorHandler {
     #Logging -preventWriteOutput $true -logMessage ' * BuiltIn RuleSet'
 
     $doRetry = $false
-    $defaultErrorInfo = "[AzAPICallErrorHandler $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] $currentTask try #$($tryCounter); return: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'>"
+    $defaultErrorInfo = "[AzAPICallErrorHandler $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] $currentTask try #$($tryCounter); uri:`"$uri`"; return: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) <.code: '$($catchResult.code)'> <.error.code: '$($catchResult.error.code)'> | <.message: '$($catchResult.message)'> <.error.message: '$($catchResult.error.message)'>"
 
     switch ($uri) {
         #ARMss
@@ -913,12 +922,14 @@ function AzAPICallErrorHandler {
         else {
             $script:retryAuthorizationFailedCounter++
             if ($retryAuthorizationFailedCounter -gt $retryAuthorizationFailed) {
-                Logging -preventWriteOutput $true -logMessage '- - - - - - - - - - - - - - - - - - - - '
-                Logging -preventWriteOutput $true -logMessage "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository) and provide the following dump" -logMessageForegroundColor 'Yellow'
-                Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: $retryAuthorizationFailed retries failed - EXIT"
-                Logging -preventWriteOutput $true -logMessage 'Parameters:'
-                foreach ($htParameter in ($AzApiCallConfiguration['htParameters'].Keys | Sort-Object)) {
-                    Logging -preventWriteOutput $true -logMessage "$($htParameter):$($AzApiCallConfiguration['htParameters'].($htParameter))"
+                if ($unhandledErrorAction -ne 'ContinueQuiet') {
+                    Logging -preventWriteOutput $true -logMessage '- - - - - - - - - - - - - - - - - - - - '
+                    Logging -preventWriteOutput $true -logMessage "!1348780b Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository) and provide the following dump" -logMessageForegroundColor 'Yellow'
+                    Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: $retryAuthorizationFailed retries failed - EXIT"
+                    Logging -preventWriteOutput $true -logMessage 'Parameters:'
+                    foreach ($htParameter in ($AzApiCallConfiguration['htParameters'].Keys | Sort-Object)) {
+                        Logging -preventWriteOutput $true -logMessage "$($htParameter):$($AzApiCallConfiguration['htParameters'].($htParameter))"
+                    }
                 }
                 $script:retryAuthorizationFailedCounter = $null
                 #Throw 'Error: check the last console output for details'
@@ -941,6 +952,10 @@ function AzAPICallErrorHandler {
                     return $response
                 }
                 Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: not reasonable, retry #$retryAuthorizationFailedCounter of $retryAuthorizationFailed"
+                $response = @{
+                    action = 'retry' #break or return or returnCollection or retry
+                }
+                return $response
             }
         }
     }
@@ -1118,12 +1133,14 @@ function AzAPICallErrorHandler {
             return $response
         }
         else {
-            Logging -preventWriteOutput $true -logMessage '- - - - - - - - - - - - - - - - - - - - '
-            Logging -preventWriteOutput $true -logMessage "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository) and provide the following dump" -logMessageForegroundColor 'Yellow'
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: EXIT"
-            Logging -preventWriteOutput $true -logMessage 'Parameters:'
-            foreach ($htParameter in ($AzApiCallConfiguration['htParameters'].Keys | Sort-Object)) {
-                Logging -preventWriteOutput $true -logMessage "$($htParameter):$($AzApiCallConfiguration['htParameters'].($htParameter))"
+            if ($unhandledErrorAction -ne 'ContinueQuiet') {
+                Logging -preventWriteOutput $true -logMessage '- - - - - - - - - - - - - - - - - - - - '
+                Logging -preventWriteOutput $true -logMessage "!841be622 Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository) and provide the following dump" -logMessageForegroundColor 'Yellow'
+                Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: EXIT"
+                Logging -preventWriteOutput $true -logMessage 'Parameters:'
+                foreach ($htParameter in ($AzApiCallConfiguration['htParameters'].Keys | Sort-Object)) {
+                    Logging -preventWriteOutput $true -logMessage "$($htParameter):$($AzApiCallConfiguration['htParameters'].($htParameter))"
+                }
             }
             #Throw 'Authorization_RequestDenied'
             $exitMsg = 'AzAPICall: Authorization_RequestDenied exit'
@@ -1486,12 +1503,14 @@ function AzAPICallErrorHandler {
             return $response
         }
         else {
-            Logging -preventWriteOutput $true -logMessage '- - - - - - - - - - - - - - - - - - - - '
-            Logging -preventWriteOutput $true -logMessage "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository) and provide the following dump" -logMessageForegroundColor 'Yellow'
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: $unhandledErrorAction"
-            Logging -preventWriteOutput $true -logMessage 'Parameters:'
-            foreach ($htParameter in ($AzApiCallConfiguration['htParameters'].Keys | Sort-Object)) {
-                Logging -preventWriteOutput $true -logMessage "$($htParameter):$($AzApiCallConfiguration['htParameters'].($htParameter))"
+            if ($unhandledErrorAction -ne 'ContinueQuiet') {
+                Logging -preventWriteOutput $true -logMessage '- - - - - - - - - - - - - - - - - - - - '
+                Logging -preventWriteOutput $true -logMessage "!f97434b8 Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository) and provide the following dump" -logMessageForegroundColor 'Yellow'
+                Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: $unhandledErrorAction"
+                Logging -preventWriteOutput $true -logMessage 'Parameters:'
+                foreach ($htParameter in ($AzApiCallConfiguration['htParameters'].Keys | Sort-Object)) {
+                    Logging -preventWriteOutput $true -logMessage "$($htParameter):$($AzApiCallConfiguration['htParameters'].($htParameter))"
+                }
             }
             if ($getARMCostManagement) {
                 Logging -preventWriteOutput $true -logMessage 'If Consumption data is not that important for you, do not use parameter: -DoAzureConsumption (however, please still report the issue - thank you)'
@@ -1501,7 +1520,7 @@ function AzAPICallErrorHandler {
 
     if ($doRetry -eq $false) {
         Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo $exitMsg - unhandledErrorAction: $unhandledErrorAction" -logMessageForegroundColor 'DarkRed'
-        if ($unhandledErrorAction -eq 'Continue') {
+        if ($unhandledErrorAction -in @('Continue', 'ContinueQuiet')) {
             $response = @{
                 action = 'break'
             }
@@ -1686,17 +1705,23 @@ function getARMLocations {
 
     $currentTask = 'Get ARM locations'
     Logging -logMessage "  $currentTask"
-    $uri = "$(($AzAPICallConfiguration['azAPIEndpointUrls']).ARM)/subscriptions/$(($AzAPICallConfiguration['checkContext']).Subscription.Id)/locations?api-version=2020-01-01"
-    $method = 'GET'
-    $getARMLocations = AzAPICall -uri $uri -method $method -currentTask $currentTask -AzAPICallConfiguration $AzAPICallConfiguration
+    if (($AzAPICallConfiguration['checkContext']).Subscription.Id) {
+        $uri = "$(($AzAPICallConfiguration['azAPIEndpointUrls']).ARM)/subscriptions/$(($AzAPICallConfiguration['checkContext']).Subscription.Id)/locations?api-version=2020-01-01"
+        $method = 'GET'
+        $getARMLocations = AzAPICall -uri $uri -method $method -currentTask $currentTask -AzAPICallConfiguration $AzAPICallConfiguration
 
-    if ($getARMLocations.Count -gt 0) {
-        Logging -logMessage "   Get ARM locations succeeded (locations count: '$($getARMLocations.Count)')" -logMessageForegroundColor 'Green'
-        $AzApiCallConfiguration['htParameters'].ARMLocations = $getARMLocations.name
+        if ($getARMLocations.Count -gt 0) {
+            Logging -logMessage "   Get ARM locations succeeded (locations count: '$($getARMLocations.Count)')" -logMessageForegroundColor 'Green'
+            $AzApiCallConfiguration['htParameters'].ARMLocations = $getARMLocations.name
+        }
+        else {
+            Logging -logMessage "   Get ARM locations failed (locations count: '$($getARMLocations.Count)')"
+            Throw 'Error - check the last console output for details'
+        }
     }
     else {
-        Logging -logMessage "   Get ARM locations failed (locations count: '$($getARMLocations.Count)')"
-        Throw 'Error - check the last console output for details'
+        Logging -logMessage "   Get ARM locations not possible (no subscription in current context). Either use parameter -SubscriptionId4AzContext (initAzAPICall -SubscriptionId4AzContext <subscriptionId>) or if you do not have any subscriptions then you won´t be able to address regional endpoints e.g. https://westeurope.azure (info: parameter `$SkipAzContextSubscriptionValidation = $SkipAzContextSubscriptionValidation)"
+        $AzApiCallConfiguration['htParameters'].ARMLocations = @()
     }
 }
 function getAzAPICallFunctions {
@@ -1711,7 +1736,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.79' }
+function getAzAPICallVersion { return '1.1.82' }
 
 function getJWTDetails {
     <#

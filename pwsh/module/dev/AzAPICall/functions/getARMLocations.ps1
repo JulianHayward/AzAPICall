@@ -7,16 +7,22 @@ function getARMLocations {
 
     $currentTask = 'Get ARM locations'
     Logging -logMessage "  $currentTask"
-    $uri = "$(($AzAPICallConfiguration['azAPIEndpointUrls']).ARM)/subscriptions/$(($AzAPICallConfiguration['checkContext']).Subscription.Id)/locations?api-version=2020-01-01"
-    $method = 'GET'
-    $getARMLocations = AzAPICall -uri $uri -method $method -currentTask $currentTask -AzAPICallConfiguration $AzAPICallConfiguration
+    if (($AzAPICallConfiguration['checkContext']).Subscription.Id) {
+        $uri = "$(($AzAPICallConfiguration['azAPIEndpointUrls']).ARM)/subscriptions/$(($AzAPICallConfiguration['checkContext']).Subscription.Id)/locations?api-version=2020-01-01"
+        $method = 'GET'
+        $getARMLocations = AzAPICall -uri $uri -method $method -currentTask $currentTask -AzAPICallConfiguration $AzAPICallConfiguration
 
-    if ($getARMLocations.Count -gt 0) {
-        Logging -logMessage "   Get ARM locations succeeded (locations count: '$($getARMLocations.Count)')" -logMessageForegroundColor 'Green'
-        $AzApiCallConfiguration['htParameters'].ARMLocations = $getARMLocations.name
+        if ($getARMLocations.Count -gt 0) {
+            Logging -logMessage "   Get ARM locations succeeded (locations count: '$($getARMLocations.Count)')" -logMessageForegroundColor 'Green'
+            $AzApiCallConfiguration['htParameters'].ARMLocations = $getARMLocations.name
+        }
+        else {
+            Logging -logMessage "   Get ARM locations failed (locations count: '$($getARMLocations.Count)')"
+            Throw 'Error - check the last console output for details'
+        }
     }
     else {
-        Logging -logMessage "   Get ARM locations failed (locations count: '$($getARMLocations.Count)')"
-        Throw 'Error - check the last console output for details'
+        Logging -logMessage "   Get ARM locations not possible (no subscription in current context). Either use parameter -SubscriptionId4AzContext (initAzAPICall -SubscriptionId4AzContext <subscriptionId>) or if you do not have any subscriptions then you won´t be able to address regional endpoints e.g. https://westeurope.azure (info: parameter `$SkipAzContextSubscriptionValidation = $SkipAzContextSubscriptionValidation)"
+        $AzApiCallConfiguration['htParameters'].ARMLocations = @()
     }
 }

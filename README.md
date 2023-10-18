@@ -43,14 +43,22 @@ $parameters4AzAPICallModule = @{
 $azAPICallConf = initAzAPICall @parameters4AzAPICallModule
 ```
 
-Use AzAPICall  
+How to use AzAPICall ?!  
+
+__Microsoft Graph__  
 Get AAD Groups:  
 ```POWERSHELL
 AzAPICall -uri "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/groups" -AzAPICallConfiguration $azAPICallConf
 ```
-Get Azure Subscriptions:  
+
+__Azure Resource Manager__  
+List Azure Subscriptions (expect multiple results):  
 ```POWERSHELL
 AzAPICall -uri "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions?api-version=2020-01-01" -AzAPICallConfiguration $azAPICallConf
+```
+Get Azure Subscription (expect one result):  
+```POWERSHELL
+AzAPICall -uri "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($subscriptionId)?api-version=2020-01-01" -AzAPICallConfiguration $azAPICallConf -listenOn Content
 ```
 [AzAPICallExample.ps1](pwsh/AzAPICallExample.ps1)
 
@@ -94,7 +102,7 @@ Add a new endpoint -> setAzureEnvironment.ps1
 | noPaging                      | `switch`    | If value is `true` paging will be deactivated and you will only get the defined number of `$top` results or [Resource Graph limits any query to returning only `100` records](https://docs.microsoft.com/en-us/azure/governance/resource-graph/concepts/work-with-data). Otherwise, you can use `$top` to increase the result batches from default `100` up to `999` for the `AzAPICall`. Value for `$top` must range from 1 to 999 |          |
 | validateAccess                | `switch`    | Use this parameter if you only want to validate that the requester has permissions to the enpoint, if authorization is denied AzAPICall returns 'failed'. (Using `-validateAccess` will set `noPaging` to `true`)                                                                                |          |
 | skipOnErrorCode                | `int32[]`    | In some cases _(e.g. trying to add a user to a group were the user is already a member of)_ the API responde with an http status code 400. This is an expected error. To not throw an error and exit the script, you can use this parameter and set an expected error status code like `400`. You can also pass multiple errorcodes e.g. `-skipOnErrorCode 400,409` |          |
-| unhandledErrorAction           | `string`    | When a call to an API returns an Error, that error is processed by AzAPICallErrorHandler. If that error is unhandled, AzAPICallErrorHandler will log the error and Throw a message which terminates the script. This happens when parameter -unhandledErrorAction is set to "Stop" which is also the default if not configured. When -unhandledErrorAction is set to "Continue", AzAPICallErrorHandler logs the error and continues processing,_ |          |
+| unhandledErrorAction           | `string`    | When a call to an API returns an Error, that error is processed by AzAPICallErrorHandler. If that error is unhandled, AzAPICallErrorHandler will log the error and Throw a message which terminates the script. This happens when parameter -unhandledErrorAction is set to "Stop" which is also the default if not configured. When -unhandledErrorAction is set to "Continue", AzAPICallErrorHandler logs the error including full details to raise an issue at the repo and continues processing. When -unhandledErrorAction is set to "ContinueQuiet", AzAPICallErrorHandler only logs the error (excluding full details to raise an issue at the repo) and continues processing | default is 'stop', options: 'Continue', 'ContinueQuiet' |
 
 ### Good to know
 By default, endPoints return results in batches of e.g. `100`. You can increase the return count defining e.g. `$top=999` (`$top` requires use of `consistencyLevel` = `eventual`)

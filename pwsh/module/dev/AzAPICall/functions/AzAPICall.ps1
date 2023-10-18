@@ -35,9 +35,10 @@
 
     .PARAMETER unhandledErrorAction
     Parameter description
-      Used to either "Stop" (Default) or "Continue" when encountering an Unhandled Error
+      Used to either "Stop" (Default), "Continue", or "ContinueQuiet" when encountering an Unhandled Error
         "Stop" Throws the Error which terminates processing
-        "Continue" outputs the error and continues processing
+        "Continue" outputs the error with Parameter Dump and continues processing
+        "ContinueQuiet" outputs the error without Parameter Dump and continues processing
 
     .PARAMETER noPaging
     Parameter description
@@ -97,7 +98,7 @@
 
         [Parameter()]
         [string]
-        [ValidateSet('Stop', 'Continue')]
+        [ValidateSet('Stop', 'Continue', 'ContinueQuiet')]
         $unhandledErrorAction = 'Stop',
 
         [Parameter()]
@@ -182,13 +183,13 @@
                     }
                     else {
                         Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'" -logMessageForegroundColor 'Yellow'
-                        Logging -preventWriteOutput $true -logMessage "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository)" -logMessageForegroundColor 'Yellow'
+                        Logging -preventWriteOutput $true -logMessage "!c712e5a2 Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository)" -logMessageForegroundColor 'Yellow'
                         Throw "Error - Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'"
                     }
                 }
                 else {
                     Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'" -logMessageForegroundColor 'Yellow'
-                    Logging -preventWriteOutput $true -logMessage "!Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository)" -logMessageForegroundColor 'Yellow'
+                    Logging -preventWriteOutput $true -logMessage "!ab981d8f Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository)" -logMessageForegroundColor 'Yellow'
                     Throw "Error - Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'"
                 }
             }
@@ -374,7 +375,8 @@
         if ($unexpectedError -eq $false -and $connectionRelatedError -eq $false) {
             debugAzAPICall -debugMessage 'unexpectedError: false'
             if ($actualStatusCode -notin 200..204) {
-                if ($listenOn -eq 'StatusCode') {
+                #if the token has exired it would only return statuscode 401 (ExpiredAuthenticationToken) and not the actual statuscode
+                if ($listenOn -eq 'StatusCode' -and ($actualStatusCode -ne 401 -and $catchResult.error.code -ne 'ExpiredAuthenticationToken')) {
                     return [int32]$actualStatusCode
                 }
                 else {
@@ -434,7 +436,7 @@
                             Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] '$currentTask' uri='$uri' Command 'ConvertFrom-Json' failed: $($_.Exception.Message)" -logMessageForegroundColor 'darkred'
                             Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] '$currentTask' uri='$uri' Trying command 'ConvertFrom-Json -AsHashtable'" -logMessageForegroundColor 'darkred'
                             try {
-                                $azAPIRequestConvertedFromJsonAsHashTable = ($azAPIRequest.Content | ConvertFrom-Json -AsHashtable)
+                                $azAPIRequestConvertedFromJsonAsHashTable = ($azAPIRequest.Content | ConvertFrom-Json -AsHashtable -ErrorAction Stop)
                                 Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] '$currentTask' uri='$uri' Command 'ConvertFrom-Json -AsHashtable' succeeded. Please file an issue at the AzGovViz GitHub repository (aka.ms/AzGovViz) and provide a dump (scrub subscription Id and company identifyable names) of the resource (portal JSOn view) - Thank you!" -logMessageForegroundColor 'darkred'
                                 #$azAPIRequestConvertedFromJsonAsHashTable | ConvertTo-Json -Depth 99
                                 if ($currentTask -like 'Getting Resource Properties*') {
@@ -454,10 +456,17 @@
                             }
                         }
                         else {
-                            Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] '$currentTask' uri='$uri' Command 'ConvertFrom-Json' failed (not *different casing*). Please file an issue at the AzGovViz GitHub repository (aka.ms/AzGovViz) and provide a dump (scrub subscription Id and company identifyable names) of the resource (portal JSOn view) - Thank you!" -logMessageForegroundColor 'darkred'
-                            Write-Host $_.Exception.Message
-                            Write-Host $_
-                            Throw 'throwing - Command ConvertFrom-Json failed (not *different casing*)'
+                            # Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] '$currentTask' uri='$uri' Command 'ConvertFrom-Json' failed (not *different casing*). Please file an issue at the AzGovViz GitHub repository (aka.ms/AzGovViz) and provide a dump (scrub subscription Id and company identifyable names) of the resource (portal JSOn view) - Thank you!" -logMessageForegroundColor 'darkred'
+                            # Write-Host $_.Exception.Message
+                            # Write-Host $_
+
+                            #Throw 'throwing - Command ConvertFrom-Json failed (not *different casing*)'
+                            $contentTypeName = 'unknown'
+                            if ($azAPIRequest.Content.GetType()) {
+                                $contentTypeName = "$($azAPIRequest.Content.GetType().Name) ($($azAPIRequest.Content.GetType().BaseType))"
+                            }
+                            Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] '$currentTask' uri='$uri' Returning response content (`$azAPIRequest.Content) as is [$contentTypeName]" -logMessageForegroundColor 'DarkGray'
+                            return $azAPIRequest.Content
                         }
                     }
                 }
@@ -636,7 +645,7 @@
                 }
                 else {
                     Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] $currentTask try #$($tryCounterConnectionRelatedError) 'connectionRelatedError' occurred '$connectionRelatedErrorPhrase' (tried $($tryCounterConnectionRelatedError - 1) times) - unhandledErrorAction: $unhandledErrorAction" -logMessageForegroundColor 'DarkRed'
-                    if ($unhandledErrorAction -eq 'Continue') {
+                    if ($unhandledErrorAction -in @('Continue', 'ContinueQuiet')) {
                         break
                     }
                     else {
@@ -656,7 +665,7 @@
                 }
                 else {
                     Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] $currentTask try #$($tryCounterUnexpectedError) 'unexpectedError' occurred (tried $($tryCounterUnexpectedError - 1) times) - unhandledErrorAction: $unhandledErrorAction" -logMessageForegroundColor 'DarkRed'
-                    if ($unhandledErrorAction -eq 'Continue') {
+                    if ($unhandledErrorAction -in @('Continue', 'ContinueQuiet')) {
                         break
                     }
                     else {
