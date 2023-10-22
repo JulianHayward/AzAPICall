@@ -1720,7 +1720,7 @@ function getARMLocations {
         }
     }
     else {
-        Logging -logMessage "   Get ARM locations not possible (no subscription in current context). Either use parameter -SubscriptionId4AzContext (initAzAPICall -SubscriptionId4AzContext <subscriptionId>) or if you do not have any subscriptions then you won´t be able to address regional endpoints e.g. https://westeurope.azure (info: parameter `$SkipAzContextSubscriptionValidation = $SkipAzContextSubscriptionValidation)"
+        Logging -logMessage "   Get ARM locations not possible (no subscription in current context). Either use parameter -SubscriptionId4AzContext (initAzAPICall -SubscriptionId4AzContext <subscriptionId>) or if you do not have any subscriptions then you won´t be able to address regional endpoints e.g. 'https://westeurope.management.azure.com/' (info: parameter `$SkipAzContextSubscriptionValidation = $SkipAzContextSubscriptionValidation)"
         $AzApiCallConfiguration['htParameters'].ARMLocations = @()
     }
 }
@@ -1736,7 +1736,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.82' }
+function getAzAPICallVersion { return '1.1.83' }
 
 function getJWTDetails {
     <#
@@ -1857,8 +1857,16 @@ function initAzAPICall {
         $AzAPICallConfiguration['AzAPICallRuleSet'].AzAPICallErrorHandler = $funcAzAPICallErrorHandler
     }
 
-    $AzAPICallConfiguration['htParameters'] += setHtParameters -AzAccountsVersion $AzAccountsVersion -gitHubRepository $GitHubRepository -DebugAzAPICall $DebugAzAPICall
-    Logging -preventWriteOutput $true -logMessage '  AzAPICall htParameters:'
+    $splatHtParameters = @{
+        AzAccountsVersion                   = $AzAccountsVersion
+        GitHubRepository                    = $GitHubRepository
+        DebugAzAPICall                      = $DebugAzAPICall
+        SubscriptionId4AzContext            = $SubscriptionId4AzContext
+        TenantId4AzContext                  = $TenantId4AzContext
+        SkipAzContextSubscriptionValidation = $SkipAzContextSubscriptionValidation
+    }
+    $AzAPICallConfiguration['htParameters'] += setHtParameters @splatHtParameters
+    Logging -preventWriteOutput $true -logMessage ' AzAPICall htParameters:'
     Logging -preventWriteOutput $true -logMessage $($AzAPICallConfiguration['htParameters'] | Format-Table -AutoSize | Out-String)
     Logging -preventWriteOutput $true -logMessage '  Create htParameters succeeded' -logMessageForegroundColor 'Green'
 
@@ -1984,7 +1992,9 @@ function initAzAPICall {
         Logging -preventWriteOutput $true -logMessage '  Check Az context failed: Az context is not set to any Subscription'
         Logging -preventWriteOutput $true -logMessage '  Set Az context to a subscription by running: Set-AzContext -subscription <subscriptionId> (run Get-AzSubscription to get the list of available Subscriptions). When done re-run the script'
         Logging -preventWriteOutput $true -logMessage '  OR'
-        Logging -preventWriteOutput $true -logMessage '  Use parameter -SubscriptionId4AzContext - e.g. .\AzGovVizParallel.ps1 -SubscriptionId4AzContext <subscriptionId>'
+        Logging -preventWriteOutput $true -logMessage '  Use parameter -SubscriptionId4AzContext - e.g. initAzAPICall -SubscriptionId4AzContext <subscriptionId>'
+        Logging -preventWriteOutput $true -logMessage '  OR'
+        Logging -preventWriteOutput $true -logMessage '  Use parameter -SkipAzContextSubscriptionValidation - e.g. initAzAPICall -SkipAzContextSubscriptionValidation $true'
         Throw 'Error - check the last console output for details'
     }
     else {
@@ -2143,7 +2153,19 @@ function setHtParameters {
 
         [Parameter(Mandatory)]
         [bool]
-        $DebugAzAPICall
+        $DebugAzAPICall,
+
+        [Parameter(Mandatory = $false)]
+        [string]
+        $SubscriptionId4AzContext,
+
+        [Parameter(Mandatory = $false)]
+        [string]
+        $TenantId4AzContext,
+
+        [Parameter(Mandatory)]
+        [bool]
+        $SkipAzContextSubscriptionValidation
     )
 
     Logging -preventWriteOutput $true -logMessage ' Create htParameters'
@@ -2186,30 +2208,38 @@ function setHtParameters {
         Logging -preventWriteOutput $true -logMessage '  AzAPICall debug disabled' -logMessageForegroundColor 'Cyan'
     }
 
-    if ($DebugAzAPICall) {
-        Logging -preventWriteOutput $true -logMessage '  AzAPICall preparing ht for return' -logMessageForegroundColor 'Cyan'
-        Logging -preventWriteOutput $true -logMessage "     debugAzAPICall               = $DebugAzAPICall" -logMessageForegroundColor 'Cyan'
-        Logging -preventWriteOutput $true -logMessage "     gitHubRepository             = $GitHubRepository" -logMessageForegroundColor 'Cyan'
-        Logging -preventWriteOutput $true -logMessage "     psVersion                    = $($PSVersionTable.PSVersion)" -logMessageForegroundColor 'Cyan'
-        Logging -preventWriteOutput $true -logMessage "     azAccountsVersion            = $AzAccountsVersion" -logMessageForegroundColor 'Cyan'
-        Logging -preventWriteOutput $true -logMessage "     azAPICallModuleVersion       = $AzAPICallVersion" -logMessageForegroundColor 'Cyan'
-        Logging -preventWriteOutput $true -logMessage "     codeRunPlatform              = $codeRunPlatform" -logMessageForegroundColor 'Cyan'
-        Logging -preventWriteOutput $true -logMessage "     onAzureDevOpsOrGitHubActions = $([bool]$onAzureDevOpsOrGitHubActions)" -logMessageForegroundColor 'Cyan'
-        Logging -preventWriteOutput $true -logMessage "     onAzureDevOps                = $([bool]$onAzureDevOps)" -logMessageForegroundColor 'Cyan'
-        Logging -preventWriteOutput $true -logMessage "     onGitHubActions              = $([bool]$onGitHubActions)" -logMessageForegroundColor 'Cyan'
-    }
+    # if ($DebugAzAPICall) {
+    #     Logging -preventWriteOutput $true -logMessage '  <_______________________________________' -logMessageForegroundColor 'Cyan'
+    #     Logging -preventWriteOutput $true -logMessage '  AzAPICall preparing ht for return' -logMessageForegroundColor 'Cyan'
+    #     Logging -preventWriteOutput $true -logMessage "     debugAzAPICall                      = $DebugAzAPICall" -logMessageForegroundColor 'Cyan'
+    #     Logging -preventWriteOutput $true -logMessage "     gitHubRepository                    = $GitHubRepository" -logMessageForegroundColor 'Cyan'
+    #     Logging -preventWriteOutput $true -logMessage "     psVersion                           = $($PSVersionTable.PSVersion)" -logMessageForegroundColor 'Cyan'
+    #     Logging -preventWriteOutput $true -logMessage "     azAccountsVersion                   = $AzAccountsVersion" -logMessageForegroundColor 'Cyan'
+    #     Logging -preventWriteOutput $true -logMessage "     azAPICallModuleVersion              = $AzAPICallVersion" -logMessageForegroundColor 'Cyan'
+    #     Logging -preventWriteOutput $true -logMessage "     codeRunPlatform                     = $codeRunPlatform" -logMessageForegroundColor 'Cyan'
+    #     Logging -preventWriteOutput $true -logMessage "     onAzureDevOpsOrGitHubActions        = $([bool]$onAzureDevOpsOrGitHubActions)" -logMessageForegroundColor 'Cyan'
+    #     Logging -preventWriteOutput $true -logMessage "     onAzureDevOps                       = $([bool]$onAzureDevOps)" -logMessageForegroundColor 'Cyan'
+    #     Logging -preventWriteOutput $true -logMessage "     onGitHubActions                     = $([bool]$onGitHubActions)" -logMessageForegroundColor 'Cyan'
+    #     Logging -preventWriteOutput $true -logMessage "     subscriptionId4AzContext            = $($SubscriptionId4AzContext)" -logMessageForegroundColor 'Cyan'
+    #     Logging -preventWriteOutput $true -logMessage "     tenantId4AzContext                  = $($TenantId4AzContext)" -logMessageForegroundColor 'Cyan'
+    #     Logging -preventWriteOutput $true -logMessage "     skipAzContextSubscriptionValidation = $([bool]$SkipAzContextSubscriptionValidation)" -logMessageForegroundColor 'Cyan'
+    #     Logging -preventWriteOutput $true -logMessage '  _______________________________________>' -logMessageForegroundColor 'Cyan'
+    # }
 
     #Region Test-HashtableParameter
     $htParameters = [ordered]@{
-        debugAzAPICall               = $DebugAzAPICall
-        gitHubRepository             = $GitHubRepository
-        psVersion                    = $PSVersionTable.PSVersion
-        azAccountsVersion            = $AzAccountsVersion
-        azAPICallModuleVersion       = $AzAPICallVersion
-        codeRunPlatform              = $codeRunPlatform
-        onAzureDevOpsOrGitHubActions = [bool]$onAzureDevOpsOrGitHubActions
-        onAzureDevOps                = [bool]$onAzureDevOps
-        onGitHubActions              = [bool]$onGitHubActions
+        debugAzAPICall                      = $DebugAzAPICall
+        gitHubRepository                    = $GitHubRepository
+        psVersion                           = $PSVersionTable.PSVersion
+        azAccountsVersion                   = $AzAccountsVersion
+        azAPICallModuleVersion              = $AzAPICallVersion
+        codeRunPlatform                     = $codeRunPlatform
+        onAzureDevOpsOrGitHubActions        = [bool]$onAzureDevOpsOrGitHubActions
+        onAzureDevOps                       = [bool]$onAzureDevOps
+        onGitHubActions                     = [bool]$onGitHubActions
+        subscriptionId4AzContext            = $subscriptionId4AzContext
+        tenantId4AzContext                  = $tenantId4AzContext
+        skipAzContextSubscriptionValidation = [bool]$skipAzContextSubscriptionValidation
     }
 
     return $htParameters

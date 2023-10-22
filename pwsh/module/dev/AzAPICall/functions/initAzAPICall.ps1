@@ -54,8 +54,16 @@
         $AzAPICallConfiguration['AzAPICallRuleSet'].AzAPICallErrorHandler = $funcAzAPICallErrorHandler
     }
 
-    $AzAPICallConfiguration['htParameters'] += setHtParameters -AzAccountsVersion $AzAccountsVersion -gitHubRepository $GitHubRepository -DebugAzAPICall $DebugAzAPICall
-    Logging -preventWriteOutput $true -logMessage '  AzAPICall htParameters:'
+    $splatHtParameters = @{
+        AzAccountsVersion                   = $AzAccountsVersion
+        GitHubRepository                    = $GitHubRepository
+        DebugAzAPICall                      = $DebugAzAPICall
+        SubscriptionId4AzContext            = $SubscriptionId4AzContext
+        TenantId4AzContext                  = $TenantId4AzContext
+        SkipAzContextSubscriptionValidation = $SkipAzContextSubscriptionValidation
+    }
+    $AzAPICallConfiguration['htParameters'] += setHtParameters @splatHtParameters
+    Logging -preventWriteOutput $true -logMessage ' AzAPICall htParameters:'
     Logging -preventWriteOutput $true -logMessage $($AzAPICallConfiguration['htParameters'] | Format-Table -AutoSize | Out-String)
     Logging -preventWriteOutput $true -logMessage '  Create htParameters succeeded' -logMessageForegroundColor 'Green'
 
@@ -181,7 +189,9 @@
         Logging -preventWriteOutput $true -logMessage '  Check Az context failed: Az context is not set to any Subscription'
         Logging -preventWriteOutput $true -logMessage '  Set Az context to a subscription by running: Set-AzContext -subscription <subscriptionId> (run Get-AzSubscription to get the list of available Subscriptions). When done re-run the script'
         Logging -preventWriteOutput $true -logMessage '  OR'
-        Logging -preventWriteOutput $true -logMessage '  Use parameter -SubscriptionId4AzContext - e.g. .\AzGovVizParallel.ps1 -SubscriptionId4AzContext <subscriptionId>'
+        Logging -preventWriteOutput $true -logMessage '  Use parameter -SubscriptionId4AzContext - e.g. initAzAPICall -SubscriptionId4AzContext <subscriptionId>'
+        Logging -preventWriteOutput $true -logMessage '  OR'
+        Logging -preventWriteOutput $true -logMessage '  Use parameter -SkipAzContextSubscriptionValidation - e.g. initAzAPICall -SkipAzContextSubscriptionValidation $true'
         Throw 'Error - check the last console output for details'
     }
     else {

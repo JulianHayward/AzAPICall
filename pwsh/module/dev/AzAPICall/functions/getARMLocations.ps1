@@ -22,7 +22,7 @@ function getARMLocations {
         }
     }
     else {
-        Logging -logMessage "   Get ARM locations not possible (no subscription in current context). Either use parameter -SubscriptionId4AzContext (initAzAPICall -SubscriptionId4AzContext <subscriptionId>) or if you do not have any subscriptions then you won´t be able to address regional endpoints e.g. https://westeurope.azure (info: parameter `$SkipAzContextSubscriptionValidation = $SkipAzContextSubscriptionValidation)"
+        Logging -logMessage "   Get ARM locations not possible (no subscription in current context). Either use parameter -SubscriptionId4AzContext (initAzAPICall -SubscriptionId4AzContext <subscriptionId>) or if you do not have any subscriptions then you won´t be able to address regional endpoints e.g. 'https://westeurope.management.azure.com/' (info: parameter `$SkipAzContextSubscriptionValidation = $SkipAzContextSubscriptionValidation)"
         $AzApiCallConfiguration['htParameters'].ARMLocations = @()
     }
 }
