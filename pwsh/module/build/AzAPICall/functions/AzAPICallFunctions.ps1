@@ -205,8 +205,15 @@ function AzAPICall {
             }
         }
         else {
-            if (-not $AzAPICallConfiguration['htBearerAccessToken'].($targetEndpoint)) {
-                createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
+            if ($targetEndPoint -like 'ARM*' -and $targetEndPoint -ne 'ARM') {
+                if (-not $AzAPICallConfiguration['htBearerAccessToken'].ARM) {
+                    createBearerToken -targetEndPoint 'ARM' -AzAPICallConfiguration $AzAPICallConfiguration
+                }
+            }
+            else {
+                if (-not $AzAPICallConfiguration['htBearerAccessToken'].($targetEndpoint)) {
+                    createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
+                }
             }
         }
 
@@ -229,9 +236,17 @@ function AzAPICall {
                 }
             }
             else {
-                $Header = @{
-                    'Content-Type'  = 'application/json';
-                    'Authorization' = "Bearer $($AzAPICallConfiguration['htBearerAccessToken'].$targetEndpoint)"
+                if ($targetEndPoint -like 'ARM*' -and $targetEndPoint -ne 'ARM') {
+                    $Header = @{
+                        'Content-Type'  = 'application/json';
+                        'Authorization' = "Bearer $($AzAPICallConfiguration['htBearerAccessToken'].ARM)"
+                    }
+                }
+                else {
+                    $Header = @{
+                        'Content-Type'  = 'application/json';
+                        'Authorization' = "Bearer $($AzAPICallConfiguration['htBearerAccessToken'].$targetEndpoint)"
+                    }
                 }
             }
 
@@ -709,12 +724,12 @@ function AzAPICallErrorHandler {
     }
 
 
-    if ($catchResult.error.code -like '*GatewayTimeout*' -or $catchResult.error.code -like '*BadGatewayConnection*' -or $catchResult.error.code -like '*InvalidGatewayHost*' -or $catchResult.error.code -like '*ServerTimeout*' -or $catchResult.error.code -like '*ServiceUnavailable*' -or $catchResult.code -like '*ServiceUnavailable*' -or $catchResult.error.code -like '*MultipleErrorsOccurred*' -or $catchResult.code -like '*InternalServerError*' -or $catchResult.error.code -like '*InternalServerError*' -or $catchResult.error.code -like '*RequestTimeout*' -or $catchResult.code -like '*RequestTimeout*' -or $catchResult.error.code -like '*UnknownError*' -or $catchResult.error.code -eq '500') {
+    if (($catchResult.error.code -like '*BadGateway*' -and $actualStatusCode -eq 502) -or $catchResult.error.code -like '*GatewayTimeout*' -or $catchResult.error.code -like '*BadGatewayConnection*' -or $catchResult.error.code -like '*InvalidGatewayHost*' -or $catchResult.error.code -like '*ServerTimeout*' -or $catchResult.error.code -like '*ServiceUnavailable*' -or $catchResult.code -like '*ServiceUnavailable*' -or $catchResult.error.code -like '*MultipleErrorsOccurred*' -or $catchResult.code -like '*InternalServerError*' -or $catchResult.error.code -like '*InternalServerError*' -or $catchResult.error.code -like '*RequestTimeout*' -or $catchResult.code -like '*RequestTimeout*' -or $catchResult.error.code -like '*UnknownError*' -or $catchResult.error.code -eq '500' -or $catchResult.error.code -eq 500) {
         $maxTries = 15
         if ($tryCounter -gt $maxTries) {
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: exit"
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: exit (after $maxTries tries)"
             #Throw 'Error - check the last console output for details'
-            $exitMsg = 'AzAPICall: exit'
+            $exitMsg = "AzAPICall: exit (after $maxTries tries)"
         }
         else {
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: try again in $tryCounter second(s)"
@@ -1098,9 +1113,9 @@ function AzAPICallErrorHandler {
         $maxTries = 7
         $sleepSec = @(1, 3, 5, 7, 10, 12, 20, 30, 40, 45)[$tryCounter]
         if ($tryCounter -gt $maxTries) {
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: exit"
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: exit (after $maxTries tries)"
             #Throw 'Error - check the last console output for details'
-            $exitMsg = 'AzAPICall: exit'
+            $exitMsg = "AzAPICall: exit (after $maxTries tries)"
         }
         else {
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: sleeping $($sleepSec) seconds"
@@ -1167,7 +1182,7 @@ function AzAPICallErrorHandler {
 
     elseif (($actualStatusCode -eq 429 -and $catchResult.error.code -eq 'OperationNotAllowed') -or
         $catchResult.error.code -eq 'ResourceRequestsThrottled' -or
-        $catchResult.error.code -eq '429' -or
+        $catchResult.error.code -eq 429 -or
         $catchResult.error.code -eq 'RateLimiting' -or
         $catchResult.code -eq 'TooManyRequests' -or
         $actualStatusCode -eq 429
@@ -1193,7 +1208,7 @@ function AzAPICallErrorHandler {
             }
             return $response
         }
-        if ($catchResult.error.code -eq '429') {
+        if ($catchResult.error.code -eq '429' -or $catchResult.error.code -eq 429) {
             if ($catchResult.error.message -like '*60 seconds*') {
                 $sleepSeconds = (60 + $tryCounter)
             }
@@ -1331,7 +1346,7 @@ function AzAPICallErrorHandler {
         $sleepSec = @(1, 3, 5, 7, 10, 12, 20, 30, 40, 45)[$tryCounter]
         if ($tryCounter -gt $maxTries) {
             #Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: exit"
-            $exitMsg = 'AzAPICall: exit'
+            $exitMsg = "AzAPICall: exit (after $maxTries tries)"
             #Throw 'Error - check the last console output for details'
         }
         else {
@@ -1390,10 +1405,11 @@ function AzAPICallErrorHandler {
                 ($catchResult.code -like '*ResourceGroupNotFound*') -or
                 ($catchResult.code -eq 'ResourceTypeNotSupported') -or
                 ($catchResult.code -eq 'ResourceProviderNotSupported') -or
-                ($catchResult.message -like '*invalid character*')
+                ($catchResult.message -like '*invalid character*') -or
+                ($actualStatusCode -eq 404 -and $catchResult.error.code -eq 'InvalidResourceType') #microsoft.datafactory/datafactories
         )
     ) {
-        if ($catchResult.message -like '*invalid character*') {
+        if (($actualStatusCode -eq 404 -and $catchResult.error.code -eq 'InvalidResourceType') -or $catchResult.message -like '*invalid character*' -or $catchResult.error.code -like '*ResourceNotFound*' -or $catchResult.code -like '*ResourceNotFound*' -or $catchResult.error.code -like '*ResourceGroupNotFound*' -or $catchResult.code -like '*ResourceGroupNotFound*') {
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: The resourceId '$($resourceId)' will be skipped - return 'skipResource'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
@@ -1401,22 +1417,7 @@ function AzAPICallErrorHandler {
             }
             return $response
         }
-        if ($catchResult.error.code -like '*ResourceNotFound*' -or $catchResult.code -like '*ResourceNotFound*') {
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: The resourceId '$($resourceId)' will be skipped - return 'skipResource'"
-            $response = @{
-                action    = 'return' #break or return or returnCollection
-                returnVar = 'skipResource'
-            }
-            return $response
-        }
-        if ($catchResult.error.code -like '*ResourceGroupNotFound*' -or $catchResult.code -like '*ResourceGroupNotFound*') {
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: The resourceId '$($resourceId)' will be skipped - return 'skipResource'"
-            $response = @{
-                action    = 'return' #break or return or returnCollection
-                returnVar = 'skipResource'
-            }
-            return $response
-        }
+
         if ($catchResult.code -eq 'ResourceTypeNotSupported' -or $catchResult.code -eq 'ResourceProviderNotSupported') {
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: return 'ResourceTypeOrResourceProviderNotSupported'"
             $response = @{
@@ -1712,7 +1713,11 @@ function getARMLocations {
 
         if ($getARMLocations.Count -gt 0) {
             Logging -logMessage "   Get ARM locations succeeded (locations count: '$($getARMLocations.Count)')" -logMessageForegroundColor 'Green'
-            $AzApiCallConfiguration['htParameters'].ARMLocations = $getARMLocations.name
+            $AzApiCallConfiguration['htParameters'].ARMLocations = $getARMLocations.name | Sort-Object
+            foreach ($location in $getARMLocations) {
+                $AzApiCallConfiguration['azAPIEndpointUrls']."ARM$($location.name.tolower())" = $AzApiCallConfiguration['azAPIEndpointUrls'].ARM -replace 'https://', "https://$($location.name)."
+                $AzApiCallConfiguration['azAPIEndpoints'].($AzApiCallConfiguration['azAPIEndpointUrls'].ARM -replace 'https://', "$($location.name).") = "ARM$($location.name.tolower())"
+            }
         }
         else {
             Logging -logMessage "   Get ARM locations failed (locations count: '$($getARMLocations.Count)')"
@@ -1736,7 +1741,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.83' }
+function getAzAPICallVersion { return '1.1.84' }
 
 function getJWTDetails {
     <#
@@ -1876,6 +1881,8 @@ function initAzAPICall {
     Logging -preventWriteOutput $true -logMessage ' Get Az context'
     try {
         $AzAPICallConfiguration['checkContext'] = Get-AzContext -ErrorAction Stop
+        $AzAPICallConfiguration['htParameters'].azureCloudEnvironment = $AzAPICallConfiguration['checkContext'].environment.Name
+        Logging -preventWriteOutput $true -logMessage "  Azure cloud environment: $($AzAPICallConfiguration['htParameters'].azureCloudEnvironment)"
     }
     catch {
         $_

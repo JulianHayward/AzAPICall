@@ -73,6 +73,8 @@
     Logging -preventWriteOutput $true -logMessage ' Get Az context'
     try {
         $AzAPICallConfiguration['checkContext'] = Get-AzContext -ErrorAction Stop
+        $AzAPICallConfiguration['htParameters'].azureCloudEnvironment = $AzAPICallConfiguration['checkContext'].environment.Name
+        Logging -preventWriteOutput $true -logMessage "  Azure cloud environment: $($AzAPICallConfiguration['htParameters'].azureCloudEnvironment)"
     }
     catch {
         $_

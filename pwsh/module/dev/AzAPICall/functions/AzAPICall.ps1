@@ -205,8 +205,15 @@
             }
         }
         else {
-            if (-not $AzAPICallConfiguration['htBearerAccessToken'].($targetEndpoint)) {
-                createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
+            if ($targetEndPoint -like 'ARM*' -and $targetEndPoint -ne 'ARM') {
+                if (-not $AzAPICallConfiguration['htBearerAccessToken'].ARM) {
+                    createBearerToken -targetEndPoint 'ARM' -AzAPICallConfiguration $AzAPICallConfiguration
+                }
+            }
+            else {
+                if (-not $AzAPICallConfiguration['htBearerAccessToken'].($targetEndpoint)) {
+                    createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
+                }
             }
         }
 
@@ -229,9 +236,17 @@
                 }
             }
             else {
-                $Header = @{
-                    'Content-Type'  = 'application/json';
-                    'Authorization' = "Bearer $($AzAPICallConfiguration['htBearerAccessToken'].$targetEndpoint)"
+                if ($targetEndPoint -like 'ARM*' -and $targetEndPoint -ne 'ARM') {
+                    $Header = @{
+                        'Content-Type'  = 'application/json';
+                        'Authorization' = "Bearer $($AzAPICallConfiguration['htBearerAccessToken'].ARM)"
+                    }
+                }
+                else {
+                    $Header = @{
+                        'Content-Type'  = 'application/json';
+                        'Authorization' = "Bearer $($AzAPICallConfiguration['htBearerAccessToken'].$targetEndpoint)"
+                    }
                 }
             }
 

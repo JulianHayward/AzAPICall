@@ -14,7 +14,11 @@ function getARMLocations {
 
         if ($getARMLocations.Count -gt 0) {
             Logging -logMessage "   Get ARM locations succeeded (locations count: '$($getARMLocations.Count)')" -logMessageForegroundColor 'Green'
-            $AzApiCallConfiguration['htParameters'].ARMLocations = $getARMLocations.name
+            $AzApiCallConfiguration['htParameters'].ARMLocations = $getARMLocations.name | Sort-Object
+            foreach ($location in $getARMLocations) {
+                $AzApiCallConfiguration['azAPIEndpointUrls']."ARM$($location.name.tolower())" = $AzApiCallConfiguration['azAPIEndpointUrls'].ARM -replace 'https://', "https://$($location.name)."
+                $AzApiCallConfiguration['azAPIEndpoints'].($AzApiCallConfiguration['azAPIEndpointUrls'].ARM -replace 'https://', "$($location.name).") = "ARM$($location.name.tolower())"
+            }
         }
         else {
             Logging -logMessage "   Get ARM locations failed (locations count: '$($getARMLocations.Count)')"
