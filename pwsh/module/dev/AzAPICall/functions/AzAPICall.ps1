@@ -435,7 +435,7 @@
                     catch {
                         $azAPIRequestConvertedFromJson = ($azAPIRequest.Content)
                         try {
-                            $storageResponseXML = [xml]([string]$azAPIRequestConvertedFromJson -replace $azAPIRequestConvertedFromJson.Substring(0, 3))
+                            $storageResponseXML = [xml]($azAPIRequestConvertedFromJson -replace ($azAPIRequestConvertedFromJson -replace '<.*'))
                         }
                         catch {
                             debugAzAPICall -debugMessage "non JSON object; return as is ($((($azAPIRequestConvertedFromJson).gettype()).Name))"
