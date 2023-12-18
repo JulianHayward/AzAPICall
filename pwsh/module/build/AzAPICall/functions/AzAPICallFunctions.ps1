@@ -69,8 +69,8 @@ function AzAPICall {
 
         [Parameter()]
         [string]
-        [ValidateSet('StatusCode', 'Headers', 'Content', 'ContentProperties')]
-        $listenOn,
+        [ValidateSet('StatusCode', 'Headers', 'Content', 'ContentProperties', 'Raw', 'Value')]
+        $listenOn = 'Value',
 
         [Parameter()]
         [string]
@@ -509,6 +509,10 @@ function AzAPICall {
                     if (($azAPIRequestConvertedFromJson.properties.rows).Count -gt 0) {
                         $apiCallResultsCollection.Add($azAPIRequestConvertedFromJson)
                     }
+                }
+                elseif ($listenOn -eq 'Raw') {
+                    debugAzAPICall -debugMessage "listenOn=Raw ($(($azAPIRequest).count))"
+                    $null = $apiCallResultsCollection.Add($azAPIRequest)
                 }
                 else {
                     if (($azAPIRequestConvertedFromJson).value) {
@@ -1741,7 +1745,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.85' }
+function getAzAPICallVersion { return '1.1.86' }
 
 function getJWTDetails {
     <#
