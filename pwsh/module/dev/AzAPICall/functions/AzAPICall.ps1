@@ -69,8 +69,8 @@
 
         [Parameter()]
         [string]
-        [ValidateSet('StatusCode', 'Headers', 'Content', 'ContentProperties')]
-        $listenOn,
+        [ValidateSet('StatusCode', 'Headers', 'Content', 'ContentProperties', 'Raw', 'Value')]
+        $listenOn = 'Value',
 
         [Parameter()]
         [string]
@@ -509,6 +509,10 @@
                     if (($azAPIRequestConvertedFromJson.properties.rows).Count -gt 0) {
                         $apiCallResultsCollection.Add($azAPIRequestConvertedFromJson)
                     }
+                }
+                elseif ($listenOn -eq 'Raw') {
+                    debugAzAPICall -debugMessage "listenOn=Raw ($(($azAPIRequest).count))"
+                    $null = $apiCallResultsCollection.Add($azAPIRequest)
                 }
                 else {
                     if (($azAPIRequestConvertedFromJson).value) {
