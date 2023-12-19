@@ -43,6 +43,10 @@ function AzAPICall {
     .PARAMETER noPaging
     Parameter description
 
+    .PARAMETER skipAsynchronousAzureOperation
+    Parameter description
+        Microsoft documentation: https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/async-operations
+
     .EXAMPLE
     PS C:\> $aadgroups = AzAPICall -uri "https://graph.microsoft.com/v1.0/groups?`$top=999&`$filter=(mailEnabled eq false and securityEnabled eq true)&`$select=id,createdDateTime,displayName,description&`$orderby=displayName asc" -method "GET" -currentTask "Microsoft Graph API: Get - Groups" -listenOn "Value" -consistencyLevel "eventual" -noPaging $true
 
@@ -103,7 +107,11 @@ function AzAPICall {
 
         [Parameter()]
         [string]
-        $saResourceGroupName
+        $saResourceGroupName,
+
+        [Parameter()]
+        [switch]
+        $skipAsynchronousAzureOperation
     )
 
     function debugAzAPICall {
@@ -432,7 +440,7 @@ function AzAPICall {
 
                 debugAzAPICall -debugMessage "apiStatusCode: '$actualStatusCode' ($($actualStatusCodePhrase))"
 
-                if (($actualStatusCode -eq 201 -and $actualStatusCodePhrase -eq 'Created') -or ($actualStatusCode -eq 202 -and $actualStatusCodePhrase -in @('Accepted', 'OK'))) {
+                if (-not $skipAsynchronousAzureOperation -and (($actualStatusCode -eq 201 -and $actualStatusCodePhrase -eq 'Created') -or ($actualStatusCode -eq 202 -and $actualStatusCodePhrase -in @('Accepted', 'OK')))) {
                     if ($azAPIRequest.Headers.'Azure-AsyncOperation' -or $azAPIRequest.Headers.'Location') {
                         $isMore = $true
 
