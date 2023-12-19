@@ -113,6 +113,8 @@
             $debugMessage
         )
 
+        # TODO: KS/JH: Having further details about the Invoke-request. E.g. the method POST, GET, PUT, DELETE, ...
+
         if ($doDebugAzAPICall -or $tryCounter -gt 3) {
             if ($doDebugAzAPICall) {
                 Logging -preventWriteOutput $true -logMessage "  [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] DEBUGTASK: $currentTask -> $debugMessage" -logMessageWriteMethod $AzAPICallConfiguration['htParameters'].debugWriteMethod
@@ -426,7 +428,53 @@
                 }
             }
             else {
+                $isMore = $false
+
                 debugAzAPICall -debugMessage "apiStatusCode: '$actualStatusCode' ($($actualStatusCodePhrase))"
+
+                if (($actualStatusCode -eq 201 -and $actualStatusCodePhrase -eq 'Created') -or ($actualStatusCode -eq 202 -and $actualStatusCodePhrase -in @('Accepted', 'OK'))) {
+                    if ($azAPIRequest.Headers.'Azure-AsyncOperation' -or $azAPIRequest.Headers.'Location') {
+                        $isMore = $true
+
+                        $initialBody = $body
+                        $body = $null
+
+                        $initialMethod = $method
+                        $method = 'GET'
+
+                        if ($azAPIRequest.Headers.'Azure-AsyncOperation') {
+                            $uri = $azAPIRequest.Headers.'Azure-AsyncOperation'
+                            $notTryCounter = $true
+                            debugAzAPICall -debugMessage "Azure-AsyncOperation: $Uri"
+                        }
+                        elseif ($azAPIRequest.Headers.'Location') {
+                            $uri = $azAPIRequest.Headers.'Location'
+                            $notTryCounter = $true
+                            debugAzAPICall -debugMessage "Headers.Location: $Uri"
+                        }
+
+                        if ($azAPIRequest.Headers.'Retry-After') {
+                            $retryAfter = [double]::Parse($azAPIRequest.Headers.'Retry-After')
+                            $notTryCounter = $true
+                            debugAzAPICall -debugMessage "Headers.'Retry-After': $retryAfter"
+                            debugAzAPICall -debugMessage "Start-Sleep -Seconds $retryAfter"
+                            $null = Start-Sleep -Seconds $retryAfter
+                        }
+
+                        if ($azAPIRequest.Headers.provisionState) {
+                            $provisionState = $azAPIRequest.Headers.provisionState
+                            debugAzAPICall -debugMessage "Headers.provisionState: $provisionState"
+
+                            if ($provisionState -in @('Succeeded', 'Failed', 'Canceled')) {
+                                $isMore = $false
+                                $notTryCounter = $false
+                            }
+                            else {
+                                $notTryCounter = $true
+                            }
+                        }
+                    }
+                }
 
                 if ($targetEndPoint -eq 'Storage') {
                     try {
@@ -526,7 +574,6 @@
                     }
                 }
 
-                $isMore = $false
                 if (-not $noPaging) {
                     if (-not [string]::IsNullOrWhiteSpace($azAPIRequestConvertedFromJson.nextLink)) {
                         $isMore = $true
@@ -645,7 +692,7 @@
                         debugAzAPICall -debugMessage "NextMarker found: $($storageResponseXML.EnumerationResults.NextMarker)"
                     }
                     else {
-                        debugAzAPICall -debugMessage 'NextLink/skipToken/NextMarker: none'
+                        debugAzAPICall -debugMessage 'NextLink/skipToken/NextMarker: none' # TODO: KS/JH: Check if we should add here as well a re-try or location property
                     }
                 }
             }
