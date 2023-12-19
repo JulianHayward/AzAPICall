@@ -440,7 +440,7 @@
 
                 debugAzAPICall -debugMessage "apiStatusCode: '$actualStatusCode' ($($actualStatusCodePhrase))"
 
-                if (-not $skipAsynchronousAzureOperation -and (($actualStatusCode -eq 201 -and $actualStatusCodePhrase -eq 'Created') -or ($actualStatusCode -eq 202 -and $actualStatusCodePhrase -in @('Accepted', 'OK')))) {
+                if (-not $skipAsynchronousAzureOperation -and (($actualStatusCode -eq 201 -and $actualStatusCodePhrase -in @('Created', 'OK')) -or ($actualStatusCode -eq 202 -and $actualStatusCodePhrase -in @('Accepted', 'OK')))) {
                     if ($azAPIRequest.Headers.'Azure-AsyncOperation' -or $azAPIRequest.Headers.'Location') {
                         $isMore = $true
 
