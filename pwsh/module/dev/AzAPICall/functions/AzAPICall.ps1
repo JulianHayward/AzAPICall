@@ -269,6 +269,7 @@
             }
         }
 
+        ######### REST CALL
         $startAPICall = Get-Date
         $rawException = $null
         try {
@@ -440,6 +441,7 @@
 
                 debugAzAPICall -debugMessage "apiStatusCode: '$actualStatusCode' ($($actualStatusCodePhrase))"
 
+                ##### METHODs: PUT POST PATCH?
                 if (-not $skipAsynchronousAzureOperation -and (($actualStatusCode -eq 201 -and $actualStatusCodePhrase -in @('Created', 'OK')) -or ($actualStatusCode -eq 202 -and $actualStatusCodePhrase -in @('Accepted', 'OK')))) {
                     if ($azAPIRequest.Headers.'Azure-AsyncOperation' -or $azAPIRequest.Headers.'Location') {
                         $isMore = $true
@@ -450,36 +452,45 @@
                         $initialMethod = $method
                         $method = 'GET'
 
+                        $notTryCounter = $true
+
                         if ($azAPIRequest.Headers.'Azure-AsyncOperation') {
                             $uri = $azAPIRequest.Headers.'Azure-AsyncOperation'
-                            $notTryCounter = $true
+                            #$notTryCounter = $true
                             debugAzAPICall -debugMessage "Azure-AsyncOperation: $Uri"
                         }
                         elseif ($azAPIRequest.Headers.'Location') {
                             $uri = $azAPIRequest.Headers.'Location'
-                            $notTryCounter = $true
+                            #$notTryCounter = $true
                             debugAzAPICall -debugMessage "Headers.Location: $Uri"
                         }
 
+                        #### anyway embed a minimum sleeper
+                        $retryAfter = Get-Random -Minimum 1 -Maximum 17
                         if ($azAPIRequest.Headers.'Retry-After') {
                             $retryAfter = [double]::Parse($azAPIRequest.Headers.'Retry-After')
                             $notTryCounter = $true
                             debugAzAPICall -debugMessage "Headers.'Retry-After': $retryAfter"
-                            debugAzAPICall -debugMessage "Start-Sleep -Seconds $retryAfter"
-                            $null = Start-Sleep -Seconds $retryAfter
+                            #debugAzAPICall -debugMessage "Start-Sleep -Seconds $retryAfter"
+                            Logging -preventWriteOutput $true -logMessage "  [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] AsyncOperation Retry-After (API): $retryAfter seconds"
                         }
+                        else {
+                            Logging -preventWriteOutput $true -logMessage "  [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] AsyncOperation Retry-After (Random): $retryAfter seconds"
+                        }
+                        $null = Start-Sleep -Seconds $retryAfter
 
-                        if ($azAPIRequest.Headers.provisionState) {
-                            $provisionState = $azAPIRequest.Headers.provisionState
-                            debugAzAPICall -debugMessage "Headers.provisionState: $provisionState"
+                        if (($azAPIRequest.Content | converfrom-json).status) {
+                            $requestStatus = ($azAPIRequest.Content | converfrom-json).status
+                            debugAzAPICall -debugMessage "Content.status: $requestStatus"
 
-                            if ($provisionState -in @('Succeeded', 'Failed', 'Canceled')) {
+                            ##### -notin ('Running')
+                            if ($requestStatus -in @('Succeeded', 'Failed', 'Canceled')) {
                                 $isMore = $false
                                 $notTryCounter = $false
                             }
-                            else {
-                                $notTryCounter = $true
-                            }
+                            # else {
+                            #     $notTryCounter = $true
+                            # }
                         }
                     }
                 }
