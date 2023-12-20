@@ -121,19 +121,19 @@
             $debugMessage
         )
 
-        # TODO: KS/JH: Having further details about the Invoke-request. E.g. the method POST, GET, PUT, DELETE, ...
-
         if ($doDebugAzAPICall -or $tryCounter -gt 3) {
             if ($doDebugAzAPICall) {
-                Logging -preventWriteOutput $true -logMessage "  [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] DEBUGTASK: $currentTask -> $debugMessage" -logMessageWriteMethod $AzAPICallConfiguration['htParameters'].debugWriteMethod
+                Logging -preventWriteOutput $true -logMessage "  $logMessageDefault DEBUGTASK: $currentTask -> $debugMessage" -logMessageWriteMethod $AzAPICallConfiguration['htParameters'].debugWriteMethod
             }
             if (-not $doDebugAzAPICall -and $tryCounter -gt 3) {
-                Logging -preventWriteOutput $true -logMessage "  [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] Forced DEBUG: $currentTask -> $debugMessage" -logMessageWriteMethod $AzAPICallConfiguration['htParameters'].debugWriteMethod
+                Logging -preventWriteOutput $true -logMessage "  $logMessageDefault Forced DEBUG: $currentTask -> $debugMessage" -logMessageWriteMethod $AzAPICallConfiguration['htParameters'].debugWriteMethod
             }
         }
     }
 
     #Set defaults
+    $logMessageDefault = "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)]"
+
     if (-not $method) { $method = 'GET' }
     if (-not $currentTask) {
         $currentTask = $method + ' ' + $uri
@@ -167,7 +167,7 @@
 
     do {
         if ($uri -notlike 'https://*') {
-            Logging -preventWriteOutput $true -logMessage "  [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] Forced DEBUG: $currentTask -> check uri: '$uri' - EXIT"
+            Logging -preventWriteOutput $true -logMessage "  $logMessageDefault Forced DEBUG: $currentTask -> check uri: '$uri' - EXIT"
             Throw "Error - check uri: '$uri'"
         }
 
@@ -192,13 +192,13 @@
                         }
                     }
                     else {
-                        Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'" -logMessageForegroundColor 'Yellow'
+                        Logging -preventWriteOutput $true -logMessage "$logMessageDefault Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'" -logMessageForegroundColor 'Yellow'
                         Logging -preventWriteOutput $true -logMessage "!c712e5a2 Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository)" -logMessageForegroundColor 'Yellow'
                         Throw "Error - Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'"
                     }
                 }
                 else {
-                    Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'" -logMessageForegroundColor 'Yellow'
+                    Logging -preventWriteOutput $true -logMessage "$logMessageDefault Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'" -logMessageForegroundColor 'Yellow'
                     Logging -preventWriteOutput $true -logMessage "!ab981d8f Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository)" -logMessageForegroundColor 'Yellow'
                     Throw "Error - Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'"
                 }
@@ -289,8 +289,17 @@
                     $azAPIRequest = Invoke-WebRequest -Uri $uri -Method $method -Headers $Header
                 }
             }
+
             $actualStatusCode = $azAPIRequest.StatusCode
-            $actualStatusCodePhrase = 'OK'
+            if ($azAPIRequest.StatusDescription) {
+                $actualStatusCodePhrase = $azAPIRequest.StatusDescription
+            }
+            elseif ($azAPIRequest.StatusCode) {
+                $actualStatusCodePhrase = [System.Net.HttpStatusCode]$azAPIRequest.StatusDescription
+            }
+            else {
+                $actualStatusCodePhrase = 'n/a'
+            }
         }
         catch {
             $rawException = $_
@@ -323,20 +332,20 @@
                     $catchResult = $catchResultPlain
                     $tryCounterUnexpectedError++
                     if ($targetEndpoint -eq 'Storage' -and $catchResult -like '*InvalidAuthenticationInfoServer*The token is expired.') {
-                        Logging -preventWriteOutput $true -logMessage " [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) '$($catchResult.error.code)' | '$($catchResult.error.message)' - requesting new bearer token ($targetEndpoint)"
+                        Logging -preventWriteOutput $true -logMessage " $logMessageDefault $currentTask - try #$tryCounter; returned: (StatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))) '$($catchResult.error.code)' | '$($catchResult.error.message)' - requesting new bearer token ($targetEndpoint)"
                         createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
                     }
                     elseif ($targetEndpoint -eq 'Storage' -and $catchResult -like '*AuthorizationFailure*' -or $catchResult -like '*AuthorizationPermissionDenied*' -or $catchResult -like '*AuthorizationPermissionMismatch*' -or $catchResult -like '*name or service not known*') {
                         if ($catchResult -like '*AuthorizationPermissionDenied*' -or $catchResult -like '*AuthorizationPermissionMismatch*') {
                             if ($catchResult -like '*AuthorizationPermissionDenied*') {
-                                Logging -preventWriteOutput $true -logMessage "  [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] Forced DEBUG: $currentTask -> $catchResult -> returning string 'AuthorizationPermissionDenied'"
+                                Logging -preventWriteOutput $true -logMessage "  $logMessageDefault Forced DEBUG: $currentTask -> $catchResult -> returning string 'AuthorizationPermissionDenied'"
                             }
                             if ($catchResult -like '*AuthorizationPermissionMismatch*') {
-                                Logging -preventWriteOutput $true -logMessage "  [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] Forced DEBUG: $currentTask -> $catchResult -> returning string 'AuthorizationPermissionMismatch' - this error might occur due to only recently applied RBAC permissions"
+                                Logging -preventWriteOutput $true -logMessage "  $logMessageDefault Forced DEBUG: $currentTask -> $catchResult -> returning string 'AuthorizationPermissionMismatch' - this error might occur due to only recently applied RBAC permissions"
                             }
 
                             if ($saResourceGroupName) {
-                                Logging -preventWriteOutput $true -logMessage "  [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] $currentTask - Contribution request: please verify if the Storage Account's ResourceGroup '$($saResourceGroupName)' is a managed Resource Group, if yes please check if the Resource Group Name is listed here: https://github.com/JulianHayward/AzSchnitzels/blob/main/info/managedResourceGroups.txt"
+                                Logging -preventWriteOutput $true -logMessage "  $logMessageDefault $currentTask - Contribution request: please verify if the Storage Account's ResourceGroup '$($saResourceGroupName)' is a managed Resource Group, if yes please check if the Resource Group Name is listed here: https://github.com/JulianHayward/AzSchnitzels/blob/main/info/managedResourceGroups.txt"
                             }
 
                             if ($catchResult -like '*AuthorizationPermissionDenied*') {
@@ -348,16 +357,16 @@
                         }
 
                         if ($catchResult -like '*AuthorizationFailure*') {
-                            Logging -preventWriteOutput $true -logMessage "  [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] Forced DEBUG: $currentTask -> $catchResult -> returning string 'AuthorizationFailure'"
+                            Logging -preventWriteOutput $true -logMessage "  $logMessageDefault Forced DEBUG: $currentTask -> $catchResult -> returning string 'AuthorizationFailure'"
                             return 'AuthorizationFailure'
                         }
                         if ($catchResult -like '*name or service not known*') {
-                            Logging -preventWriteOutput $true -logMessage "  [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] Forced DEBUG: $currentTask -> $catchResult -> returning string 'ResourceUnavailable'"
+                            Logging -preventWriteOutput $true -logMessage "  $logMessageDefault Forced DEBUG: $currentTask -> $catchResult -> returning string 'ResourceUnavailable'"
                             return 'ResourceUnavailable'
                         }
                     }
                     else {
-                        Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] $currentTask try #$($tryCounterUnexpectedError) $($rawException)"
+                        Logging -preventWriteOutput $true -logMessage "$logMessageDefault $currentTask try #$($tryCounterUnexpectedError) $($rawException)"
                         $unexpectedError = $true
                     }
                 }
@@ -391,7 +400,7 @@
                 RawException                         = $rawException
             })
 
-        $message = "attempt#$($tryCounter) processing: $($currenttask) uri: '$($uri)'"
+        $message = "attempt#$($tryCounter) processing: $($currenttask) method: '$method' uri: '$($uri)'"
 
         if ($body) {
             $message += " body: '$($body | Out-String)'"
@@ -417,7 +426,7 @@
 
                     if ($AzAPICallErrorHandlerResponse.action -eq 'retry' -or $AzAPICallErrorHandlerResponse.action -eq 'break' -or $AzAPICallErrorHandlerResponse.action -eq 'return' -or $AzAPICallErrorHandlerResponse.action -eq 'returnCollection') {
                         if ($AzAPICallErrorHandlerResponse.action -eq 'retry') {
-                            debugAzAPICall -debugMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] $currentTask - retry"
+                            debugAzAPICall -debugMessage "$logMessageDefault $currentTask - retry"
                         }
                         if ($AzAPICallErrorHandlerResponse.action -eq 'break') {
                             break
@@ -430,7 +439,7 @@
                         }
                     }
                     else {
-                        Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] `$AzAPICallErrorHandlerResponse.action unexpected (`$AzAPICallErrorHandlerResponse.action = '$($AzAPICallErrorHandlerResponse.action)') - breaking" -logMessageForegroundColor 'darkred'
+                        Logging -preventWriteOutput $true -logMessage "$logMessageDefault `$AzAPICallErrorHandlerResponse.action unexpected (`$AzAPICallErrorHandlerResponse.action = '$($AzAPICallErrorHandlerResponse.action)') - breaking" -logMessageForegroundColor 'darkred'
                         break
                     }
 
@@ -442,8 +451,15 @@
                 debugAzAPICall -debugMessage "apiStatusCode: '$actualStatusCode' ($($actualStatusCodePhrase))"
 
                 #####ToDo: KSJH - METHODs: PUT POST PATCH DELETE?
+                # TODO: Only for ARM?
+                # TODO: Example with RunCommand (return 200 + provisionState or Status). If status isn't Succeeded, Failed or Canceled, then it's still running. Max. Re-try counter + sleep. Exit strategy + message for the user how to handle it later
                 if (-not $skipAsynchronousAzureOperation -and (($actualStatusCode -eq 201 -and $actualStatusCodePhrase -in @('Created', 'OK')) -or ($actualStatusCode -eq 202 -and $actualStatusCodePhrase -in @('Accepted', 'OK')))) {
                     if ($azAPIRequest.Headers.'Azure-AsyncOperation' -or $azAPIRequest.Headers.'Location') {
+                        if ($method -in @('PUT', 'POST', 'PATCH', 'DELETE')) {
+                            $initApiCallResultsCollection = $apiCallResultsCollection.Clone()
+                            $apiCallResultsCollection = [System.Collections.ArrayList]@()
+                        }
+
                         $isMore = $true
 
                         $initialBody = $body
@@ -472,27 +488,40 @@
                             $notTryCounter = $true
                             debugAzAPICall -debugMessage "Headers.'Retry-After': $retryAfter"
                             #debugAzAPICall -debugMessage "Start-Sleep -Seconds $retryAfter"
-                            Logging -preventWriteOutput $true -logMessage "  [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] AsyncOperation Retry-After (API): $retryAfter seconds"
+                            Logging -preventWriteOutput $true -logMessage "  $logMessageDefault AsyncOperation Retry-After (API): $retryAfter seconds"
                         }
                         else {
-                            Logging -preventWriteOutput $true -logMessage "  [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] AsyncOperation Retry-After (Random): $retryAfter seconds"
+                            Logging -preventWriteOutput $true -logMessage "  $logMessageDefault AsyncOperation Retry-After (Random): $retryAfter seconds"
                         }
                         $null = Start-Sleep -Seconds $retryAfter
 
-                        if (($azAPIRequest.Content | converfrom-json).status -or $azAPIRequest.Headers.provisionState) {
-                            if (($azAPIRequest.Content | converfrom-json).status -and $azAPIRequest.Headers.provisionState) {
-                                #####ToDo: KSJH - debug both exist
+                        $azAPIRequestContent = $azAPIRequest.Content | ConvertFrom-Json
+                        $azAPIRequestContentStatus = $azAPIRequestContent.status
+                        $azAPIRequestContentProvisionState = $azAPIRequestContent.provisionState
+
+                        if ($azAPIRequestContentStatus -or $azAPIRequestContentProvisionState) {
+                            if ($azAPIRequestContentStatus -and $azAPIRequestContentProvisionState) {
+                                Logging -preventWriteOutput $true -logMessage "$logMessageDefault '$currentTask' uri='$uri' Content.status and Content.provisionState exists" -logMessageForegroundColor 'darkred'
+
+                                if ($azAPIRequestContentStatus -ne $azAPIRequestContentProvisionState) {
+                                    Logging -preventWriteOutput $true -logMessage "$logMessageDefault '$currentTask' uri='$uri' Content.status ($azAPIRequestContentStatus) and Content.provisionState ($azAPIRequestContentProvisionState) aren't equal" -logMessageForegroundColor 'darkred'
+                                    Throw "AzureAsyncOperation - Content.status ($azAPIRequestContentStatus) and Content.provisionState ($azAPIRequestContentProvisionState) aren't equal"
+                                }
+                                else {
+                                    $requestStatus = $azAPIRequestContentStatus
+                                    debugAzAPICall -debugMessage "Content.status and Content.provisionState: $requestStatus"
+                                }
                             }
                             else {
-                                if (($azAPIRequest.Content | converfrom-json).status) {
-                                    $requestStatus = ($azAPIRequest.Content | converfrom-json).status
+                                if ($azAPIRequestContentStatus) {
+                                    $requestStatus = $azAPIRequestContentStatus
+                                    debugAzAPICall -debugMessage "Content.status: $requestStatus"
                                 }
-                                if ($azAPIRequest.Headers.provisionState) {
-                                    $requestStatus = $azAPIRequest.Headers.provisionState
+                                if ($azAPIRequestContentProvisionState) {
+                                    $requestStatus = $azAPIRequestContentProvisionState
+                                    debugAzAPICall -debugMessage "Content.provisionState: $requestStatus"
                                 }
                             }
-
-                            debugAzAPICall -debugMessage "Content.status: $requestStatus"
 
                             ##### -notin ('Running')
                             if ($requestStatus -in @('Succeeded', 'Failed', 'Canceled')) {
@@ -505,6 +534,8 @@
                         }
                     }
                 }
+
+                # TODO: To be discussed: Everything below in an else-statement? till row 635?
 
                 if ($targetEndPoint -eq 'Storage') {
                     try {
@@ -526,11 +557,11 @@
                     }
                     catch {
                         if ($_.Exception.Message -like '*different casing*') {
-                            Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] '$currentTask' uri='$uri' Command 'ConvertFrom-Json' failed: $($_.Exception.Message)" -logMessageForegroundColor 'darkred'
-                            Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] '$currentTask' uri='$uri' Trying command 'ConvertFrom-Json -AsHashtable'" -logMessageForegroundColor 'darkred'
+                            Logging -preventWriteOutput $true -logMessage "$logMessageDefault '$currentTask' uri='$uri' Command 'ConvertFrom-Json' failed: $($_.Exception.Message)" -logMessageForegroundColor 'darkred'
+                            Logging -preventWriteOutput $true -logMessage "$logMessageDefault '$currentTask' uri='$uri' Trying command 'ConvertFrom-Json -AsHashtable'" -logMessageForegroundColor 'darkred'
                             try {
                                 $azAPIRequestConvertedFromJsonAsHashTable = ($azAPIRequest.Content | ConvertFrom-Json -AsHashtable -ErrorAction Stop)
-                                Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] '$currentTask' uri='$uri' Command 'ConvertFrom-Json -AsHashtable' succeeded. Please file an issue at the AzGovViz GitHub repository (aka.ms/AzGovViz) and provide a dump (scrub subscription Id and company identifyable names) of the resource (portal JSOn view) - Thank you!" -logMessageForegroundColor 'darkred'
+                                Logging -preventWriteOutput $true -logMessage "$logMessageDefault '$currentTask' uri='$uri' Command 'ConvertFrom-Json -AsHashtable' succeeded. Please file an issue at the AzGovViz GitHub repository (aka.ms/AzGovViz) and provide a dump (scrub subscription Id and company identifyable names) of the resource (portal JSOn view) - Thank you!" -logMessageForegroundColor 'darkred'
                                 #$azAPIRequestConvertedFromJsonAsHashTable | ConvertTo-Json -Depth 99
                                 if ($currentTask -like 'Getting Resource Properties*') {
                                     return 'convertfromJSONError'
@@ -538,9 +569,9 @@
                                 Throw 'throwing - Command ConvertFrom-Json failed (*different casing*)'
                             }
                             catch {
-                                Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] '$currentTask' uri='$uri' Command 'ConvertFrom-Json -AsHashtable' failed" -logMessageForegroundColor 'darkred'
+                                Logging -preventWriteOutput $true -logMessage "$logMessageDefault '$currentTask' uri='$uri' Command 'ConvertFrom-Json -AsHashtable' failed" -logMessageForegroundColor 'darkred'
                                 #$_
-                                Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] '$currentTask' uri='$uri' Command 'ConvertFrom-Json -AsHashtable' failed. Please file an issue at the AzGovViz GitHub repository (aka.ms/AzGovViz) and provide a dump (scrub subscription Id and company identifyable names) of the resource (portal JSOn view) - Thank you!" -logMessageForegroundColor 'darkred'
+                                Logging -preventWriteOutput $true -logMessage "$logMessageDefault '$currentTask' uri='$uri' Command 'ConvertFrom-Json -AsHashtable' failed. Please file an issue at the AzGovViz GitHub repository (aka.ms/AzGovViz) and provide a dump (scrub subscription Id and company identifyable names) of the resource (portal JSOn view) - Thank you!" -logMessageForegroundColor 'darkred'
                                 #$azAPIRequest.Content
                                 if ($currentTask -like 'Getting Resource Properties*') {
                                     return 'convertfromJSONError'
@@ -549,7 +580,7 @@
                             }
                         }
                         else {
-                            # Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] '$currentTask' uri='$uri' Command 'ConvertFrom-Json' failed (not *different casing*). Please file an issue at the AzGovViz GitHub repository (aka.ms/AzGovViz) and provide a dump (scrub subscription Id and company identifyable names) of the resource (portal JSOn view) - Thank you!" -logMessageForegroundColor 'darkred'
+                            # Logging -preventWriteOutput $true -logMessage "$logMessageDefault '$currentTask' uri='$uri' Command 'ConvertFrom-Json' failed (not *different casing*). Please file an issue at the AzGovViz GitHub repository (aka.ms/AzGovViz) and provide a dump (scrub subscription Id and company identifyable names) of the resource (portal JSOn view) - Thank you!" -logMessageForegroundColor 'darkred'
                             # Write-Host $_.Exception.Message
                             # Write-Host $_
 
@@ -558,7 +589,7 @@
                             if ($azAPIRequest.Content.GetType()) {
                                 $contentTypeName = "$($azAPIRequest.Content.GetType().Name) ($($azAPIRequest.Content.GetType().BaseType))"
                             }
-                            Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] '$currentTask' uri='$uri' Returning response content (`$azAPIRequest.Content) as is [$contentTypeName]" -logMessageForegroundColor 'DarkGray'
+                            Logging -preventWriteOutput $true -logMessage "$logMessageDefault '$currentTask' uri='$uri' Returning response content (`$azAPIRequest.Content) as is [$contentTypeName]" -logMessageForegroundColor 'DarkGray'
                             return $azAPIRequest.Content
                         }
                     }
@@ -604,20 +635,22 @@
                     }
                 }
 
+                # TODO: To be discussed: Should the Async task located here?
+
                 if (-not $noPaging) {
                     if (-not [string]::IsNullOrWhiteSpace($azAPIRequestConvertedFromJson.nextLink)) {
                         $isMore = $true
                         if ($uri -eq $azAPIRequestConvertedFromJson.nextLink) {
                             if ($restartDueToDuplicateNextlinkCounter -gt 3) {
-                                Logging -preventWriteOutput $true -logMessage " [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] $currentTask restartDueToDuplicateNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
+                                Logging -preventWriteOutput $true -logMessage " $logMessageDefault $currentTask restartDueToDuplicateNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
                                 Throw 'Error - check the last console output for details'
                             }
                             else {
                                 $restartDueToDuplicateNextlinkCounter++
-                                Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] nextLinkLog: uri is equal to nextLinkUri"
-                                Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] nextLinkLog: uri: $uri"
-                                Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] nextLinkLog: nextLinkUri: $($azAPIRequestConvertedFromJson.nextLink)"
-                                Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] nextLinkLog: re-starting (#$($restartDueToDuplicateNextlinkCounter)) '$currentTask'"
+                                Logging -preventWriteOutput $true -logMessage "$logMessageDefault nextLinkLog: uri is equal to nextLinkUri"
+                                Logging -preventWriteOutput $true -logMessage "$logMessageDefault nextLinkLog: uri: $uri"
+                                Logging -preventWriteOutput $true -logMessage "$logMessageDefault nextLinkLog: nextLinkUri: $($azAPIRequestConvertedFromJson.nextLink)"
+                                Logging -preventWriteOutput $true -logMessage "$logMessageDefault nextLinkLog: re-starting (#$($restartDueToDuplicateNextlinkCounter)) '$currentTask'"
                                 $apiCallResultsCollection = [System.Collections.ArrayList]@()
                                 $uri = $initialUri
                                 Start-Sleep -Seconds 10
@@ -640,7 +673,7 @@
                                 if ($bodyHt.options.'$skiptoken') {
                                     if ($bodyHt.options.'$skiptoken' -eq $azAPIRequestConvertedFromJson.'$skipToken') {
                                         if ($restartDueToDuplicateNextlinkCounter -gt 3) {
-                                            Logging -preventWriteOutput $true -logMessage " [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] $currentTask restartDueToDuplicateSkipTokenCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
+                                            Logging -preventWriteOutput $true -logMessage " $logMessageDefault $currentTask restartDueToDuplicateSkipTokenCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
                                             Throw 'Error - check the last console output for details'
                                         }
                                         else {
@@ -674,15 +707,15 @@
                         $isMore = $true
                         if ($uri -eq $azAPIRequestConvertedFromJson.'@odata.nextLink') {
                             if ($restartDueToDuplicateNextlinkCounter -gt 3) {
-                                Logging -preventWriteOutput $true -logMessage " [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] $currentTask restartDueToDuplicate@odataNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
+                                Logging -preventWriteOutput $true -logMessage " $logMessageDefault $currentTask restartDueToDuplicate@odataNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
                                 Throw 'Error - check the last console output for details'
                             }
                             else {
                                 $restartDueToDuplicateNextlinkCounter++
-                                Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] nextLinkLog: uri is equal to @odata.nextLinkUri"
-                                Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] nextLinkLog: uri: $uri"
-                                Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] nextLinkLog: @odata.nextLinkUri: $($azAPIRequestConvertedFromJson.'@odata.nextLink')"
-                                Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] nextLinkLog: re-starting (#$($restartDueToDuplicateNextlinkCounter)) '$currentTask'"
+                                Logging -preventWriteOutput $true -logMessage "$logMessageDefault nextLinkLog: uri is equal to @odata.nextLinkUri"
+                                Logging -preventWriteOutput $true -logMessage "$logMessageDefault nextLinkLog: uri: $uri"
+                                Logging -preventWriteOutput $true -logMessage "$logMessageDefault nextLinkLog: @odata.nextLinkUri: $($azAPIRequestConvertedFromJson.'@odata.nextLink')"
+                                Logging -preventWriteOutput $true -logMessage "$logMessageDefault nextLinkLog: re-starting (#$($restartDueToDuplicateNextlinkCounter)) '$currentTask'"
                                 $apiCallResultsCollection = [System.Collections.ArrayList]@()
                                 $uri = $initialUri
                                 Start-Sleep -Seconds 10
@@ -698,15 +731,15 @@
                         $isMore = $true
                         if ($uri -eq $azAPIRequestConvertedFromJson.properties.nextLink) {
                             if ($restartDueToDuplicateNextlinkCounter -gt 3) {
-                                Logging -preventWriteOutput $true -logMessage " [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] $currentTask restartDueToDuplicateNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
+                                Logging -preventWriteOutput $true -logMessage " $logMessageDefault $currentTask restartDueToDuplicateNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
                                 Throw 'Error - check the last console output for details'
                             }
                             else {
                                 $restartDueToDuplicateNextlinkCounter++
-                                Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] nextLinkLog: uri is equal to nextLinkUri"
-                                Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] nextLinkLog: uri: $uri"
-                                Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] nextLinkLog: nextLinkUri: $($azAPIRequestConvertedFromJson.properties.nextLink)"
-                                Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] nextLinkLog: re-starting (#$($restartDueToDuplicateNextlinkCounter)) '$currentTask'"
+                                Logging -preventWriteOutput $true -logMessage "$logMessageDefault nextLinkLog: uri is equal to nextLinkUri"
+                                Logging -preventWriteOutput $true -logMessage "$logMessageDefault nextLinkLog: uri: $uri"
+                                Logging -preventWriteOutput $true -logMessage "$logMessageDefault nextLinkLog: nextLinkUri: $($azAPIRequestConvertedFromJson.properties.nextLink)"
+                                Logging -preventWriteOutput $true -logMessage "$logMessageDefault nextLinkLog: re-starting (#$($restartDueToDuplicateNextlinkCounter)) '$currentTask'"
                                 $apiCallResultsCollection = [System.Collections.ArrayList]@()
                                 $uri = $initialUri
                                 Start-Sleep -Seconds 10
@@ -735,12 +768,12 @@
                 $maxtryCounterConnectionRelatedError = 6
                 if ($tryCounterConnectionRelatedError -lt ($maxtryCounterConnectionRelatedError + 1)) {
                     $sleepSecConnectionRelatedError = @(1, 1, 2, 4, 8, 16, 32, 64, 128)[$tryCounterConnectionRelatedError]
-                    Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] $currentTask try #$($tryCounterConnectionRelatedError) 'connectionRelatedError' occurred '$connectionRelatedErrorPhrase' (trying $maxtryCounterConnectionRelatedError times); sleep $sleepSecConnectionRelatedError seconds"
+                    Logging -preventWriteOutput $true -logMessage "$logMessageDefault $currentTask try #$($tryCounterConnectionRelatedError) 'connectionRelatedError' occurred '$connectionRelatedErrorPhrase' (trying $maxtryCounterConnectionRelatedError times); sleep $sleepSecConnectionRelatedError seconds"
                     #Logging -preventWriteOutput $true -logMessage $catchResult
                     Start-Sleep -Seconds $sleepSecConnectionRelatedError
                 }
                 else {
-                    Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] $currentTask try #$($tryCounterConnectionRelatedError) 'connectionRelatedError' occurred '$connectionRelatedErrorPhrase' (tried $($tryCounterConnectionRelatedError - 1) times) - unhandledErrorAction: $unhandledErrorAction" -logMessageForegroundColor 'DarkRed'
+                    Logging -preventWriteOutput $true -logMessage "$logMessageDefault $currentTask try #$($tryCounterConnectionRelatedError) 'connectionRelatedError' occurred '$connectionRelatedErrorPhrase' (tried $($tryCounterConnectionRelatedError - 1) times) - unhandledErrorAction: $unhandledErrorAction" -logMessageForegroundColor 'DarkRed'
                     if ($unhandledErrorAction -in @('Continue', 'ContinueQuiet')) {
                         break
                     }
@@ -755,12 +788,12 @@
                 $maxtryUnexpectedError = 6
                 if ($tryCounterUnexpectedError -lt ($maxtryUnexpectedError + 1)) {
                     $sleepSecUnexpectedError = @(1, 1, 2, 4, 8, 16, 32, 64, 128)[$tryCounterUnexpectedError]
-                    Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] $currentTask try #$($tryCounterUnexpectedError) 'unexpectedError' occurred (trying $maxtryUnexpectedError times); sleep $sleepSecUnexpectedError seconds"
+                    Logging -preventWriteOutput $true -logMessage "$logMessageDefault $currentTask try #$($tryCounterUnexpectedError) 'unexpectedError' occurred (trying $maxtryUnexpectedError times); sleep $sleepSecUnexpectedError seconds"
                     Logging -preventWriteOutput $true -logMessage $catchResult
                     Start-Sleep -Seconds $sleepSecUnexpectedError
                 }
                 else {
-                    Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] $currentTask try #$($tryCounterUnexpectedError) 'unexpectedError' occurred (tried $($tryCounterUnexpectedError - 1) times) - unhandledErrorAction: $unhandledErrorAction" -logMessageForegroundColor 'DarkRed'
+                    Logging -preventWriteOutput $true -logMessage "$logMessageDefault $currentTask try #$($tryCounterUnexpectedError) 'unexpectedError' occurred (tried $($tryCounterUnexpectedError - 1) times) - unhandledErrorAction: $unhandledErrorAction" -logMessageForegroundColor 'DarkRed'
                     if ($unhandledErrorAction -in @('Continue', 'ContinueQuiet')) {
                         break
                     }
