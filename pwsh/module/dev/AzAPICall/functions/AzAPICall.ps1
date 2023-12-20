@@ -441,7 +441,7 @@
 
                 debugAzAPICall -debugMessage "apiStatusCode: '$actualStatusCode' ($($actualStatusCodePhrase))"
 
-                ##### METHODs: PUT POST PATCH?
+                #####ToDo: KSJH - METHODs: PUT POST PATCH DELETE?
                 if (-not $skipAsynchronousAzureOperation -and (($actualStatusCode -eq 201 -and $actualStatusCodePhrase -in @('Created', 'OK')) -or ($actualStatusCode -eq 202 -and $actualStatusCodePhrase -in @('Accepted', 'OK')))) {
                     if ($azAPIRequest.Headers.'Azure-AsyncOperation' -or $azAPIRequest.Headers.'Location') {
                         $isMore = $true
@@ -479,8 +479,19 @@
                         }
                         $null = Start-Sleep -Seconds $retryAfter
 
-                        if (($azAPIRequest.Content | converfrom-json).status) {
-                            $requestStatus = ($azAPIRequest.Content | converfrom-json).status
+                        if (($azAPIRequest.Content | converfrom-json).status -or $azAPIRequest.Headers.provisionState) {
+                            if (($azAPIRequest.Content | converfrom-json).status -and $azAPIRequest.Headers.provisionState) {
+                                #####ToDo: KSJH - debug both exist
+                            }
+                            else {
+                                if (($azAPIRequest.Content | converfrom-json).status) {
+                                    $requestStatus = ($azAPIRequest.Content | converfrom-json).status
+                                }
+                                if ($azAPIRequest.Headers.provisionState) {
+                                    $requestStatus = $azAPIRequest.Headers.provisionState
+                                }
+                            }
+
                             debugAzAPICall -debugMessage "Content.status: $requestStatus"
 
                             ##### -notin ('Running')
