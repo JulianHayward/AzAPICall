@@ -43,11 +43,11 @@
     .PARAMETER noPaging
     Parameter description
 
-    .PARAMETER skipAsynchronousAzureOperation
+    .PARAMETER asynchronousAzureOperationSkip
     Parameter description
         Microsoft documentation: https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/async-operations
 
-    .PARAMETER notWaitForAsynchronousAzureOperationToFinish
+    .PARAMETER asynchronousAzureOperationNotWaitToFinish
     Parameter description
 
     .PARAMETER writeGuidInLog
@@ -117,11 +117,11 @@
 
         [Parameter()]
         [switch]
-        $skipAsynchronousAzureOperation,
+        $asynchronousAzureOperationSkip,
 
         [Parameter()]
         [switch]
-        $notWaitForAsynchronousAzureOperationToFinish,
+        $asynchronousAzureOperationNotWaitToFinish,
 
         [Parameter()]
         [switch]
@@ -474,7 +474,7 @@
                 #####ToDo: KSJH - METHODs: PUT POST PATCH DELETE?
                 # TODO: Only for ARM?
                 # TODO: Example with RunCommand (return 200 + provisionState or Status). If status isn't Succeeded, Failed or Canceled, then it's still running. Max. Re-try counter + sleep. Exit strategy + message for the user how to handle it later
-                if (-not $skipAsynchronousAzureOperation -and (($actualStatusCode -eq 200 -and $actualStatusCodePhrase -eq 'OK') -or ($actualStatusCode -eq 201 -and $actualStatusCodePhrase -eq 'Created') -or ($actualStatusCode -eq 202 -and $actualStatusCodePhrase -eq 'Accepted'))) {
+                if (-not $asynchronousAzureOperationSkip -and (($actualStatusCode -eq 200 -and $actualStatusCodePhrase -eq 'OK') -or ($actualStatusCode -eq 201 -and $actualStatusCodePhrase -eq 'Created') -or ($actualStatusCode -eq 202 -and $actualStatusCodePhrase -eq 'Accepted'))) {
                     if ($azAPIRequest.Headers.'Azure-AsyncOperation' -or $azAPIRequest.Headers.'Location') {
                         debugAzAPICall -debugMessage 'Copying the $azAPIRequest to $initialAzAPIRequest'
                         $initialAzAPIRequest = $azAPIRequest
@@ -561,7 +561,7 @@
 
                         debugAzAPICall -debugMessage "requestStatus: $requestStatus"
 
-                        if (-not $notWaitForAsynchronousAzureOperationToFinish) {
+                        if (-not $asynchronousAzureOperationNotWaitToFinish) {
                             if ($requestStatus -in @('Succeeded', 'Failed', 'Canceled')) {
                                 debugAzAPICall -debugMessage "requestStatus has an finished state: $requestStatus"
                                 $isMore = $false
@@ -579,11 +579,11 @@
                             }
                             elseif ($asynchronousAzureOperationTryCounter -ge 10) {
                                 Logging -preventWriteOutput $true -logMessage "  $logMessageDefault The AsyncOperation is still not finished after 10 retries. Save the current state in your code and do another request on the asynchronous Azure operation uri '$uri'. Continue with the next resource" -logMessageForegroundColor 'darkred'
-                                Logging -preventWriteOutput $true -logMessage "  $logMessageDefault If you don't want to wait for the asynchronous Azure operation to finish, please use the 'notWaitForAsynchronousAzureOperationToFinish'-parameter." -logMessageForegroundColor 'darkred'
+                                Logging -preventWriteOutput $true -logMessage "  $logMessageDefault If you don't want to wait for the asynchronous Azure operation to finish, please use the 'asynchronousAzureOperationNotWaitToFinish'-parameter." -logMessageForegroundColor 'darkred'
                             }
                         }
                         else {
-                            Logging -preventWriteOutput $true -logMessage "  $logMessageDefault Used 'notWaitForAsynchronousAzureOperationToFinish'-parameter. Won't wait till the finished state of the asynchronous Azure operation has been reached. Actual status is '$requestStatus'." -logMessageForegroundColor 'yellow'
+                            Logging -preventWriteOutput $true -logMessage "  $logMessageDefault Used 'asynchronousAzureOperationNotWaitToFinish'-parameter. Won't wait till the finished state of the asynchronous Azure operation has been reached. Actual status is '$requestStatus'." -logMessageForegroundColor 'yellow'
                         }
                     }
                 }
