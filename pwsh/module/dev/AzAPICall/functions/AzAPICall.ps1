@@ -50,6 +50,9 @@
     .PARAMETER notWaitForAsynchronousAzureOperationToFinish
     Parameter description
 
+    .PARAMETER writeGuidInLog
+    Parameter description
+
     .EXAMPLE
     PS C:\> $aadgroups = AzAPICall -uri "https://graph.microsoft.com/v1.0/groups?`$top=999&`$filter=(mailEnabled eq false and securityEnabled eq true)&`$select=id,createdDateTime,displayName,description&`$orderby=displayName asc" -method "GET" -currentTask "Microsoft Graph API: Get - Groups" -listenOn "Value" -consistencyLevel "eventual" -noPaging $true
 
@@ -118,7 +121,11 @@
 
         [Parameter()]
         [switch]
-        $notWaitForAsynchronousAzureOperationToFinish
+        $notWaitForAsynchronousAzureOperationToFinish,
+
+        [Parameter()]
+        [switch]
+        $writeGuidInLog
     )
 
     function debugAzAPICall {
@@ -139,7 +146,13 @@
     }
 
     #Set defaults
-    $logMessageDefault = "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)]"
+    if ($writeGuidInLog) {
+        $GUID = $([guid]::NewGuid()).Guid
+        $logMessageDefault = "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion) - $GUID]"
+    }
+    else {
+        $logMessageDefault = "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)]"
+    }
 
     if (-not $method) { $method = 'GET' }
     if (-not $currentTask) {
@@ -566,7 +579,7 @@
                             }
                             elseif ($asynchronousAzureOperationTryCounter -ge 10) {
                                 Logging -preventWriteOutput $true -logMessage "  $logMessageDefault The AsyncOperation is still not finished after 10 retries. Save the current state in your code and do another request on the asynchronous Azure operation uri '$uri'. Continue with the next resource" -logMessageForegroundColor 'darkred'
-                                Logging -preventWriteOutput $true -logMessage "  $logMessageDefault If you don't want to wait for the asynchronous Azure operation to finish, please use the ''-parameter." -logMessageForegroundColor 'darkred'
+                                Logging -preventWriteOutput $true -logMessage "  $logMessageDefault If you don't want to wait for the asynchronous Azure operation to finish, please use the 'notWaitForAsynchronousAzureOperationToFinish'-parameter." -logMessageForegroundColor 'darkred'
                             }
                         }
                         else {
