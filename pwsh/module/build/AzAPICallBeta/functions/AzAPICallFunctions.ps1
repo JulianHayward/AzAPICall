@@ -50,7 +50,13 @@ function AzAPICall {
     .PARAMETER asynchronousAzureOperationNotWaitToFinish
     Parameter description
 
-    .PARAMETER writeGuidInLog
+    .PARAMETER asynchronousAzureOperationMaxRetries
+    Parameter description
+
+    .PARAMETER asynchronousAzureOperationRetryAfterSeconds
+    Parameter description
+
+    .PARAMETER writeGuidToLog
     Parameter description
 
     .EXAMPLE
@@ -124,8 +130,16 @@ function AzAPICall {
         $asynchronousAzureOperationNotWaitToFinish,
 
         [Parameter()]
-        [switch]
-        $writeGuidInLog
+        [guid]
+        $writeGuidToLog,
+
+        [Parameter()]
+        [int]
+        $asynchronousAzureOperationMaxRetries,
+
+        [Parameter()]
+        [double]
+        $asynchronousAzureOperationRetryAfterSeconds
     )
 
     function debugAzAPICall {
@@ -146,9 +160,8 @@ function AzAPICall {
     }
 
     #Set defaults
-    if ($writeGuidInLog) {
-        $GUID = $([guid]::NewGuid()).Guid
-        $logMessageDefault = "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion) - $GUID]"
+    if (-not [string]::IsNullOrWhiteSpace($writeGuidToLog)) {
+        $logMessageDefault = "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion) - $writeGuidToLog]"
     }
     else {
         $logMessageDefault = "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)]"
@@ -471,9 +484,6 @@ function AzAPICall {
 
                 debugAzAPICall -debugMessage "apiStatusCode: '$actualStatusCode' ($($actualStatusCodePhrase))"
 
-                #####ToDo: KSJH - METHODs: PUT POST PATCH DELETE?
-                # TODO: Only for ARM?
-                # TODO: Example with RunCommand (return 200 + provisionState or Status). If status isn't Succeeded, Failed or Canceled, then it's still running. Max. Re-try counter + sleep. Exit strategy + message for the user how to handle it later
                 if (-not $asynchronousAzureOperationSkip -and (($actualStatusCode -eq 200 -and $actualStatusCodePhrase -eq 'OK') -or ($actualStatusCode -eq 201 -and $actualStatusCodePhrase -eq 'Created') -or ($actualStatusCode -eq 202 -and $actualStatusCodePhrase -eq 'Accepted'))) {
                     if ($azAPIRequest.Headers.'Azure-AsyncOperation' -or $azAPIRequest.Headers.'Location') {
                         debugAzAPICall -debugMessage 'Copying the $azAPIRequest to $initialAzAPIRequest'
@@ -494,27 +504,32 @@ function AzAPICall {
 
                         if ($azAPIRequest.Headers.'Azure-AsyncOperation') {
                             $uri = $azAPIRequest.Headers.'Azure-AsyncOperation'
-                            #$notTryCounter = $true
                             debugAzAPICall -debugMessage "Azure-AsyncOperation: $Uri"
                         }
                         elseif ($azAPIRequest.Headers.'Location') {
                             $uri = $azAPIRequest.Headers.'Location'
-                            #$notTryCounter = $true
                             debugAzAPICall -debugMessage "Headers.Location: $Uri"
                         }
 
-                        if ($azAPIRequest.Headers.'Retry-After') {
-                            $retryAfter = [double]::Parse($azAPIRequest.Headers.'Retry-After')
-                            $notTryCounter = $true
-                            debugAzAPICall -debugMessage "Headers.'Retry-After': $retryAfter"
-                            #debugAzAPICall -debugMessage "Start-Sleep -Seconds $retryAfter"
-                            Logging -preventWriteOutput $true -logMessage "  $logMessageDefault AsyncOperation Retry-After (API): $retryAfter seconds"
-                            $null = Start-Sleep -Seconds $retryAfter
-                        }
-                        else {
-                            $retryAfter = Get-Random -Minimum 1 -Maximum 17
-                            Logging -preventWriteOutput $true -logMessage "  $logMessageDefault AsyncOperation Retry-After (Random): $retryAfter seconds"
-                            $null = Start-Sleep -Seconds $retryAfter
+                        if (-not $asynchronousAzureOperationNotWaitToFinish) {
+                            if ($azAPIRequest.Headers.'Retry-After') {
+                                $retryAfter = [double]::Parse($azAPIRequest.Headers.'Retry-After')
+                                $notTryCounter = $true
+                                debugAzAPICall -debugMessage "Headers.'Retry-After': $retryAfter"
+                                Logging -preventWriteOutput $true -logMessage "  $logMessageDefault AsyncOperation Retry-After (API): $retryAfter seconds"
+                                $null = Start-Sleep -Seconds $retryAfter
+                            }
+                            else {
+                                if ($asynchronousAzureOperationRetryAfterSeconds) {
+                                    Logging -preventWriteOutput $true -logMessage "  $logMessageDefault AsyncOperation Retry-After (Parameter): $asynchronousAzureOperationRetryAfterSeconds seconds"
+                                    $null = Start-Sleep -Seconds $asynchronousAzureOperationRetryAfterSeconds
+                                }
+                                else {
+                                    $retryAfter = Get-Random -Minimum 10 -Maximum 60
+                                    Logging -preventWriteOutput $true -logMessage "  $logMessageDefault AsyncOperation Retry-After (Random): $retryAfter seconds"
+                                    $null = Start-Sleep -Seconds $retryAfter
+                                }
+                            }
                         }
                     }
 
@@ -567,15 +582,43 @@ function AzAPICall {
                                 $isMore = $false
                                 $notTryCounter = $false
                             }
-                            elseif ($asynchronousAzureOperationTryCounter -le 10) {
+                            elseif ($asynchronousAzureOperationMaxRetries) {
+                                if ($asynchronousAzureOperationTryCounter -lt $asynchronousAzureOperationMaxRetries) {
+                                    $asynchronousAzureOperationTryCounter++
+                                    debugAzAPICall -debugMessage "asynchronousAzureOperationTryCounter: $asynchronousAzureOperationTryCounter of $asynchronousAzureOperationMaxRetries"
+                                    $isMore = $true
+                                    $notTryCounter = $true
+
+                                    if ($asynchronousAzureOperationRetryAfterSeconds) {
+                                        Logging -preventWriteOutput $true -logMessage "  $logMessageDefault AsyncOperation Retry-After (Parameter): $asynchronousAzureOperationRetryAfterSeconds seconds"
+                                        $null = Start-Sleep -Seconds $asynchronousAzureOperationRetryAfterSeconds
+                                    }
+                                    else {
+                                        $retryAfter = Get-Random -Minimum 10 -Maximum 60
+                                        Logging -preventWriteOutput $true -logMessage "  $logMessageDefault AsyncOperation Retry-After (Random): $retryAfter seconds"
+                                        $null = Start-Sleep -Seconds $retryAfter
+                                    }
+                                }
+                                elseif ($asynchronousAzureOperationTryCounter -ge $asynchronousAzureOperationMaxRetries) {
+                                    Logging -preventWriteOutput $true -logMessage "  $logMessageDefault The AsyncOperation is still not finished after $asynchronousAzureOperationMaxRetries retries. Save the current state in your code and do another request on the asynchronous Azure operation uri '$uri'. Continue with the next resource" -logMessageForegroundColor 'darkred'
+                                    Logging -preventWriteOutput $true -logMessage "  $logMessageDefault If you don't want to wait for the asynchronous Azure operation to finish, please use the 'asynchronousAzureOperationNotWaitToFinish'-parameter." -logMessageForegroundColor 'darkred'
+                                }
+                            }
+                            elseif ($asynchronousAzureOperationTryCounter -lt 10) {
                                 $asynchronousAzureOperationTryCounter++
                                 debugAzAPICall -debugMessage "asynchronousAzureOperationTryCounter: $asynchronousAzureOperationTryCounter of 10"
                                 $isMore = $true
                                 $notTryCounter = $true
 
-                                $retryAfter = Get-Random -Minimum 10 -Maximum 60
-                                Logging -preventWriteOutput $true -logMessage "  $logMessageDefault AsyncOperation Retry-After (Random): $retryAfter seconds"
-                                $null = Start-Sleep -Seconds $retryAfter
+                                if ($asynchronousAzureOperationRetryAfterSeconds) {
+                                    Logging -preventWriteOutput $true -logMessage "  $logMessageDefault AsyncOperation Retry-After (Parameter): $asynchronousAzureOperationRetryAfterSeconds seconds"
+                                    $null = Start-Sleep -Seconds $asynchronousAzureOperationRetryAfterSeconds
+                                }
+                                else {
+                                    $retryAfter = Get-Random -Minimum 10 -Maximum 60
+                                    Logging -preventWriteOutput $true -logMessage "  $logMessageDefault AsyncOperation Retry-After (Random): $retryAfter seconds"
+                                    $null = Start-Sleep -Seconds $retryAfter
+                                }
                             }
                             elseif ($asynchronousAzureOperationTryCounter -ge 10) {
                                 Logging -preventWriteOutput $true -logMessage "  $logMessageDefault The AsyncOperation is still not finished after 10 retries. Save the current state in your code and do another request on the asynchronous Azure operation uri '$uri'. Continue with the next resource" -logMessageForegroundColor 'darkred'
@@ -587,8 +630,6 @@ function AzAPICall {
                         }
                     }
                 }
-
-                # TODO: To be discussed: Everything below in an else-statement? till row 635?
 
                 if ($targetEndPoint -eq 'Storage') {
                     try {
@@ -693,8 +734,6 @@ function AzAPICall {
                         debugAzAPICall -debugMessage 'listenOn=Default(Value) value not exists; return empty array'
                     }
                 }
-
-                # TODO: To be discussed: Should the Async task located here?
 
                 if (-not $noPaging) {
                     if (-not [string]::IsNullOrWhiteSpace($azAPIRequestConvertedFromJson.nextLink)) {
@@ -814,7 +853,7 @@ function AzAPICall {
                         debugAzAPICall -debugMessage "NextMarker found: $($storageResponseXML.EnumerationResults.NextMarker)"
                     }
                     else {
-                        debugAzAPICall -debugMessage 'NextLink/skipToken/NextMarker: none' # TODO: KS/JH: Check if we should add here as well a re-try or location property
+                        debugAzAPICall -debugMessage 'NextLink/skipToken/NextMarker: none'
                     }
                 }
             }
@@ -1924,7 +1963,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.2.1' }
+function getAzAPICallVersion { return '1.2.2' }
 
 function getJWTDetails {
     <#
