@@ -480,6 +480,12 @@ function AzAPICall {
                 }
             }
             else {
+                if ($isMore -and ($initialAzAPIRequest -or $apiCallResultsCollection.Count -gt 0)) {
+                    debugAzAPICall -debugMessage 'Clear the array apiCallResultsCollection'
+                    $initalApiCallResultsCollection = $apiCallResultsCollection.Clone()
+                    $apiCallResultsCollection = [System.Collections.ArrayList]@()
+                }
+
                 $isMore = $false
 
                 debugAzAPICall -debugMessage "apiStatusCode: '$actualStatusCode' ($($actualStatusCodePhrase))"
@@ -488,9 +494,6 @@ function AzAPICall {
                     if ($azAPIRequest.Headers.'Azure-AsyncOperation' -or $azAPIRequest.Headers.'Location') {
                         debugAzAPICall -debugMessage 'Copying the $azAPIRequest to $initialAzAPIRequest'
                         $initialAzAPIRequest = $azAPIRequest
-
-                        debugAzAPICall -debugMessage 'Clear the array apiCallResultsCollection'
-                        $apiCallResultsCollection = [System.Collections.ArrayList]@()
 
                         $isMore = $true
 
@@ -539,10 +542,6 @@ function AzAPICall {
                     $azAPIRequestContentPropertiesProvisionState = $azAPIRequestContent.properties.provisioningState
 
                     if ($azAPIRequestContentStatus -or $azAPIRequestContentProvisionState -or $azAPIRequestContentPropertiesProvisionState) {
-                        debugAzAPICall -debugMessage 'Clear the array apiCallResultsCollection'
-                        $initApiCallResultsCollection = $apiCallResultsCollection.Clone()
-                        $apiCallResultsCollection = [System.Collections.ArrayList]@()
-
                         if ($azAPIRequestContentStatus -and ($azAPIRequestContentProvisionState -or $azAPIRequestContentPropertiesProvisionState)) {
                             Logging -preventWriteOutput $true -logMessage "$logMessageDefault '$currentTask' uri='$uri' Content.status and (Content.provisionState or Content.properties.provisionState) exists" -logMessageForegroundColor 'darkred'
 
@@ -716,7 +715,7 @@ function AzAPICall {
                 elseif ($listenOn -eq 'Raw') {
                     debugAzAPICall -debugMessage "listenOn=Raw ($(($azAPIRequest).count))"
 
-                    if ($initialAzAPIRequest -and $requestStatus -notin @('Succeeded', 'Failed', 'Canceled')) {
+                    if ($initialAzAPIRequest -and $requestStatus -and $requestStatus -notin @('Succeeded', 'Failed', 'Canceled')) {
                         debugAzAPICall -debugMessage 'adding the initial request to the output for later processing'
                         $azAPIRequest | Add-Member -Type NoteProperty -Name initialAzAPIRequest -Value $initialAzAPIRequest
                     }
@@ -1963,7 +1962,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.2.2' }
+function getAzAPICallVersion { return '1.2.3' }
 
 function getJWTDetails {
     <#
