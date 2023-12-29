@@ -480,7 +480,7 @@
                 }
             }
             else {
-                if ($isMore -and ($initialAzAPIRequest -or $apiCallResultsCollection.Count -gt 0)) {
+                if ($isMore -and $initialAzAPIRequest) {
                     debugAzAPICall -debugMessage 'Clear the array apiCallResultsCollection'
                     $initalApiCallResultsCollection = $apiCallResultsCollection.Clone()
                     $apiCallResultsCollection = [System.Collections.ArrayList]@()

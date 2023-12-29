@@ -135,7 +135,7 @@ function AzAPICall {
 
         [Parameter()]
         [int]
-        $asynchronousAzureOperationMaxRetries,
+        $asynchronousAzureOperationMaxRetries = 10,
 
         [Parameter()]
         [double]
@@ -480,7 +480,7 @@ function AzAPICall {
                 }
             }
             else {
-                if ($isMore -and ($initialAzAPIRequest -or $apiCallResultsCollection.Count -gt 0)) {
+                if ($isMore -and $initialAzAPIRequest) {
                     debugAzAPICall -debugMessage 'Clear the array apiCallResultsCollection'
                     $initalApiCallResultsCollection = $apiCallResultsCollection.Clone()
                     $apiCallResultsCollection = [System.Collections.ArrayList]@()
@@ -601,22 +601,6 @@ function AzAPICall {
                                 elseif ($asynchronousAzureOperationTryCounter -ge $asynchronousAzureOperationMaxRetries) {
                                     Logging -preventWriteOutput $true -logMessage "  $logMessageDefault The AsyncOperation is still not finished after $asynchronousAzureOperationMaxRetries retries. Save the current state in your code and do another request on the asynchronous Azure operation uri '$uri'. Continue with the next resource" -logMessageForegroundColor 'darkred'
                                     Logging -preventWriteOutput $true -logMessage "  $logMessageDefault If you don't want to wait for the asynchronous Azure operation to finish, please use the 'asynchronousAzureOperationNotWaitToFinish'-parameter." -logMessageForegroundColor 'darkred'
-                                }
-                            }
-                            elseif ($asynchronousAzureOperationTryCounter -lt 10) {
-                                $asynchronousAzureOperationTryCounter++
-                                debugAzAPICall -debugMessage "asynchronousAzureOperationTryCounter: $asynchronousAzureOperationTryCounter of 10"
-                                $isMore = $true
-                                $notTryCounter = $true
-
-                                if ($asynchronousAzureOperationRetryAfterSeconds) {
-                                    Logging -preventWriteOutput $true -logMessage "  $logMessageDefault AsyncOperation Retry-After (Parameter): $asynchronousAzureOperationRetryAfterSeconds seconds"
-                                    $null = Start-Sleep -Seconds $asynchronousAzureOperationRetryAfterSeconds
-                                }
-                                else {
-                                    $retryAfter = Get-Random -Minimum 10 -Maximum 60
-                                    Logging -preventWriteOutput $true -logMessage "  $logMessageDefault AsyncOperation Retry-After (Random): $retryAfter seconds"
-                                    $null = Start-Sleep -Seconds $retryAfter
                                 }
                             }
                             elseif ($asynchronousAzureOperationTryCounter -ge 10) {
@@ -1962,7 +1946,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.2.3' }
+function getAzAPICallVersion { return '1.2.4' }
 
 function getJWTDetails {
     <#
