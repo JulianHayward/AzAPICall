@@ -521,27 +521,6 @@
                             $uri = $azAPIRequest.Headers.'Location'
                             debugAzAPICall -debugMessage "Headers.Location: $Uri"
                         }
-
-                        # if (-not $asynchronousAzureOperationNotWaitToFinish) {
-                        #     if ($azAPIRequest.Headers.'Retry-After') {
-                        #         $retryAfter = [double]::Parse($azAPIRequest.Headers.'Retry-After')
-                        #         $notTryCounter = $true
-                        #         debugAzAPICall -debugMessage "Headers.'Retry-After': $retryAfter"
-                        #         Logging -preventWriteOutput $true -logMessage "  $logMessageDefault AsyncOperation Retry-After (API): $retryAfter seconds"
-                        #         $null = Start-Sleep -Seconds $retryAfter
-                        #     }
-                        #     else {
-                        #         if ($asynchronousAzureOperationRetryAfterSeconds) {
-                        #             Logging -preventWriteOutput $true -logMessage "  $logMessageDefault AsyncOperation Retry-After (Parameter): $asynchronousAzureOperationRetryAfterSeconds seconds"
-                        #             $null = Start-Sleep -Seconds $asynchronousAzureOperationRetryAfterSeconds
-                        #         }
-                        #         else {
-                        #             $retryAfter = Get-Random -Minimum 10 -Maximum 60
-                        #             Logging -preventWriteOutput $true -logMessage "  $logMessageDefault AsyncOperation Retry-After (Random): $retryAfter seconds"
-                        #             $null = Start-Sleep -Seconds $retryAfter
-                        #         }
-                        #     }
-                        # }
                     }
 
                     # TODO: In some cases, the following error appears:
