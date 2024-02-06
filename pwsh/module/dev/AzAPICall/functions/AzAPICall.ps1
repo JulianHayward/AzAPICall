@@ -162,10 +162,13 @@
         }
 
         $uriSplitted = $uri.split('/')
-        if ($AzAPICallConfiguration['azAPIEndpointUrls'].Storage.where({ $uriSplitted[2] -match $_ })) {
+        if ($AzAPICallConfiguration['azAPIEndpointUrls'].Storage.where({ [System.Text.RegularExpressions.Regex]::Escape($uriSplitted[2]) -like "*$([System.Text.RegularExpressions.Regex]::Escape($_))" })) {
             $targetEndpoint = 'Storage'
         }
-        elseif ($uriSplitted[2] -like "*$($AzAPICallConfiguration['azAPIEndpointUrls'].Kusto)") {
+        elseif ([System.Text.RegularExpressions.Regex]::Escape($uriSplitted[2]) -like "*$([System.Text.RegularExpressions.Regex]::Escape($AzAPICallConfiguration['azAPIEndpointUrls'].MonitorIngest))") {
+            $targetEndpoint = 'MonitorIngest'
+        }
+        elseif ([System.Text.RegularExpressions.Regex]::Escape($uriSplitted[2]) -like "*$([System.Text.RegularExpressions.Regex]::Escape($AzAPICallConfiguration['azAPIEndpointUrls'].Kusto))") {
             $targetEndpoint = 'Kusto'
         }
         else {
@@ -380,7 +383,7 @@
                 RawException                         = $rawException
             })
 
-        $message = "attempt#$($tryCounter) processing: $($currenttask) uri: '$($uri)'"
+        $message = "try#$($tryCounter) processing: $($currenttask) uri: '$($uri)'"
 
         if ($body) {
             $message += " body: '$($body | Out-String)'"

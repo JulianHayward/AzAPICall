@@ -162,10 +162,13 @@ function AzAPICall {
         }
 
         $uriSplitted = $uri.split('/')
-        if ($AzAPICallConfiguration['azAPIEndpointUrls'].Storage.where({ $uriSplitted[2] -match $_ })) {
+        if ($AzAPICallConfiguration['azAPIEndpointUrls'].Storage.where({ [System.Text.RegularExpressions.Regex]::Escape($uriSplitted[2]) -like "*$([System.Text.RegularExpressions.Regex]::Escape($_))" })) {
             $targetEndpoint = 'Storage'
         }
-        elseif ($uriSplitted[2] -like "*$($AzAPICallConfiguration['azAPIEndpointUrls'].Kusto)") {
+        elseif ([System.Text.RegularExpressions.Regex]::Escape($uriSplitted[2]) -like "*$([System.Text.RegularExpressions.Regex]::Escape($AzAPICallConfiguration['azAPIEndpointUrls'].MonitorIngest))") {
+            $targetEndpoint = 'MonitorIngest'
+        }
+        elseif ([System.Text.RegularExpressions.Regex]::Escape($uriSplitted[2]) -like "*$([System.Text.RegularExpressions.Regex]::Escape($AzAPICallConfiguration['azAPIEndpointUrls'].Kusto))") {
             $targetEndpoint = 'Kusto'
         }
         else {
@@ -380,7 +383,7 @@ function AzAPICall {
                 RawException                         = $rawException
             })
 
-        $message = "attempt#$($tryCounter) processing: $($currenttask) uri: '$($uri)'"
+        $message = "try#$($tryCounter) processing: $($currenttask) uri: '$($uri)'"
 
         if ($body) {
             $message += " body: '$($body | Out-String)'"
@@ -746,7 +749,7 @@ function AzAPICallErrorHandler {
         }
     }
 
-    if ($catchResult.error.code -like '*ExpiredAuthenticationToken*' -or $catchResult.error.code -like '*Authentication_ExpiredToken*' -or $catchResult.error.code -like '*InvalidAuthenticationToken*') {
+    if ($catchResult.error.code -like '*ExpiredAuthenticationToken*' -or $catchResult.error.code -like '*Authentication_ExpiredToken*' -or $catchResult.error.code -like '*InvalidAuthenticationToken*' -or $catchResult.error.code -like '*TokenExpired*') {
         if ($catchResult.error.code -eq 'InvalidAuthenticationTokenTenant') {
             if ($currentTask -like "getTenantId for subscriptionId '*'") {
                 #handeled in #region getTenantId for subscriptionId
@@ -761,10 +764,14 @@ function AzAPICallErrorHandler {
 
         }
         else {
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token ($targetEndpoint) - sleep 5 second and try again"
+            $sleepSeconds = 3
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token ($targetEndpoint) - sleep $sleepSeconds second and try again"
             $doRetry = $true
-            Start-Sleep -Seconds 5
+            Start-Sleep -Seconds $sleepSeconds
             #Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token ($targetEndpoint)"
+            if ($targetEndPoint -like 'ARM*' -and $targetEndPoint -ne 'ARM') {
+                $targetEndPoint = 'ARM'
+            }
             createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
             $response = @{
                 action = 'retry' #break or return or returnCollection or retry
@@ -1195,7 +1202,7 @@ function AzAPICallErrorHandler {
         $sleepSeconds = 10
         if ($actualStatusCode -eq 429 -and $catchResult.error.code -eq 'OperationNotAllowed') {
             $sleepSeconds = ($sleepSeconds + $tryCounter)
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! sleeping $sleepSeconds seconds"
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! (08c926e7) sleeping $sleepSeconds seconds"
             Write-Host $($catchResult | ConvertTo-Json -Depth 99) -ForegroundColor DarkGreen
             Start-Sleep -Seconds $sleepSeconds
             $response = @{
@@ -1205,7 +1212,7 @@ function AzAPICallErrorHandler {
         }
         if ($catchResult.error.code -eq 'ResourceRequestsThrottled') {
             $sleepSeconds = ($sleepSeconds + $tryCounter)
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! sleeping $sleepSeconds seconds"
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! (1cc3d413) sleeping $sleepSeconds seconds"
             Start-Sleep -Seconds $sleepSeconds
             $response = @{
                 action = 'retry' #break or return or returnCollection or retry
@@ -1216,7 +1223,10 @@ function AzAPICallErrorHandler {
             if ($catchResult.error.message -like '*60 seconds*') {
                 $sleepSeconds = (60 + $tryCounter)
             }
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! sleeping $sleepSeconds seconds"
+            else {
+                $sleepSeconds = ($sleepSeconds + ($tryCounter * 10))
+            }
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! (83f5e825) sleeping $sleepSeconds seconds"
             Start-Sleep -Seconds $sleepSeconds
             $response = @{
                 action = 'retry' #break or return or returnCollection or retry
@@ -1225,8 +1235,8 @@ function AzAPICallErrorHandler {
         }
         if ($catchResult.error.code -eq 'RateLimiting') {
             $sleepSeconds = 4
-            $sleepSeconds = ($sleepSeconds + $tryCounter)
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! sleeping $sleepSeconds seconds"
+            $sleepSeconds = ($sleepSeconds + ($tryCounter * 5))
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! (a33632c6) sleeping $sleepSeconds seconds"
             Start-Sleep -Seconds $sleepSeconds
             $response = @{
                 action = 'retry' #break or return or returnCollection or retry
@@ -1235,8 +1245,8 @@ function AzAPICallErrorHandler {
         }
         if ($catchResult.code -eq 'TooManyRequests') {
             $sleepSeconds = 4
-            $sleepSeconds = ($sleepSeconds + $tryCounter)
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! sleeping $sleepSeconds seconds"
+            $sleepSeconds = ($sleepSeconds + ($tryCounter * 5))
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! (2717aef8) sleeping $sleepSeconds seconds"
             Start-Sleep -Seconds $sleepSeconds
             $response = @{
                 action = 'retry' #break or return or returnCollection or retry
@@ -1245,7 +1255,7 @@ function AzAPICallErrorHandler {
         }
 
         $sleepSeconds = ($sleepSeconds + $tryCounter)
-        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! sleeping $sleepSeconds seconds"
+        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! (2b0e9fba) sleeping $sleepSeconds seconds"
         Start-Sleep -Seconds $sleepSeconds
         $response = @{
             action = 'retry' #break or return or returnCollection or retry
@@ -1253,25 +1263,25 @@ function AzAPICallErrorHandler {
         return $response
     }
 
-    elseif ($getARMARG -and $catchResult.error.code -eq 'BadRequest') {
-        $sleepSec = @(1, 1, 2, 3, 5, 7, 9, 10, 13, 15, 20, 25, 30, 45, 60, 60, 60, 60)[$tryCounter]
-        $maxTries = 15
-        if ($tryCounter -gt $maxTries) {
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: capitulation after $maxTries attempts - return 'capitulation'"
-            $response = @{
-                action    = 'return' #break or return or returnCollection
-                returnVar = 'capitulation'
-            }
-            return $response
-        }
-        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: try again (trying $maxTries times) in $sleepSec second(s)"
-        $doRetry = $true
-        Start-Sleep -Seconds $sleepSec
-        $response = @{
-            action = 'retry' #break or return or returnCollection or retry
-        }
-        return $response
-    }
+    # elseif ($getARMARG -and $catchResult.error.code -eq 'BadRequest') {
+    #     $sleepSec = @(1, 1, 2, 3, 5, 7, 9, 10, 13, 15, 20, 25, 30, 45, 60, 60, 60, 60)[$tryCounter]
+    #     $maxTries = 15
+    #     if ($tryCounter -gt $maxTries) {
+    #         Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: capitulation after $maxTries tries - return 'capitulation'"
+    #         $response = @{
+    #             action    = 'return' #break or return or returnCollection
+    #             returnVar = 'capitulation'
+    #         }
+    #         return $response
+    #     }
+    #     Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: try again (trying $maxTries times) in $sleepSec second(s)"
+    #     $doRetry = $true
+    #     Start-Sleep -Seconds $sleepSec
+    #     $response = @{
+    #         action = 'retry' #break or return or returnCollection or retry
+    #     }
+    #     return $response
+    # }
 
     elseif (
             ((<#$getARMRoleAssignmentSchedules -or #>$getMicrosoftGraphRoleAssignmentSchedules) -and (
@@ -1382,25 +1392,25 @@ function AzAPICallErrorHandler {
         return $response
     }
 
-    elseif ($catchResult.error.code -eq 'Request_UnsupportedQuery') {
-        $sleepSec = @(1, 3, 7, 10, 15, 20, 30)[$tryCounter]
-        $maxTries = 5
-        if ($tryCounter -gt $maxTries) {
-            Logging -preventWriteOutput $true -logMessage " $currentTask - capitulation after $maxTries attempts - return 'Request_UnsupportedQuery'"
-            $response = @{
-                action    = 'return' #break or return or returnCollection
-                returnVar = 'Request_UnsupportedQuery'
-            }
-            return $response
-        }
-        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: try again (trying $maxTries times) in $sleepSec second(s)"
-        $doRetry = $true
-        Start-Sleep -Seconds $sleepSec
-        $response = @{
-            action = 'retry' #break or return or returnCollection or retry
-        }
-        return $response
-    }
+    # elseif ($catchResult.error.code -eq 'Request_UnsupportedQuery') {
+    #     $sleepSec = @(1, 3, 7, 10, 15, 20, 30)[$tryCounter]
+    #     $maxTries = 5
+    #     if ($tryCounter -gt $maxTries) {
+    #         Logging -preventWriteOutput $true -logMessage " $currentTask - capitulation after $maxTries tries - return 'Request_UnsupportedQuery'"
+    #         $response = @{
+    #             action    = 'return' #break or return or returnCollection
+    #             returnVar = 'Request_UnsupportedQuery'
+    #         }
+    #         return $response
+    #     }
+    #     Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: try again (trying $maxTries times) in $sleepSec second(s)"
+    #     $doRetry = $true
+    #     Start-Sleep -Seconds $sleepSec
+    #     $response = @{
+    #         action = 'retry' #break or return or returnCollection or retry
+    #     }
+    #     return $response
+    # }
 
     elseif ($getARMDiagnosticSettingsResource -and (
                 ($catchResult.error.code -like '*ResourceNotFound*') -or
@@ -1467,10 +1477,11 @@ function AzAPICallErrorHandler {
             #Throw 'Error - check the last console output for details'
         }
         else {
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token '$targetEndpoint' ($targetCluster) - sleep 2 second and try again (max retry: $maxTries)"
+            $sleepSeconds = 2
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token '$targetEndpoint' ($targetCluster) - sleep $sleepSeconds seconds and try again (max retry: $maxTries)"
             $doRetry = $true
             createBearerToken -targetEndPoint 'Kusto' -TargetCluster $targetCluster -AzAPICallConfiguration $AzAPICallConfiguration
-            Start-Sleep -Seconds 2
+            Start-Sleep -Seconds $sleepSeconds
             $response = @{
                 action = 'retry' #break or return or returnCollection or retry
             }
@@ -1524,14 +1535,15 @@ function AzAPICallErrorHandler {
     }
 
     if ($doRetry -eq $false) {
-        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo $exitMsg - unhandledErrorAction: $unhandledErrorAction" -logMessageForegroundColor 'DarkRed'
         if ($unhandledErrorAction -in @('Continue', 'ContinueQuiet')) {
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo $exitMsg - unhandledErrorAction: $unhandledErrorAction" -logMessageForegroundColor 'Green'
             $response = @{
                 action = 'break'
             }
             return $response
         }
         else {
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo $exitMsg - unhandledErrorAction: $unhandledErrorAction" -logMessageForegroundColor 'DarkRed'
             Throw 'Error - check the last console output for details'
         }
     }
@@ -1556,6 +1568,9 @@ function createBearerToken {
 
     if ($targetEndPoint -eq 'Storage') {
         Logging -logMessage " +Processing new bearer token request '$targetEndPoint' `"$($AzApiCallConfiguration['azAPIEndpointUrls'].$targetEndPoint)`" ($(($AzApiCallConfiguration['azAPIEndpointUrls']).StorageAuth))"
+    }
+    elseif ($targetEndPoint -eq 'MonitorIngest') {
+        Logging -logMessage " +Processing new bearer token request '$targetEndPoint' `"$($AzApiCallConfiguration['azAPIEndpointUrls'].$targetEndPoint)`" ($(($AzApiCallConfiguration['azAPIEndpointUrls']).MonitorIngestAuth))"
     }
     elseif ($targetEndPoint -eq 'Kusto') {
         if (-not $TargetCluster) {
@@ -1603,6 +1618,9 @@ function createBearerToken {
             if ($targetEndPoint -eq 'Storage') {
                 Logging -logMessage " +Bearer token '$targetEndPoint' ($(($AzApiCallConfiguration['azAPIEndpointUrls']).StorageAuth)): [tokenRequestProcessed: '$dateTimeTokenCreated']; [expiryDateTime: '$bearerAccessTokenExpiryDateTime']; [timeUntilExpiry: '$bearerAccessTokenTimeToExpiry']" -logMessageForegroundColor 'DarkGray'
             }
+            elseif ($targetEndPoint -eq 'MonitorIngest') {
+                Logging -logMessage " +Bearer token '$targetEndPoint' ($(($AzApiCallConfiguration['azAPIEndpointUrls']).MonitorIngestAuth)): [tokenRequestProcessed: '$dateTimeTokenCreated']; [expiryDateTime: '$bearerAccessTokenExpiryDateTime']; [timeUntilExpiry: '$bearerAccessTokenTimeToExpiry']" -logMessageForegroundColor 'DarkGray'
+            }
             elseif ($targetEndPoint -eq 'Kusto') {
                 Logging -logMessage " +Bearer token '$targetEndPoint' ($TargetCluster): [tokenRequestProcessed: '$dateTimeTokenCreated']; [expiryDateTime: '$bearerAccessTokenExpiryDateTime']; [timeUntilExpiry: '$bearerAccessTokenTimeToExpiry']" -logMessageForegroundColor 'DarkGray'
             }
@@ -1615,6 +1633,11 @@ function createBearerToken {
         try {
             if ($targetEndPoint -eq 'Storage') {
                 $tokenRequestEndPoint = ($AzApiCallConfiguration['azAPIEndpointUrls']).StorageAuth
+                $createdBearerToken = ([Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($azContext.Account, $azContext.Environment, $azContext.Tenant.id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "$tokenRequestEndPoint")).AccessToken
+                setBearerAccessToken -createdBearerToken $createdBearerToken -targetEndPoint $targetEndPoint -AzAPICallConfiguration $AzAPICallConfiguration
+            }
+            elseif ($targetEndPoint -eq 'MonitorIngest') {
+                $tokenRequestEndPoint = ($AzApiCallConfiguration['azAPIEndpointUrls']).MonitorIngestAuth
                 $createdBearerToken = ([Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($azContext.Account, $azContext.Environment, $azContext.Tenant.id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "$tokenRequestEndPoint")).AccessToken
                 setBearerAccessToken -createdBearerToken $createdBearerToken -targetEndPoint $targetEndPoint -AzAPICallConfiguration $AzAPICallConfiguration
             }
@@ -1729,7 +1752,7 @@ function getARMLocations {
         }
     }
     else {
-        Logging -logMessage "   Get ARM locations not possible (no subscription in current context). Either use parameter -SubscriptionId4AzContext (initAzAPICall -SubscriptionId4AzContext <subscriptionId>) or if you do not have any subscriptions then you won´t be able to address regional endpoints e.g. 'https://westeurope.management.azure.com/' (info: parameter `$SkipAzContextSubscriptionValidation = $SkipAzContextSubscriptionValidation)"
+        Logging -logMessage "   Get ARM locations not possible (no subscription in current context). Either use parameter -SubscriptionId4AzContext (initAzAPICall -SubscriptionId4AzContext 'subscriptionId') or if you do not have any subscriptions then you won´t be able to address regional endpoints e.g. 'https://westeurope.management.azure.com/' (info: parameter `$SkipAzContextSubscriptionValidation = $SkipAzContextSubscriptionValidation)"
         $AzApiCallConfiguration['htParameters'].ARMLocations = @()
     }
 }
@@ -1745,7 +1768,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.1.86' }
+function getAzAPICallVersion { return '1.2.0' }
 
 function getJWTDetails {
     <#
@@ -2001,9 +2024,9 @@ function initAzAPICall {
     if (-not $AzAPICallConfiguration['checkContext'].Subscription -and $SkipAzContextSubscriptionValidation -eq $false) {
         $AzAPICallConfiguration['checkContext'] | Format-List | Out-String
         Logging -preventWriteOutput $true -logMessage '  Check Az context failed: Az context is not set to any Subscription'
-        Logging -preventWriteOutput $true -logMessage '  Set Az context to a subscription by running: Set-AzContext -subscription <subscriptionId> (run Get-AzSubscription to get the list of available Subscriptions). When done re-run the script'
+        Logging -preventWriteOutput $true -logMessage "  Set Az context to a subscription by running: Set-AzContext -subscription 'subscriptionId' (run Get-AzSubscription to get the list of available Subscriptions). When done re-run the script"
         Logging -preventWriteOutput $true -logMessage '  OR'
-        Logging -preventWriteOutput $true -logMessage '  Use parameter -SubscriptionId4AzContext - e.g. initAzAPICall -SubscriptionId4AzContext <subscriptionId>'
+        Logging -preventWriteOutput $true -logMessage "  Use parameter -SubscriptionId4AzContext - e.g. initAzAPICall -SubscriptionId4AzContext 'subscriptionId'"
         Logging -preventWriteOutput $true -logMessage '  OR'
         Logging -preventWriteOutput $true -logMessage '  Use parameter -SkipAzContextSubscriptionValidation - e.g. initAzAPICall -SkipAzContextSubscriptionValidation $true'
         Throw 'Error - check the last console output for details'
@@ -2091,7 +2114,13 @@ function setAzureEnvironment {
             [string]$Endpoint,
             [string]$EnvironmentKey
         )
-        Logging -preventWriteOutput $true -logMessage "  Check endpoint: '$($Endpoint)'; endpoint url: '$($EndpointUrl)'"
+
+        if ($Endpoint -eq 'Storage') {
+            Logging -preventWriteOutput $true -logMessage "  Check endpoint: '$($Endpoint)'; endpoint url: '.$($EndpointUrl)'"
+        }
+        else {
+            Logging -preventWriteOutput $true -logMessage "  Check endpoint: '$($Endpoint)'; endpoint url: '$($EndpointUrl)'"
+        }
         if ([string]::IsNullOrWhiteSpace($EndpointUrl)) {
             if ($Endpoint -eq 'MicrosoftGraph') {
                 Logging -preventWriteOutput $true -logMessage "  Older Az.Accounts version in use (`$AzApiCallConfiguration.checkContext.Environment.$($EnvironmentKey) not existing). AzureEnvironmentRelatedUrls -> Setting static Microsoft Graph Url '$($legacyAzAccountsEnvironmentMicrosoftGraphUrls.($AzApiCallConfiguration['checkContext'].Environment.Name))'"
@@ -2105,37 +2134,62 @@ function setAzureEnvironment {
             }
         }
         else {
-            return [string]($EndpointUrl -replace '\/$')
+            if ($Endpoint -eq 'Storage') {
+                return [string](".$($EndpointUrl -replace '\/$')")
+            }
+            else {
+                return [string]($EndpointUrl -replace '\/$')
+            }
         }
     }
 
     #MicrosoftGraph Urls for older Az.Accounts version
-    $legacyAzAccountsEnvironmentMicrosoftGraphUrls = @{}
-    $legacyAzAccountsEnvironmentMicrosoftGraphUrls['AzureCloud'] = 'https://graph.microsoft.com'
-    $legacyAzAccountsEnvironmentMicrosoftGraphUrls['AzureUSGovernment'] = 'https://graph.microsoft.us'
-    $legacyAzAccountsEnvironmentMicrosoftGraphUrls['AzureChinaCloud'] = 'https://microsoftgraph.chinacloudapi.cn'
-    $legacyAzAccountsEnvironmentMicrosoftGraphUrls['AzureGermanCloud'] = 'https://graph.microsoft.de'
+    $legacyAzAccountsEnvironmentMicrosoftGraphUrls = @{
+        AzureCloud        = 'https://graph.microsoft.com'
+        AzureUSGovernment = 'https://graph.microsoft.us'
+        AzureChinaCloud   = 'https://microsoftgraph.chinacloudapi.cn'
+        AzureGermanCloud  = 'https://graph.microsoft.de'
+    }
 
     #AzureEnvironmentRelatedUrls
     $AzAPICallConfiguration['azAPIEndpointUrls'] = @{ }
+    #ARM
     $AzAPICallConfiguration['azAPIEndpointUrls'].ARM = (testAvailable -Endpoint 'ARM' -EnvironmentKey 'ResourceManagerUrl' -EndpointUrl $AzApiCallConfiguration['checkContext'].Environment.ResourceManagerUrl)
+    #KeyVault
     $AzAPICallConfiguration['azAPIEndpointUrls'].KeyVault = (testAvailable -Endpoint 'KeyVault' -EnvironmentKey 'AzureKeyVaultServiceEndpointResourceId' -EndpointUrl $AzApiCallConfiguration['checkContext'].Environment.AzureKeyVaultServiceEndpointResourceId)
+    #LogAnalytics
     $AzAPICallConfiguration['azAPIEndpointUrls'].LogAnalytics = (testAvailable -Endpoint 'LogAnalytics' -EnvironmentKey 'AzureOperationalInsightsEndpointResourceId' -EndpointUrl $AzApiCallConfiguration['checkContext'].Environment.AzureOperationalInsightsEndpointResourceId)
+    #MicrosoftGraph
     $AzAPICallConfiguration['azAPIEndpointUrls'].MicrosoftGraph = (testAvailable -Endpoint 'MicrosoftGraph' -EnvironmentKey 'ExtendedProperties.MicrosoftGraphUrl' -EndpointUrl $AzApiCallConfiguration['checkContext'].Environment.ExtendedProperties.MicrosoftGraphUrl)
+    #Login
     $AzAPICallConfiguration['azAPIEndpointUrls'].Login = (testAvailable -Endpoint 'Login' -EnvironmentKey 'ActiveDirectoryAuthority' -EndpointUrl $AzApiCallConfiguration['checkContext'].Environment.ActiveDirectoryAuthority)
+    #Storage
     $AzAPICallConfiguration['azAPIEndpointUrls'].Storage = [System.Collections.ArrayList]@()
     $null = $AzAPICallConfiguration['azAPIEndpointUrls'].Storage.Add((testAvailable -Endpoint 'Storage' -EnvironmentKey 'StorageEndpointSuffix' -EndpointUrl $AzApiCallConfiguration['checkContext'].Environment.StorageEndpointSuffix))
-    $null = $AzAPICallConfiguration['azAPIEndpointUrls'].Storage.Add('storage.azure.net')
-    Logging -preventWriteOutput $true -logMessage "  Add to endpoint: 'Storage'; endpoint url: 'storage.azure.net'"
+    $null = $AzAPICallConfiguration['azAPIEndpointUrls'].Storage.Add('.storage.azure.net')
+    Logging -preventWriteOutput $true -logMessage "  Add to endpoint: 'Storage'; endpoint url: '.storage.azure.net'"
     $AzAPICallConfiguration['azAPIEndpointUrls'].StorageAuth = 'https://storage.azure.com'
+    Logging -preventWriteOutput $true -logMessage "  Auth endpoint for 'Storage': '$($AzAPICallConfiguration['azAPIEndpointUrls'].StorageAuth)'"
+    #IssuerUri
     if ($AzApiCallConfiguration['checkContext'].Environment.Name -eq 'AzureChinaCloud') {
         $AzAPICallConfiguration['azAPIEndpointUrls'].IssuerUri = 'https://sts.chinacloudapi.cn'
     }
     else {
         $AzAPICallConfiguration['azAPIEndpointUrls'].IssuerUri = 'https://sts.windows.net'
     }
-    $AzAPICallConfiguration['azAPIEndpointUrls'].Kusto = 'kusto.windows.net'
-    Logging -preventWriteOutput $true -logMessage "  Set endpoint: 'Kusto'; endpoint url: 'kusto.windows.net'"
+    #Kusto
+    $AzAPICallConfiguration['azAPIEndpointUrls'].Kusto = '.kusto.windows.net'
+    Logging -preventWriteOutput $true -logMessage "  Set endpoint: 'Kusto'; endpoint url: '.kusto.windows.net'"
+    #MonitorIngest https://learn.microsoft.com/en-us/azure/azure-monitor/logs/logs-ingestion-api-overview
+    $ingestMonitorAuthUrls = @{
+        AzureCloud        = 'https://monitor.azure.com'
+        AzureUSGovernment = 'https://monitor.azure.us'
+        AzureChinaCloud   = 'https://monitor.azure.cn'
+    }
+    $AzAPICallConfiguration['azAPIEndpointUrls'].MonitorIngest = ".ingest.$($ingestMonitorAuthUrls.($AzApiCallConfiguration['checkContext'].Environment.Name) -replace 'https://')"
+    Logging -preventWriteOutput $true -logMessage "  Set endpoint: 'MonitorIngest'; endpoint url: '$($AzAPICallConfiguration['azAPIEndpointUrls'].MonitorIngest)'"
+    $AzAPICallConfiguration['azAPIEndpointUrls'].MonitorIngestAuth = $ingestMonitorAuthUrls.($AzApiCallConfiguration['checkContext'].Environment.Name)
+    Logging -preventWriteOutput $true -logMessage "  Auth endpoint for 'MonitorIngest': '$($AzAPICallConfiguration['azAPIEndpointUrls'].MonitorIngestAuth)'"
 
     #AzureEnvironmentRelatedTargetEndpoints
     $AzAPICallConfiguration['azAPIEndpoints'] = @{ }
@@ -2146,6 +2200,8 @@ function setAzureEnvironment {
     $AzAPICallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].Login -split '/')[2]) = 'Login'
     $AzAPICallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].Storage)) = 'Storage'
     $AzAPICallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].StorageAuth)) = 'StorageAuth'
+    $AzAPICallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].MonitorIngest)) = 'MonitorIngest'
+    $AzAPICallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].MonitorIngestAuth)) = 'MonitorIngestAuth'
 
     Logging -preventWriteOutput $true -logMessage '  Set environment endPoint url mapping succeeded' -logMessageForegroundColor 'Green'
     return $AzApiCallConfiguration

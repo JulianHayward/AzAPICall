@@ -43,7 +43,7 @@ function AzAPICallErrorHandler {
         }
     }
 
-    if ($catchResult.error.code -like '*ExpiredAuthenticationToken*' -or $catchResult.error.code -like '*Authentication_ExpiredToken*' -or $catchResult.error.code -like '*InvalidAuthenticationToken*') {
+    if ($catchResult.error.code -like '*ExpiredAuthenticationToken*' -or $catchResult.error.code -like '*Authentication_ExpiredToken*' -or $catchResult.error.code -like '*InvalidAuthenticationToken*' -or $catchResult.error.code -like '*TokenExpired*') {
         if ($catchResult.error.code -eq 'InvalidAuthenticationTokenTenant') {
             if ($currentTask -like "getTenantId for subscriptionId '*'") {
                 #handeled in #region getTenantId for subscriptionId
@@ -58,10 +58,14 @@ function AzAPICallErrorHandler {
 
         }
         else {
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token ($targetEndpoint) - sleep 5 second and try again"
+            $sleepSeconds = 3
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token ($targetEndpoint) - sleep $sleepSeconds second and try again"
             $doRetry = $true
-            Start-Sleep -Seconds 5
+            Start-Sleep -Seconds $sleepSeconds
             #Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token ($targetEndpoint)"
+            if ($targetEndPoint -like 'ARM*' -and $targetEndPoint -ne 'ARM') {
+                $targetEndPoint = 'ARM'
+            }
             createBearerToken -targetEndPoint $targetEndpoint -AzAPICallConfiguration $AzAPICallConfiguration
             $response = @{
                 action = 'retry' #break or return or returnCollection or retry
@@ -492,7 +496,7 @@ function AzAPICallErrorHandler {
         $sleepSeconds = 10
         if ($actualStatusCode -eq 429 -and $catchResult.error.code -eq 'OperationNotAllowed') {
             $sleepSeconds = ($sleepSeconds + $tryCounter)
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! sleeping $sleepSeconds seconds"
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! (08c926e7) sleeping $sleepSeconds seconds"
             Write-Host $($catchResult | ConvertTo-Json -Depth 99) -ForegroundColor DarkGreen
             Start-Sleep -Seconds $sleepSeconds
             $response = @{
@@ -502,7 +506,7 @@ function AzAPICallErrorHandler {
         }
         if ($catchResult.error.code -eq 'ResourceRequestsThrottled') {
             $sleepSeconds = ($sleepSeconds + $tryCounter)
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! sleeping $sleepSeconds seconds"
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! (1cc3d413) sleeping $sleepSeconds seconds"
             Start-Sleep -Seconds $sleepSeconds
             $response = @{
                 action = 'retry' #break or return or returnCollection or retry
@@ -513,7 +517,10 @@ function AzAPICallErrorHandler {
             if ($catchResult.error.message -like '*60 seconds*') {
                 $sleepSeconds = (60 + $tryCounter)
             }
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! sleeping $sleepSeconds seconds"
+            else {
+                $sleepSeconds = ($sleepSeconds + ($tryCounter * 10))
+            }
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! (83f5e825) sleeping $sleepSeconds seconds"
             Start-Sleep -Seconds $sleepSeconds
             $response = @{
                 action = 'retry' #break or return or returnCollection or retry
@@ -522,8 +529,8 @@ function AzAPICallErrorHandler {
         }
         if ($catchResult.error.code -eq 'RateLimiting') {
             $sleepSeconds = 4
-            $sleepSeconds = ($sleepSeconds + $tryCounter)
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! sleeping $sleepSeconds seconds"
+            $sleepSeconds = ($sleepSeconds + ($tryCounter * 5))
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! (a33632c6) sleeping $sleepSeconds seconds"
             Start-Sleep -Seconds $sleepSeconds
             $response = @{
                 action = 'retry' #break or return or returnCollection or retry
@@ -532,8 +539,8 @@ function AzAPICallErrorHandler {
         }
         if ($catchResult.code -eq 'TooManyRequests') {
             $sleepSeconds = 4
-            $sleepSeconds = ($sleepSeconds + $tryCounter)
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! sleeping $sleepSeconds seconds"
+            $sleepSeconds = ($sleepSeconds + ($tryCounter * 5))
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! (2717aef8) sleeping $sleepSeconds seconds"
             Start-Sleep -Seconds $sleepSeconds
             $response = @{
                 action = 'retry' #break or return or returnCollection or retry
@@ -542,7 +549,7 @@ function AzAPICallErrorHandler {
         }
 
         $sleepSeconds = ($sleepSeconds + $tryCounter)
-        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! sleeping $sleepSeconds seconds"
+        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! (2b0e9fba) sleeping $sleepSeconds seconds"
         Start-Sleep -Seconds $sleepSeconds
         $response = @{
             action = 'retry' #break or return or returnCollection or retry
@@ -550,25 +557,25 @@ function AzAPICallErrorHandler {
         return $response
     }
 
-    elseif ($getARMARG -and $catchResult.error.code -eq 'BadRequest') {
-        $sleepSec = @(1, 1, 2, 3, 5, 7, 9, 10, 13, 15, 20, 25, 30, 45, 60, 60, 60, 60)[$tryCounter]
-        $maxTries = 15
-        if ($tryCounter -gt $maxTries) {
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: capitulation after $maxTries attempts - return 'capitulation'"
-            $response = @{
-                action    = 'return' #break or return or returnCollection
-                returnVar = 'capitulation'
-            }
-            return $response
-        }
-        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: try again (trying $maxTries times) in $sleepSec second(s)"
-        $doRetry = $true
-        Start-Sleep -Seconds $sleepSec
-        $response = @{
-            action = 'retry' #break or return or returnCollection or retry
-        }
-        return $response
-    }
+    # elseif ($getARMARG -and $catchResult.error.code -eq 'BadRequest') {
+    #     $sleepSec = @(1, 1, 2, 3, 5, 7, 9, 10, 13, 15, 20, 25, 30, 45, 60, 60, 60, 60)[$tryCounter]
+    #     $maxTries = 15
+    #     if ($tryCounter -gt $maxTries) {
+    #         Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: capitulation after $maxTries tries - return 'capitulation'"
+    #         $response = @{
+    #             action    = 'return' #break or return or returnCollection
+    #             returnVar = 'capitulation'
+    #         }
+    #         return $response
+    #     }
+    #     Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: try again (trying $maxTries times) in $sleepSec second(s)"
+    #     $doRetry = $true
+    #     Start-Sleep -Seconds $sleepSec
+    #     $response = @{
+    #         action = 'retry' #break or return or returnCollection or retry
+    #     }
+    #     return $response
+    # }
 
     elseif (
             ((<#$getARMRoleAssignmentSchedules -or #>$getMicrosoftGraphRoleAssignmentSchedules) -and (
@@ -679,25 +686,25 @@ function AzAPICallErrorHandler {
         return $response
     }
 
-    elseif ($catchResult.error.code -eq 'Request_UnsupportedQuery') {
-        $sleepSec = @(1, 3, 7, 10, 15, 20, 30)[$tryCounter]
-        $maxTries = 5
-        if ($tryCounter -gt $maxTries) {
-            Logging -preventWriteOutput $true -logMessage " $currentTask - capitulation after $maxTries attempts - return 'Request_UnsupportedQuery'"
-            $response = @{
-                action    = 'return' #break or return or returnCollection
-                returnVar = 'Request_UnsupportedQuery'
-            }
-            return $response
-        }
-        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: try again (trying $maxTries times) in $sleepSec second(s)"
-        $doRetry = $true
-        Start-Sleep -Seconds $sleepSec
-        $response = @{
-            action = 'retry' #break or return or returnCollection or retry
-        }
-        return $response
-    }
+    # elseif ($catchResult.error.code -eq 'Request_UnsupportedQuery') {
+    #     $sleepSec = @(1, 3, 7, 10, 15, 20, 30)[$tryCounter]
+    #     $maxTries = 5
+    #     if ($tryCounter -gt $maxTries) {
+    #         Logging -preventWriteOutput $true -logMessage " $currentTask - capitulation after $maxTries tries - return 'Request_UnsupportedQuery'"
+    #         $response = @{
+    #             action    = 'return' #break or return or returnCollection
+    #             returnVar = 'Request_UnsupportedQuery'
+    #         }
+    #         return $response
+    #     }
+    #     Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: try again (trying $maxTries times) in $sleepSec second(s)"
+    #     $doRetry = $true
+    #     Start-Sleep -Seconds $sleepSec
+    #     $response = @{
+    #         action = 'retry' #break or return or returnCollection or retry
+    #     }
+    #     return $response
+    # }
 
     elseif ($getARMDiagnosticSettingsResource -and (
                 ($catchResult.error.code -like '*ResourceNotFound*') -or
@@ -764,10 +771,11 @@ function AzAPICallErrorHandler {
             #Throw 'Error - check the last console output for details'
         }
         else {
-            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token '$targetEndpoint' ($targetCluster) - sleep 2 second and try again (max retry: $maxTries)"
+            $sleepSeconds = 2
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: requesting new bearer token '$targetEndpoint' ($targetCluster) - sleep $sleepSeconds seconds and try again (max retry: $maxTries)"
             $doRetry = $true
             createBearerToken -targetEndPoint 'Kusto' -TargetCluster $targetCluster -AzAPICallConfiguration $AzAPICallConfiguration
-            Start-Sleep -Seconds 2
+            Start-Sleep -Seconds $sleepSeconds
             $response = @{
                 action = 'retry' #break or return or returnCollection or retry
             }
@@ -821,14 +829,15 @@ function AzAPICallErrorHandler {
     }
 
     if ($doRetry -eq $false) {
-        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo $exitMsg - unhandledErrorAction: $unhandledErrorAction" -logMessageForegroundColor 'DarkRed'
         if ($unhandledErrorAction -in @('Continue', 'ContinueQuiet')) {
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo $exitMsg - unhandledErrorAction: $unhandledErrorAction" -logMessageForegroundColor 'Green'
             $response = @{
                 action = 'break'
             }
             return $response
         }
         else {
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo $exitMsg - unhandledErrorAction: $unhandledErrorAction" -logMessageForegroundColor 'DarkRed'
             Throw 'Error - check the last console output for details'
         }
     }
