@@ -14,10 +14,18 @@ function getARMLocations {
 
         if ($getARMLocations.Count -gt 0) {
             Logging -logMessage "   Get ARM locations succeeded (locations count: '$($getARMLocations.Count)')" -logMessageForegroundColor 'Green'
-            $AzApiCallConfiguration['htParameters'].ARMLocations = $getARMLocations.name | Sort-Object
-            foreach ($location in $getARMLocations) {
-                $AzApiCallConfiguration['azAPIEndpointUrls']."ARM$($location.name.tolower())" = $AzApiCallConfiguration['azAPIEndpointUrls'].ARM -replace 'https://', "https://$($location.name)."
-                $AzApiCallConfiguration['azAPIEndpoints'].($AzApiCallConfiguration['azAPIEndpointUrls'].ARM -replace 'https://', "$($location.name).") = "ARM$($location.name.tolower())"
+            $getARMLocationsPhysical = $getARMLocations.where({ $_.metadata.regiontype -eq 'physical' })
+            if ($getARMLocationsPhysical.Count -gt 0) {
+                Logging -logMessage "    $($getARMLocationsPhysical.Count) physical ARM locations found" -logMessageForegroundColor 'Green'
+                $AzApiCallConfiguration['htParameters'].ARMLocations = $getARMLocationsPhysical.name | Sort-Object
+                foreach ($location in $getARMLocationsPhysical) {
+                    $AzApiCallConfiguration['azAPIEndpointUrls']."ARM$($location.name.tolower())" = $AzApiCallConfiguration['azAPIEndpointUrls'].ARM -replace 'https://', "https://$($location.name)."
+                    $AzApiCallConfiguration['azAPIEndpoints'].($AzApiCallConfiguration['azAPIEndpointUrls'].ARM -replace 'https://', "$($location.name).") = "ARM$($location.name.tolower())"
+                }
+            }
+            else {
+                Logging -logMessage '   Could not find any physical ARM locations'
+                Throw 'Error - check the last console output for details'
             }
         }
         else {
