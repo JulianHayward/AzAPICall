@@ -121,7 +121,7 @@ function AzAPICallErrorHandler {
                         foreach ($resultTenants in $results) {
                             $pattern = "$($AzAPICallConfiguration['azAPIEndpointUrls'].IssuerUri)/(.*?)/"
                             if ([System.Guid]::TryParse([regex]::Match($resultTenants, $pattern).Groups[1].Value, [System.Management.Automation.PSReference]$ObjectGuid)) {
-                                $return.Add([regex]::Match($resultTenants, $pattern).Groups[1].Value)
+                                $null = $return.Add([regex]::Match($resultTenants, $pattern).Groups[1].Value)
                             }
                         }
                         Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: return '$($return -join ', ')'"

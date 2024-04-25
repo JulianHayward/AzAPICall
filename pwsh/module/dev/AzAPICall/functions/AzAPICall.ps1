@@ -510,7 +510,7 @@
                 elseif ($listenOn -eq 'ContentProperties') {
                     debugAzAPICall -debugMessage "listenOn=ContentProperties ($(($azAPIRequestConvertedFromJson.properties.rows).count))"
                     if (($azAPIRequestConvertedFromJson.properties.rows).Count -gt 0) {
-                        $apiCallResultsCollection.Add($azAPIRequestConvertedFromJson)
+                        $null = $apiCallResultsCollection.Add($azAPIRequestConvertedFromJson)
                     }
                 }
                 elseif ($listenOn -eq 'Raw') {
