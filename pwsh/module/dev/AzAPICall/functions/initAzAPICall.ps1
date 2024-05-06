@@ -36,10 +36,30 @@
         $AzAPICallCustomRuleSet
     )
 
-    $AzAPICallConfiguration = @{}
-    $AzAPICallConfiguration['htParameters'] = @{}
-    $AzAPICallConfiguration['htParameters'].writeMethod = $WriteMethod
-    $AzAPICallConfiguration['htParameters'].debugWriteMethod = $DebugWriteMethod
+    $AzAPICallConfiguration = @{
+        htParameters          = @{
+            writeMethod      = $WriteMethod
+            debugWriteMethod = $DebugWriteMethod
+        }
+        #https://learn.microsoft.com/en-us/azure/governance/resource-graph/concepts/guidance-for-throttled-requests#understand-throttling-headers
+        armArgThrottlingRules = @{
+            timeWindowSeconds      = 5
+            maxQueriesInTimeWindow = 15
+        }
+    }
+
+    $AzAPICallConfiguration['throttleState'] = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
+    # $AzAPICallConfiguration['armArgThrottleState'].remainingCalls = 15
+    # $AzAPICallConfiguration['armArgThrottleState'].tstmp = Get-Date
+    $AzAPICallConfiguration['throttleState'].ARG = @{
+        remainingCalls = 15
+        tstmpThrottled = Get-Date
+    }
+    $AzAPICallConfiguration['throttleState'].ARMCostmanagementQuery = @{
+        isThrottled    = $false
+        retryAfter     = 1
+        tstmpThrottled = (Get-Date).AddMinutes(-5)
+    }
 
     $AzAPICallVersion = getAzAPICallVersion
     Logging -preventWriteOutput $true -logMessage " AzAPICall $AzAPICallVersion"
