@@ -1,4 +1,4 @@
-# https://github.com/JulianHayward/AzAPICall
+﻿# https://github.com/JulianHayward/AzAPICall
 
 Param
 (

@@ -1,4 +1,4 @@
-function testSubscription {
+﻿function testSubscription {
     [CmdletBinding()]Param(
         [Parameter(Mandatory)]
         [guid]
@@ -13,7 +13,14 @@ function testSubscription {
     Logging -logMessage "  $currentTask"
     $uri = "$(($AzAPICallConfiguration['azAPIEndpointUrls']).ARM)/subscriptions/$($SubscriptionId4Test)?api-version=2020-01-01"
     $method = 'GET'
-    $testSubscription = AzAPICall -uri $uri -method $method -currentTask $currentTask -listenOn 'Content' -AzAPICallConfiguration $AzAPICallConfiguration
+    $testSubscriptionParametersSplat = @{
+        AzAPICallConfiguration = $AzAPICallConfiguration
+        uri                    = $uri
+        method                 = $method
+        currentTask            = $currentTask
+        listenOn               = 'Content'
+    }
+    $testSubscription = AzAPICall @testSubscriptionParametersSplat -initState
 
     if ($testSubscription.subscriptionPolicies.quotaId -like 'AAD*' -or $testSubscription.state -ne 'Enabled') {
         if ($testSubscription.subscriptionPolicies.quotaId -like 'AAD*') {

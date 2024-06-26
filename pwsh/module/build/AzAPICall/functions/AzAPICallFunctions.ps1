@@ -1,4 +1,4 @@
-function AzAPICall {
+﻿function AzAPICall {
     <#
     .SYNOPSIS
     Short description
@@ -103,8 +103,26 @@ function AzAPICall {
 
         [Parameter()]
         [string]
-        $saResourceGroupName
+        $saResourceGroupName,
+
+        [Parameter()]
+        [switch]
+        $initState
     )
+
+    if ($initState) {
+        if ($AzApiCallConfiguration['AzAPICallState'] -ne 'initializing') {
+            Throw "Error - expected `$AzApiCallConfiguration['AzAPICallState'] == 'initializing' (got: $($AzApiCallConfiguration['AzAPICallState']))"
+        }
+    }
+    else {
+        if ($AzApiCallConfiguration['AzAPICallState'] -ne 'operational') {
+            Throw 'Error - AzAPICallConfiguration not initialized! https://aka.ms/AzAPICall#initialize-azapicall'
+        }
+        elseif ($AzApiCallConfiguration['AzAPICallState'] -eq 'initializing') {
+            Throw 'Error - In the initAzAPICall stage, the AzAPICall must use switch parameter -initState'
+        }
+    }
 
     function debugAzAPICall {
         param (
@@ -124,7 +142,7 @@ function AzAPICall {
     }
 
     $azAPICallModuleVersion = $AzApiCallConfiguration['htParameters'].azAPICallModuleVersion
-    $azAPICallErrorHandlerInfo = "[AzAPICallErrorHandler $azAPICallModuleVersion]"
+    $script:azAPICallErrorHandlerInfo = "[AzAPICallErrorHandler $azAPICallModuleVersion]"
     $azAPICallInfo = "[AzAPICall $azAPICallModuleVersion]"
 
     #Set defaults
@@ -140,8 +158,8 @@ function AzAPICall {
     $tryCounter = 0
     $tryCounterUnexpectedError = 0
     $tryCounterConnectionRelatedError = 0
-    $retryAuthorizationFailed = 5
-    #$retryAuthorizationFailedCounter = 0
+    $script:retryAuthorizationFailed = 5
+    $script:retryAuthorizationFailedCounter = 0
     $apiCallResultsCollection = [System.Collections.ArrayList]@()
     $initialUri = $uri
     $restartDueToDuplicateNextlinkCounter = 0
@@ -182,7 +200,6 @@ function AzAPICall {
                     $armUriSplitted = $uriSplitted[2].split('.')
                     if ($armUriSplitted[0] -in $AzApiCallConfiguration['htParameters'].ARMLocations) {
                         if (($AzApiCallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].ARM).replace('https://', '')))) {
-                            #$targetEndpoint = 'ARM'
                             $targetEndpoint = ($AzApiCallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].ARM).replace('https://', '')))
                         }
                         else {
@@ -269,33 +286,34 @@ function AzAPICall {
 
         $randomSleepMilisecondsUnits = (1..360).where({ $_ % 15 -eq 0 })
 
-        $getARMARG = $false
+        #Azure Resource Graph throttling
+        $script:getARMARG = $false
         if ($uri -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/providers/Microsoft.ResourceGraph/resources*") {
             #https://learn.microsoft.com/en-us/azure/governance/resource-graph/concepts/guidance-for-throttled-requests#understand-throttling-headers
-            $getARMARG = $true
+            $script:getARMARG = $true
 
             $randomSleepMiliseconds = $randomSleepMilisecondsUnits[(Get-Random -Minimum 0 -Maximum ($randomSleepMilisecondsUnits.Count - 1))]
             Start-Sleep -Milliseconds $randomSleepMiliseconds
 
-            if ((New-TimeSpan -Start ($AzAPICallConfiguration['throttleState'].ARG.tstmpThrottled) -End (Get-Date)).TotalSeconds -le $AzAPICallConfiguration['armArgThrottlingRules'].timeWindowSeconds) {
+            if ((New-TimeSpan -Start ($AzAPICallConfiguration['throttleState'].ARG.tstmpThrottled) -End (Get-Date)).TotalSeconds -le $AzAPICallConfiguration['throttleRules'].ARG.timeWindowSeconds) {
 
                 #optimized for parallel
                 if ($AzAPICallConfiguration['throttleState'].ARG.remainingCalls -le 2) {
-                    Logging -preventWriteOutput $true -logMessage " $azAPICallInfo $currentTask - AzureResourceGraph throttled - sleeping $($AzAPICallConfiguration['armArgThrottlingRules'].timeWindowSeconds) seconds"
-                    Start-Sleep -Seconds $AzAPICallConfiguration['armArgThrottlingRules'].timeWindowSeconds
+                    Logging -preventWriteOutput $true -logMessage " $azAPICallInfo $currentTask - AzureResourceGraph throttled - sleeping $($AzAPICallConfiguration['throttleRules'].ARG.timeWindowSeconds) seconds"
+                    Start-Sleep -Seconds $AzAPICallConfiguration['throttleRules'].ARG.timeWindowSeconds
 
                     $AzAPICallConfiguration['throttleState'].ARG = @{
-                        remainingCalls = $AzAPICallConfiguration['armArgThrottlingRules'].maxQueriesInTimeWindow
+                        remainingCalls = $AzAPICallConfiguration['throttleRules'].ARG.maxQueriesInTimeWindow
                         tstmpThrottled = (Get-Date)
                     }
                 }
             }
         }
 
-        $getARMCostManagement = $false
+        $script:getARMCostManagement = $false
         if ($uri -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/providers/Microsoft.CostManagement/query*") {
 
-            $getARMCostManagement = $true
+            $script:getARMCostManagement = $true
 
             $randomSleepMiliseconds = $randomSleepMilisecondsUnits[(Get-Random -Minimum 0 -Maximum ($randomSleepMilisecondsUnits.Count - 1))]
             Start-Sleep -Milliseconds $randomSleepMiliseconds
@@ -335,13 +353,34 @@ function AzAPICall {
                     $azAPIRequest = Invoke-WebRequest -Uri $uri -Method $method -Headers $Header -ErrorAction Stop
                 }
             }
+
             $actualStatusCode = $azAPIRequest.StatusCode
-            $actualStatusCodePhrase = 'OK'
+            if ($azAPIRequest.StatusDescription) {
+                $actualStatusCodePhrase = $azAPIRequest.StatusDescription
+            }
+            elseif ($azAPIRequest.StatusCode) {
+                $actualStatusCodePhrase = [System.Net.HttpStatusCode]$azAPIRequest.StatusDescription
+            }
+            else {
+                $actualStatusCodePhrase = 'n/a'
+            }
 
             if ($getARMARG) {
+                $remainingCalls = 15
+                if (($azAPIRequest.Headers.'x-ms-user-quota-remaining') -and (($azAPIRequest.Headers.'x-ms-user-quota-remaining')[0] -as [int])) {
+                    $remainingCalls = [int]($azAPIRequest.Headers.'x-ms-user-quota-remaining')[0]
+                }
+
+                if ($isMore) {
+                    Logging -preventWriteOutput $true -logMessage "$azAPICallInfo $currentTask - processing nextLink/skipToken #$('{0:d3}' -f $isMoreCounter) - remaining API calls till throttle: $($remainingCalls)/$($AzAPICallConfiguration['throttleRules'].ARG.maxQueriesInTimeWindow)"
+                }
+                else {
+                    Logging -preventWriteOutput $true -logMessage "$azAPICallInfo $currentTask - remaining API calls till throttle: $($remainingCalls)/$($AzAPICallConfiguration['throttleRules'].ARG.maxQueriesInTimeWindow)"
+                }
+
                 $AzAPICallConfiguration['throttleState'].ARG = @{
-                    remainingCalls = [int](($azAPIRequest.Headers.'x-ms-user-quota-remaining')[0])
-                    tstmpThrottled = (Get-Date)
+                    remainingCalls = $remainingCalls
+                    tstmpThrottled = (Get-Date).AddSeconds(-5)
                 }
             }
         }
@@ -467,7 +506,7 @@ function AzAPICall {
                     }
 
                     $function:AzAPICallErrorHandler = $AzAPICallConfiguration['AzAPICallRuleSet'].AzAPICallErrorHandler
-                    $AzAPICallErrorHandlerResponse = AzAPICallErrorHandler #-AzAPICallConfiguration $AzAPICallConfiguration -uri $uri -catchResult $catchResult -currentTask $currentTask -tryCounter $tryCounter -retryAuthorizationFailed $retryAuthorizationFailed
+                    $AzAPICallErrorHandlerResponse = AzAPICallErrorHandler
 
                     if ($AzAPICallErrorHandlerResponse.action -eq 'retry' -or $AzAPICallErrorHandlerResponse.action -eq 'break' -or $AzAPICallErrorHandlerResponse.action -eq 'return' -or $AzAPICallErrorHandlerResponse.action -eq 'returnCollection') {
                         if ($AzAPICallErrorHandlerResponse.action -eq 'retry') {
@@ -526,9 +565,7 @@ function AzAPICall {
                             }
                             catch {
                                 Logging -preventWriteOutput $true -logMessage "$azAPICallInfo '$currentTask' uri='$uri' Command 'ConvertFrom-Json -AsHashtable' failed" -logMessageForegroundColor 'darkred'
-                                #$_
                                 Logging -preventWriteOutput $true -logMessage "$azAPICallInfo '$currentTask' uri='$uri' Command 'ConvertFrom-Json -AsHashtable' failed. Please file an issue at the AzGovViz GitHub repository (aka.ms/AzGovViz) and provide a dump (scrub subscription Id and company identifyable names) of the resource (portal JSOn view) - Thank you!" -logMessageForegroundColor 'darkred'
-                                #$azAPIRequest.Content
                                 if ($currentTask -like 'Getting Resource Properties*') {
                                     return 'convertfromJSONError'
                                 }
@@ -561,7 +598,6 @@ function AzAPICall {
                 }
                 elseif ($listenOn -eq 'StatusCode') {
                     debugAzAPICall -debugMessage "listenOn=StatusCode ($actualStatusCode)"
-                    #$null = $apiCallResultsCollection.Add($actualStatusCode)
                     return [int32]$actualStatusCode
                 }
                 elseif ($listenOn -eq 'ContentProperties') {
@@ -587,8 +623,11 @@ function AzAPICall {
                 }
 
                 if ($isMore) {
-                    Logging -preventWriteOutput $true -logMessage "$azAPICallInfo $currentTask - processing nextLink/skipToken #$isMoreCounter"
+                    if (-not $getARMARG) {
+                        Logging -preventWriteOutput $true -logMessage "$azAPICallInfo $currentTask - processing nextLink/skipToken #$isMoreCounter"
+                    }
                 }
+
                 $isMore = $false
                 if (-not $noPaging) {
                     if (-not [string]::IsNullOrWhiteSpace($azAPIRequestConvertedFromJson.nextLink)) {
@@ -718,15 +757,12 @@ function AzAPICall {
             }
         }
         else {
-
-
             if ($connectionRelatedError) {
                 debugAzAPICall -debugMessage 'connectionRelatedError: true'
                 $maxtryCounterConnectionRelatedError = 6
                 if ($tryCounterConnectionRelatedError -lt ($maxtryCounterConnectionRelatedError + 1)) {
                     $sleepSecConnectionRelatedError = @(1, 1, 2, 4, 8, 16, 32, 64, 128)[$tryCounterConnectionRelatedError]
                     Logging -preventWriteOutput $true -logMessage "$azAPICallInfo $currentTask try #$($tryCounterConnectionRelatedError) 'connectionRelatedError' occurred '$connectionRelatedErrorPhrase' (trying $maxtryCounterConnectionRelatedError times); sleep $sleepSecConnectionRelatedError seconds"
-                    #Logging -preventWriteOutput $true -logMessage $catchResult
                     Start-Sleep -Seconds $sleepSecConnectionRelatedError
                 }
                 else {
@@ -1267,7 +1303,7 @@ function AzAPICallErrorHandler {
             }
             return $response
         }
-        if ($catchResult.error.code -eq 429 -or $actualStatusCode -eq 429) {
+        elseif ($catchResult.error.code -eq 429 -or $actualStatusCode -eq 429) {
             if ($getARMARG) {
                 $AzAPICallConfiguration['throttleState'].ARG = @{
                     remainingCalls = 0
@@ -1276,7 +1312,8 @@ function AzAPICallErrorHandler {
                 Logging -preventWriteOutput $true -logMessage "$azAPICallErrorHandlerInfo $currentTask - AzAPICall: AzureResourceGraph throttled! (77f77f77)"
             }
             elseif ($getARMCostManagement) {
-                if ($rawException.Exception.Response.Headers.where({ $_.Key -eq 'x-ms-ratelimit-microsoft.costmanagement-entity-retry-after' }).value) {
+                if ($rawException.Exception.Response.Headers.where({ $_.Key -eq 'x-ms-ratelimit-microsoft.costmanagement-entity-retry-after' }).value -and ($rawException.Exception.Response.Headers.where({ $_.Key -eq 'x-ms-ratelimit-microsoft.costmanagement-entity-retry-after' }).value -as [int])) {
+                    #validate INT
                     $retryAfter = $rawException.Exception.Response.Headers.where({ $_.Key -eq 'x-ms-ratelimit-microsoft.costmanagement-entity-retry-after' }).value
                     $retryAfterInfo = 'entity-retry-after'
                     $retryAfterFromHeader = $true
@@ -1288,7 +1325,8 @@ function AzAPICallErrorHandler {
                 #     Write-Host "$retryAfterInfo $($rawException.Exception.Response.Headers.where({ $_.Key -eq 'x-ms-ratelimit-microsoft.costmanagement-qpu-retry-after' }).value)" -ForegroundColor Magenta
                 #     Write-Host $rawException.Exception.Response.Headers -ForegroundColor Magenta
                 # }
-                elseif ($rawException.Exception.Response.Headers.where({ $_.Key -eq 'x-ms-ratelimit-microsoft.costmanagement-tenant-retry-after' }).value) {
+                elseif ($rawException.Exception.Response.Headers.where({ $_.Key -eq 'x-ms-ratelimit-microsoft.costmanagement-tenant-retry-after' }).value -and ($rawException.Exception.Response.Headers.where({ $_.Key -eq 'x-ms-ratelimit-microsoft.costmanagement-tenant-retry-after' }).value -as [int])) {
+                    #validate INT
                     $retryAfter = $rawException.Exception.Response.Headers.where({ $_.Key -eq 'x-ms-ratelimit-microsoft.costmanagement-tenant-retry-after' }).value
                     $retryAfterInfo = 'tenant-retry-after'
                     $retryAfterFromHeader = $true
@@ -1307,13 +1345,23 @@ function AzAPICallErrorHandler {
                 }
             }
             else {
-                if ($catchResult.error.message -like '*60 seconds*') {
+                if ($rawException.Exception.Response.Headers.where({ $_.Key -eq 'Retry-After' }).value -and ($rawException.Exception.Response.Headers.where({ $_.Key -eq 'Retry-After' }).value -as [int])) {
+                    if ($rawException.Exception.Response.Headers.where({ $_.Key -eq 'Retry-After' }).value -gt 0) {
+                        $sleepSeconds = $rawException.Exception.Response.Headers.where({ $_.Key -eq 'Retry-After' }).value
+                        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: ARM (retry-after) throttled! (99f99f99) sleeping $sleepSeconds seconds"
+                    }
+                    else {
+                        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: ARM (retry-after=0) throttled! (10f10f10) sleeping $sleepSeconds seconds"
+                    }
+                }
+                elseif ($catchResult.error.message -like '*60 seconds*') {
                     $sleepSeconds = (60 + $tryCounter)
+                    Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! (60f60f60) sleeping $sleepSeconds seconds"
                 }
                 else {
                     $sleepSeconds = ($sleepSeconds + ($tryCounter * 10))
+                    Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! (c83f5e82) sleeping $sleepSeconds seconds"
                 }
-                Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! (83f5e825) sleeping $sleepSeconds seconds"
                 Start-Sleep -Seconds $sleepSeconds
             }
 
@@ -1322,7 +1370,7 @@ function AzAPICallErrorHandler {
             }
             return $response
         }
-        if ($catchResult.error.code -eq 'ResourceRequestsThrottled' -or $catchResult.error.code -eq 'RateLimiting' -or $catchResult.code -eq 'TooManyRequests') {
+        elseif ($catchResult.error.code -eq 'ResourceRequestsThrottled' -or $catchResult.error.code -eq 'RateLimiting' -or $catchResult.code -eq 'TooManyRequests') {
             $sleepSeconds = 4
             $sleepSeconds = ($sleepSeconds + ($tryCounter * 5))
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! (1cc3d413) sleeping $sleepSeconds seconds"
@@ -1332,14 +1380,15 @@ function AzAPICallErrorHandler {
             }
             return $response
         }
-
-        $sleepSeconds = ($sleepSeconds + $tryCounter)
-        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! (2b0e9fba) sleeping $sleepSeconds seconds"
-        Start-Sleep -Seconds $sleepSeconds
-        $response = @{
-            action = 'retry' #break or return or returnCollection or retry
+        else {
+            $sleepSeconds = ($sleepSeconds + $tryCounter)
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! (2b0e9fba) sleeping $sleepSeconds seconds"
+            Start-Sleep -Seconds $sleepSeconds
+            $response = @{
+                action = 'retry' #break or return or returnCollection or retry
+            }
+            return $response
         }
-        return $response
     }
 
     elseif (
@@ -1775,7 +1824,13 @@ function getARMLocations {
     if (($AzAPICallConfiguration['checkContext']).Subscription.Id) {
         $uri = "$(($AzAPICallConfiguration['azAPIEndpointUrls']).ARM)/subscriptions/$(($AzAPICallConfiguration['checkContext']).Subscription.Id)/locations?api-version=2020-01-01"
         $method = 'GET'
-        $getARMLocations = AzAPICall -uri $uri -method $method -currentTask $currentTask -AzAPICallConfiguration $AzAPICallConfiguration
+        $getARMLocationsParametersSplat = @{
+            AzAPICallConfiguration = $AzAPICallConfiguration
+            uri                    = $uri
+            method                 = $method
+            currentTask            = $currentTask
+        }
+        $getARMLocations = AzAPICall @getARMLocationsParametersSplat -initState
 
         if ($getARMLocations.Count -gt 0) {
             Logging -logMessage "   Get ARM locations succeeded (locations count: '$($getARMLocations.Count)')" -logMessageForegroundColor 'Green'
@@ -1785,7 +1840,8 @@ function getARMLocations {
                 $AzApiCallConfiguration['htParameters'].ARMLocations = $getARMLocationsPhysical.name | Sort-Object
                 foreach ($location in $getARMLocationsPhysical) {
                     $AzApiCallConfiguration['azAPIEndpointUrls']."ARM$($location.name.tolower())" = $AzApiCallConfiguration['azAPIEndpointUrls'].ARM -replace 'https://', "https://$($location.name)."
-                    $AzApiCallConfiguration['azAPIEndpoints'].($AzApiCallConfiguration['azAPIEndpointUrls'].ARM -replace 'https://', "$($location.name).") = "ARM$($location.name.tolower())"
+                    $locationDomain = $AzApiCallConfiguration['azAPIEndpointUrls'].ARM -replace 'https://', "$($location.name)."
+                    $AzApiCallConfiguration['azAPIEndpoints'].($locationDomain) = "ARM$($location.name.tolower())"
                 }
             }
             else {
@@ -1815,7 +1871,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.2.3' }
+function getAzAPICallVersion { return '1.3.0' }
 
 function getJWTDetails {
     <#
@@ -1919,20 +1975,24 @@ function initAzAPICall {
     )
 
     $AzAPICallConfiguration = @{
-        htParameters          = @{
+        AzAPICallState = 'initializing'
+        htParameters   = @{
             writeMethod      = $WriteMethod
             debugWriteMethod = $DebugWriteMethod
         }
         #https://learn.microsoft.com/en-us/azure/governance/resource-graph/concepts/guidance-for-throttled-requests#understand-throttling-headers
-        armArgThrottlingRules = @{
-            timeWindowSeconds      = 5
-            maxQueriesInTimeWindow = 15
+        throttleRules  = @{
+            ARG = @{
+                timeWindowSeconds      = 5
+                maxQueriesInTimeWindow = 15
+            }
         }
     }
 
-    $AzAPICallConfiguration['throttleState'] = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
-    # $AzAPICallConfiguration['armArgThrottleState'].remainingCalls = 15
-    # $AzAPICallConfiguration['armArgThrottleState'].tstmp = Get-Date
+    $AzAPICallVersion = getAzAPICallVersion
+    Logging -preventWriteOutput $true -logMessage "AzAPICall $AzAPICallVersion (AzAPICallState: '$($AzAPICallConfiguration['AzAPICallState'])')"
+
+    $AzAPICallConfiguration['throttleState'] = [System.Collections.Hashtable]::Synchronized(@{})
     $AzAPICallConfiguration['throttleState'].ARG = @{
         remainingCalls = 15
         tstmpThrottled = Get-Date
@@ -1942,9 +2002,6 @@ function initAzAPICall {
         retryAfter     = 1
         tstmpThrottled = (Get-Date).AddMinutes(-5)
     }
-
-    $AzAPICallVersion = getAzAPICallVersion
-    Logging -preventWriteOutput $true -logMessage " AzAPICall $AzAPICallVersion"
 
     $AzAccountsVersion = testAzModules
 
@@ -1970,7 +2027,7 @@ function initAzAPICall {
     Logging -preventWriteOutput $true -logMessage '  Create htParameters succeeded' -logMessageForegroundColor 'Green'
 
     $AzAPICallConfiguration['arrayAPICallTracking'] = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
-    $AzAPICallConfiguration['htBearerAccessToken'] = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
+    $AzAPICallConfiguration['htBearerAccessToken'] = [System.Collections.Hashtable]::Synchronized(@{})
 
     Logging -preventWriteOutput $true -logMessage ' Get Az context'
     try {
@@ -2125,6 +2182,8 @@ function initAzAPICall {
 
     getARMLocations -AzApiCallConfiguration $AzAPICallConfiguration
 
+    $AzApiCallConfiguration['AzAPICallState'] = 'operational'
+    Logging -preventWriteOutput $true -logMessage "AzAPICall $AzAPICallVersion initialization completed (AzAPICallState: '$($AzApiCallConfiguration['AzAPICallState'])')"
     return $AzAPICallConfiguration
 }
 function Logging {
@@ -2260,11 +2319,16 @@ function setAzureEnvironment {
 
     #AzureEnvironmentRelatedTargetEndpoints
     $AzAPICallConfiguration['azAPIEndpoints'] = @{ }
-    $AzAPICallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].ARM -split '/')[2]) = 'ARM'
-    $AzAPICallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].KeyVault -split '/')[2]) = 'KeyVault'
-    $AzAPICallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].LogAnalytics -split '/')[2]) = 'LogAnalytics'
-    $AzAPICallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph -split '/')[2]) = 'MicrosoftGraph'
-    $AzAPICallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].Login -split '/')[2]) = 'Login'
+    $arm = ($AzApiCallConfiguration['azAPIEndpointUrls'].ARM -split '/')[2]
+    $AzAPICallConfiguration['azAPIEndpoints'].($arm) = 'ARM'
+    $keyVault = ($AzApiCallConfiguration['azAPIEndpointUrls'].KeyVault -split '/')[2]
+    $AzAPICallConfiguration['azAPIEndpoints'].($keyVault) = 'KeyVault'
+    $logAnalytics = ($AzApiCallConfiguration['azAPIEndpointUrls'].LogAnalytics -split '/')[2]
+    $AzAPICallConfiguration['azAPIEndpoints'].($logAnalytics) = 'LogAnalytics'
+    $microsoftGraph = ($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph -split '/')[2]
+    $AzAPICallConfiguration['azAPIEndpoints'].($microsoftGraph) = 'MicrosoftGraph'
+    $login = ($AzApiCallConfiguration['azAPIEndpointUrls'].Login -split '/')[2]
+    $AzAPICallConfiguration['azAPIEndpoints'].($login) = 'Login'
     $AzAPICallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].Storage)) = 'Storage'
     $AzAPICallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].StorageAuth)) = 'StorageAuth'
     $AzAPICallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].MonitorIngest)) = 'MonitorIngest'
@@ -2424,7 +2488,14 @@ function testSubscription {
     Logging -logMessage "  $currentTask"
     $uri = "$(($AzAPICallConfiguration['azAPIEndpointUrls']).ARM)/subscriptions/$($SubscriptionId4Test)?api-version=2020-01-01"
     $method = 'GET'
-    $testSubscription = AzAPICall -uri $uri -method $method -currentTask $currentTask -listenOn 'Content' -AzAPICallConfiguration $AzAPICallConfiguration
+    $testSubscriptionParametersSplat = @{
+        AzAPICallConfiguration = $AzAPICallConfiguration
+        uri                    = $uri
+        method                 = $method
+        currentTask            = $currentTask
+        listenOn               = 'Content'
+    }
+    $testSubscription = AzAPICall @testSubscriptionParametersSplat -initState
 
     if ($testSubscription.subscriptionPolicies.quotaId -like 'AAD*' -or $testSubscription.state -ne 'Enabled') {
         if ($testSubscription.subscriptionPolicies.quotaId -like 'AAD*') {
@@ -2455,7 +2526,14 @@ function testUserType {
         Logging -preventWriteOutput $true -logMessage " $currentTask"
         $uri = $AzAPICallConfiguration['azAPIEndpointUrls'].MicrosoftGraph + '/v1.0/me?$select=userType,id'
         $method = 'GET'
-        $checkUserType = AzAPICall -AzAPICallConfiguration $AzAPICallConfiguration -uri $uri -method $method -listenOn 'Content' -currentTask $currentTask
+        $checkUserTypeParametersSplat = @{
+            AzAPICallConfiguration = $AzAPICallConfiguration
+            uri                    = $uri
+            method                 = $method
+            currentTask            = $currentTask
+            listenOn               = 'Content'
+        }
+        $checkUserType = AzAPICall @checkUserTypeParametersSplat -initState
         $userType = $checkUserType
 
         Logging -preventWriteOutput $true -logMessage "  AAD UserType: $($userType.userType); AAD identityId: $($userType.id)" -logMessageForegroundColor 'Yellow'

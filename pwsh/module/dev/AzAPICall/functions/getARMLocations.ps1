@@ -1,4 +1,4 @@
-function getARMLocations {
+﻿function getARMLocations {
     [CmdletBinding()]Param(
         [Parameter(Mandatory)]
         [object]
@@ -10,7 +10,13 @@ function getARMLocations {
     if (($AzAPICallConfiguration['checkContext']).Subscription.Id) {
         $uri = "$(($AzAPICallConfiguration['azAPIEndpointUrls']).ARM)/subscriptions/$(($AzAPICallConfiguration['checkContext']).Subscription.Id)/locations?api-version=2020-01-01"
         $method = 'GET'
-        $getARMLocations = AzAPICall -uri $uri -method $method -currentTask $currentTask -AzAPICallConfiguration $AzAPICallConfiguration
+        $getARMLocationsParametersSplat = @{
+            AzAPICallConfiguration = $AzAPICallConfiguration
+            uri                    = $uri
+            method                 = $method
+            currentTask            = $currentTask
+        }
+        $getARMLocations = AzAPICall @getARMLocationsParametersSplat -initState
 
         if ($getARMLocations.Count -gt 0) {
             Logging -logMessage "   Get ARM locations succeeded (locations count: '$($getARMLocations.Count)')" -logMessageForegroundColor 'Green'
@@ -20,7 +26,8 @@ function getARMLocations {
                 $AzApiCallConfiguration['htParameters'].ARMLocations = $getARMLocationsPhysical.name | Sort-Object
                 foreach ($location in $getARMLocationsPhysical) {
                     $AzApiCallConfiguration['azAPIEndpointUrls']."ARM$($location.name.tolower())" = $AzApiCallConfiguration['azAPIEndpointUrls'].ARM -replace 'https://', "https://$($location.name)."
-                    $AzApiCallConfiguration['azAPIEndpoints'].($AzApiCallConfiguration['azAPIEndpointUrls'].ARM -replace 'https://', "$($location.name).") = "ARM$($location.name.tolower())"
+                    $locationDomain = $AzApiCallConfiguration['azAPIEndpointUrls'].ARM -replace 'https://', "$($location.name)."
+                    $AzApiCallConfiguration['azAPIEndpoints'].($locationDomain) = "ARM$($location.name.tolower())"
                 }
             }
             else {

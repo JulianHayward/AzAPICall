@@ -20,5 +20,8 @@
     "powershell.codeFormatting.whitespaceAroundOperator": true,
     "powershell.codeFormatting.whitespaceBeforeOpenBrace": true,
     "powershell.codeFormatting.whitespaceBeforeOpenParen": true,
-    "powershell.codeFormatting.whitespaceBetweenParameters": true
+    "powershell.codeFormatting.whitespaceBetweenParameters": true,
+    "[powershell]": {
+        "files.encoding": "utf8bom"
+    }
 }

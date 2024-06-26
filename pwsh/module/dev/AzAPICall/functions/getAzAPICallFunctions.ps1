@@ -1,4 +1,4 @@
-function getAzAPICallFunctions {
+﻿function getAzAPICallFunctions {
     $functions = @{
         funcAZAPICall         = $function:AzAPICall.ToString()
         funcCreateBearerToken = $function:createBearerToken.ToString()

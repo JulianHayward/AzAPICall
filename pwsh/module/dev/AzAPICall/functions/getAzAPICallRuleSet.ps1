@@ -1,3 +1,3 @@
-function getAzAPICallRuleSet {
+﻿function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }

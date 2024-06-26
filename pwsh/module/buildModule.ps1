@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter()]
     [switch]
     $test
@@ -71,7 +71,7 @@ catch {
 Get-ChildItem -Path .\pwsh\module\dev\AzAPICall\functions | ForEach-Object -Process {
     Write-Host ' processing:' $PSItem.Name
     $fileContent = Get-Content -Path .\pwsh\module\dev\AzAPICall\functions\$($PSItem.Name) -Raw -Verbose
-    $fileContent | Add-Content -Path .\pwsh\module\build\AzAPICall\functions\AzAPICallFunctions.ps1 -Verbose
+    $fileContent | Add-Content -Path .\pwsh\module\build\AzAPICall\functions\AzAPICallFunctions.ps1 -Verbose -Encoding utf8BOM
 }
 
 try {

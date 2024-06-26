@@ -1,4 +1,4 @@
-function testUserType {
+﻿function testUserType {
     param(
         [Parameter(Mandatory)]
         [object]
@@ -11,7 +11,14 @@ function testUserType {
         Logging -preventWriteOutput $true -logMessage " $currentTask"
         $uri = $AzAPICallConfiguration['azAPIEndpointUrls'].MicrosoftGraph + '/v1.0/me?$select=userType,id'
         $method = 'GET'
-        $checkUserType = AzAPICall -AzAPICallConfiguration $AzAPICallConfiguration -uri $uri -method $method -listenOn 'Content' -currentTask $currentTask
+        $checkUserTypeParametersSplat = @{
+            AzAPICallConfiguration = $AzAPICallConfiguration
+            uri                    = $uri
+            method                 = $method
+            currentTask            = $currentTask
+            listenOn               = 'Content'
+        }
+        $checkUserType = AzAPICall @checkUserTypeParametersSplat -initState
         $userType = $checkUserType
 
         Logging -preventWriteOutput $true -logMessage "  AAD UserType: $($userType.userType); AAD identityId: $($userType.id)" -logMessageForegroundColor 'Yellow'

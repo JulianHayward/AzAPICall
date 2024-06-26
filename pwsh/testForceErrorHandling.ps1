@@ -1,6 +1,6 @@
-$apiEndPoint = $azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph
+﻿$apiEndPoint = $azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph
 $apiEndPointVersion = '/v1.0'
-$api = "/groups/$((new-guid).guid)"
+$api = "/groups/$((New-Guid).guid)"
 $optionalQueryParameters = ''
 
 #$uri = 'https://graph.microsoft.com/v1.0/groups/<GUID>/members'
@@ -18,6 +18,6 @@ $AzApiCallResult = AzAPICall @azAPICallPayload
 $AzApiCallResult
 
 $AzApiCallResultStatusCode = AzAPICall @azAPICallPayload -listenOn 'StatusCode'
-if($AzApiCallResultStatusCode -eq 404) {
+if ($AzApiCallResultStatusCode -eq 404) {
     $true
 }

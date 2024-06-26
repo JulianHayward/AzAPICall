@@ -92,11 +92,16 @@
 
     #AzureEnvironmentRelatedTargetEndpoints
     $AzAPICallConfiguration['azAPIEndpoints'] = @{ }
-    $AzAPICallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].ARM -split '/')[2]) = 'ARM'
-    $AzAPICallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].KeyVault -split '/')[2]) = 'KeyVault'
-    $AzAPICallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].LogAnalytics -split '/')[2]) = 'LogAnalytics'
-    $AzAPICallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph -split '/')[2]) = 'MicrosoftGraph'
-    $AzAPICallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].Login -split '/')[2]) = 'Login'
+    $arm = ($AzApiCallConfiguration['azAPIEndpointUrls'].ARM -split '/')[2]
+    $AzAPICallConfiguration['azAPIEndpoints'].($arm) = 'ARM'
+    $keyVault = ($AzApiCallConfiguration['azAPIEndpointUrls'].KeyVault -split '/')[2]
+    $AzAPICallConfiguration['azAPIEndpoints'].($keyVault) = 'KeyVault'
+    $logAnalytics = ($AzApiCallConfiguration['azAPIEndpointUrls'].LogAnalytics -split '/')[2]
+    $AzAPICallConfiguration['azAPIEndpoints'].($logAnalytics) = 'LogAnalytics'
+    $microsoftGraph = ($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph -split '/')[2]
+    $AzAPICallConfiguration['azAPIEndpoints'].($microsoftGraph) = 'MicrosoftGraph'
+    $login = ($AzApiCallConfiguration['azAPIEndpointUrls'].Login -split '/')[2]
+    $AzAPICallConfiguration['azAPIEndpoints'].($login) = 'Login'
     $AzAPICallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].Storage)) = 'Storage'
     $AzAPICallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].StorageAuth)) = 'StorageAuth'
     $AzAPICallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].MonitorIngest)) = 'MonitorIngest'

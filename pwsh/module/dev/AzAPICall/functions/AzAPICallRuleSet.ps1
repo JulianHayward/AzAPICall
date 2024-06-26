@@ -1,4 +1,4 @@
-function AzAPICallErrorHandler {
+﻿function AzAPICallErrorHandler {
     #Logging -preventWriteOutput $true -logMessage ' * BuiltIn RuleSet'
 
     $doRetry = $false
@@ -497,7 +497,7 @@ function AzAPICallErrorHandler {
             }
             return $response
         }
-        if ($catchResult.error.code -eq 429 -or $actualStatusCode -eq 429) {
+        elseif ($catchResult.error.code -eq 429 -or $actualStatusCode -eq 429) {
             if ($getARMARG) {
                 $AzAPICallConfiguration['throttleState'].ARG = @{
                     remainingCalls = 0
@@ -506,7 +506,8 @@ function AzAPICallErrorHandler {
                 Logging -preventWriteOutput $true -logMessage "$azAPICallErrorHandlerInfo $currentTask - AzAPICall: AzureResourceGraph throttled! (77f77f77)"
             }
             elseif ($getARMCostManagement) {
-                if ($rawException.Exception.Response.Headers.where({ $_.Key -eq 'x-ms-ratelimit-microsoft.costmanagement-entity-retry-after' }).value) {
+                if ($rawException.Exception.Response.Headers.where({ $_.Key -eq 'x-ms-ratelimit-microsoft.costmanagement-entity-retry-after' }).value -and ($rawException.Exception.Response.Headers.where({ $_.Key -eq 'x-ms-ratelimit-microsoft.costmanagement-entity-retry-after' }).value -as [int])) {
+                    #validate INT
                     $retryAfter = $rawException.Exception.Response.Headers.where({ $_.Key -eq 'x-ms-ratelimit-microsoft.costmanagement-entity-retry-after' }).value
                     $retryAfterInfo = 'entity-retry-after'
                     $retryAfterFromHeader = $true
@@ -518,7 +519,8 @@ function AzAPICallErrorHandler {
                 #     Write-Host "$retryAfterInfo $($rawException.Exception.Response.Headers.where({ $_.Key -eq 'x-ms-ratelimit-microsoft.costmanagement-qpu-retry-after' }).value)" -ForegroundColor Magenta
                 #     Write-Host $rawException.Exception.Response.Headers -ForegroundColor Magenta
                 # }
-                elseif ($rawException.Exception.Response.Headers.where({ $_.Key -eq 'x-ms-ratelimit-microsoft.costmanagement-tenant-retry-after' }).value) {
+                elseif ($rawException.Exception.Response.Headers.where({ $_.Key -eq 'x-ms-ratelimit-microsoft.costmanagement-tenant-retry-after' }).value -and ($rawException.Exception.Response.Headers.where({ $_.Key -eq 'x-ms-ratelimit-microsoft.costmanagement-tenant-retry-after' }).value -as [int])) {
+                    #validate INT
                     $retryAfter = $rawException.Exception.Response.Headers.where({ $_.Key -eq 'x-ms-ratelimit-microsoft.costmanagement-tenant-retry-after' }).value
                     $retryAfterInfo = 'tenant-retry-after'
                     $retryAfterFromHeader = $true
@@ -537,13 +539,23 @@ function AzAPICallErrorHandler {
                 }
             }
             else {
-                if ($catchResult.error.message -like '*60 seconds*') {
+                if ($rawException.Exception.Response.Headers.where({ $_.Key -eq 'Retry-After' }).value -and ($rawException.Exception.Response.Headers.where({ $_.Key -eq 'Retry-After' }).value -as [int])) {
+                    if ($rawException.Exception.Response.Headers.where({ $_.Key -eq 'Retry-After' }).value -gt 0) {
+                        $sleepSeconds = $rawException.Exception.Response.Headers.where({ $_.Key -eq 'Retry-After' }).value
+                        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: ARM (retry-after) throttled! (99f99f99) sleeping $sleepSeconds seconds"
+                    }
+                    else {
+                        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: ARM (retry-after=0) throttled! (10f10f10) sleeping $sleepSeconds seconds"
+                    }
+                }
+                elseif ($catchResult.error.message -like '*60 seconds*') {
                     $sleepSeconds = (60 + $tryCounter)
+                    Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! (60f60f60) sleeping $sleepSeconds seconds"
                 }
                 else {
                     $sleepSeconds = ($sleepSeconds + ($tryCounter * 10))
+                    Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! (c83f5e82) sleeping $sleepSeconds seconds"
                 }
-                Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! (83f5e825) sleeping $sleepSeconds seconds"
                 Start-Sleep -Seconds $sleepSeconds
             }
 
@@ -552,7 +564,7 @@ function AzAPICallErrorHandler {
             }
             return $response
         }
-        if ($catchResult.error.code -eq 'ResourceRequestsThrottled' -or $catchResult.error.code -eq 'RateLimiting' -or $catchResult.code -eq 'TooManyRequests') {
+        elseif ($catchResult.error.code -eq 'ResourceRequestsThrottled' -or $catchResult.error.code -eq 'RateLimiting' -or $catchResult.code -eq 'TooManyRequests') {
             $sleepSeconds = 4
             $sleepSeconds = ($sleepSeconds + ($tryCounter * 5))
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! (1cc3d413) sleeping $sleepSeconds seconds"
@@ -562,14 +574,15 @@ function AzAPICallErrorHandler {
             }
             return $response
         }
-
-        $sleepSeconds = ($sleepSeconds + $tryCounter)
-        Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! (2b0e9fba) sleeping $sleepSeconds seconds"
-        Start-Sleep -Seconds $sleepSeconds
-        $response = @{
-            action = 'retry' #break or return or returnCollection or retry
+        else {
+            $sleepSeconds = ($sleepSeconds + $tryCounter)
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: throttled! (2b0e9fba) sleeping $sleepSeconds seconds"
+            Start-Sleep -Seconds $sleepSeconds
+            $response = @{
+                action = 'retry' #break or return or returnCollection or retry
+            }
+            return $response
         }
-        return $response
     }
 
     elseif (

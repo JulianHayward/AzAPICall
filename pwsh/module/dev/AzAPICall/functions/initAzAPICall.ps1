@@ -37,20 +37,24 @@
     )
 
     $AzAPICallConfiguration = @{
-        htParameters          = @{
+        AzAPICallState = 'initializing'
+        htParameters   = @{
             writeMethod      = $WriteMethod
             debugWriteMethod = $DebugWriteMethod
         }
         #https://learn.microsoft.com/en-us/azure/governance/resource-graph/concepts/guidance-for-throttled-requests#understand-throttling-headers
-        armArgThrottlingRules = @{
-            timeWindowSeconds      = 5
-            maxQueriesInTimeWindow = 15
+        throttleRules  = @{
+            ARG = @{
+                timeWindowSeconds      = 5
+                maxQueriesInTimeWindow = 15
+            }
         }
     }
 
-    $AzAPICallConfiguration['throttleState'] = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
-    # $AzAPICallConfiguration['armArgThrottleState'].remainingCalls = 15
-    # $AzAPICallConfiguration['armArgThrottleState'].tstmp = Get-Date
+    $AzAPICallVersion = getAzAPICallVersion
+    Logging -preventWriteOutput $true -logMessage "AzAPICall $AzAPICallVersion (AzAPICallState: '$($AzAPICallConfiguration['AzAPICallState'])')"
+
+    $AzAPICallConfiguration['throttleState'] = [System.Collections.Hashtable]::Synchronized(@{})
     $AzAPICallConfiguration['throttleState'].ARG = @{
         remainingCalls = 15
         tstmpThrottled = Get-Date
@@ -60,9 +64,6 @@
         retryAfter     = 1
         tstmpThrottled = (Get-Date).AddMinutes(-5)
     }
-
-    $AzAPICallVersion = getAzAPICallVersion
-    Logging -preventWriteOutput $true -logMessage " AzAPICall $AzAPICallVersion"
 
     $AzAccountsVersion = testAzModules
 
@@ -88,7 +89,7 @@
     Logging -preventWriteOutput $true -logMessage '  Create htParameters succeeded' -logMessageForegroundColor 'Green'
 
     $AzAPICallConfiguration['arrayAPICallTracking'] = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
-    $AzAPICallConfiguration['htBearerAccessToken'] = [System.Collections.Hashtable]::Synchronized((New-Object System.Collections.Hashtable))
+    $AzAPICallConfiguration['htBearerAccessToken'] = [System.Collections.Hashtable]::Synchronized(@{})
 
     Logging -preventWriteOutput $true -logMessage ' Get Az context'
     try {
@@ -243,5 +244,7 @@
 
     getARMLocations -AzApiCallConfiguration $AzAPICallConfiguration
 
+    $AzApiCallConfiguration['AzAPICallState'] = 'operational'
+    Logging -preventWriteOutput $true -logMessage "AzAPICall $AzAPICallVersion initialization completed (AzAPICallState: '$($AzApiCallConfiguration['AzAPICallState'])')"
     return $AzAPICallConfiguration
 }
