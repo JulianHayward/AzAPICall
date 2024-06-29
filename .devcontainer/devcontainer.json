@@ -1,11 +1,15 @@
 {
 	"name": "AzAPICall",
 	"dockerFile": "Dockerfile",
-	"settings": {
-		"terminal.integrated.defaultProfile.linux": "pwsh"
+	"customizations": {
+		"vscode": {
+			"settings": {
+				"terminal.integrated.defaultProfile.linux": "PowerShell Extension"
+			},
+			"extensions": [
+				"ms-vscode.powershell"
+			]
+		}
 	},
-	"extensions": [
-		"ms-vscode.powershell"
-	],
 	"forwardPorts": []
 }
