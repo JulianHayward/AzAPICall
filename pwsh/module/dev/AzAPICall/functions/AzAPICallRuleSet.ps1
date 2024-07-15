@@ -300,6 +300,7 @@ function AzAPICallErrorHandler {
         $getARMCostManagement -and (
             $catchResult.error.code -eq 404 -or
             $catchResult.error.code -eq 'AccountCostDisabled' -or
+            $catchResult.error.code -eq 'SubscriptionCostDisabled' -or
             $catchResult.error.message -like '*does not have any valid subscriptions*' -or
             $catchResult.error.code -eq 'Unauthorized' -or
             ($catchResult.error.code -eq 'NotFound' -and $catchResult.error.message -like '*have valid WebDirect/AIRS offer type*') -or
@@ -324,6 +325,15 @@ function AzAPICallErrorHandler {
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'AccountCostDisabled'
+            }
+            return $response
+        }
+
+        if ($catchResult.error.code -eq 'SubscriptionCostDisabled') {
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: seems Access to cost data has been disabled for this Subscription - skipping CostManagement for this Subscription - return 'SubscriptionCostDisabled'"
+            $response = @{
+                action    = 'return' #break or return or returnCollection
+                returnVar = 'SubscriptionCostDisabled'
             }
             return $response
         }
