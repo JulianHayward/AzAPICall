@@ -15,6 +15,7 @@ function AzAPICallErrorHandler {
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/subscriptions/*/providers/Microsoft.Security/pricings*" } { $getARMMDfC = $true }
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/subscriptions/*/providers/Microsoft.Security/securescores*" } { $getARMMdFC = $true }
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/subscriptions/*/providers/Microsoft.Security/securityContacts*" } { $getARMMdFCSecurityContacts = $true }
+        { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/subscriptions/*/providers/Microsoft.Security/settings*" } { $getARMMdFCSecuritySettings = $true }
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/federatedIdentityCredentials*" } { $getARMManagedIdentityUserAssignedFederatedIdentityCredentials = $true }
         #MicrosoftGraph
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/applications*" } { $getMicrosoftGraphApplication = $true }
@@ -635,7 +636,7 @@ function AzAPICallErrorHandler {
         }
     }
 
-    elseif (($getARMMDfC -or $getARMMdFCSecurityContacts) -and $catchResult.error.code -eq 'Subscription Not Registered') {
+    elseif (($getARMMDfC -or $getARMMdFCSecurityContacts -or $getARMMdFCSecuritySettings) -and $catchResult.error.code -eq 'Subscription Not Registered') {
         Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: skipping Subscription - return 'SubscriptionNotRegistered'"
         $response = @{
             action    = 'return' #break or return or returnCollection
