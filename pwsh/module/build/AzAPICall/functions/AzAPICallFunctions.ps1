@@ -226,28 +226,28 @@ function AzAPICall {
 
         if ($targetEndpoint -eq 'Storage') {
             $Header = @{
-                'Content-Type'  = 'application/json'
-                'x-ms-version'  = '2021-04-10'
+                'Content-Type'  = 'application/json';
+                'x-ms-version'  = '2021-04-10';
                 'Authorization' = "Bearer $($AzAPICallConfiguration['htBearerAccessToken'].$targetEndpoint)"
             }
         }
         else {
             if ($targetEndpoint -eq 'Kusto') {
                 $Header = @{
-                    'Content-Type'  = 'application/json'
+                    'Content-Type'  = 'application/json';
                     'Authorization' = "Bearer $($AzAPICallConfiguration['htBearerAccessToken'].$targetCluster)"
                 }
             }
             else {
                 if ($targetEndPoint -like 'ARM*' -and $targetEndPoint -ne 'ARM') {
                     $Header = @{
-                        'Content-Type'  = 'application/json'
+                        'Content-Type'  = 'application/json';
                         'Authorization' = "Bearer $($AzAPICallConfiguration['htBearerAccessToken'].ARM)"
                     }
                 }
                 else {
                     $Header = @{
-                        'Content-Type'  = 'application/json'
+                        'Content-Type'  = 'application/json';
                         'Authorization' = "Bearer $($AzAPICallConfiguration['htBearerAccessToken'].$targetEndpoint)"
                     }
                 }
@@ -255,8 +255,8 @@ function AzAPICall {
 
             if ($consistencyLevel) {
                 $Header = @{
-                    'Content-Type'     = 'application/json'
-                    'Authorization'    = "Bearer $($AzAPICallConfiguration['htBearerAccessToken'].$targetEndpoint)"
+                    'Content-Type'     = 'application/json';
+                    'Authorization'    = "Bearer $($AzAPICallConfiguration['htBearerAccessToken'].$targetEndpoint)";
                     'ConsistencyLevel' = "$consistencyLevel"
                 }
             }
@@ -721,7 +721,7 @@ function AzAPICallErrorHandler {
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/subscriptions/*/providers/Microsoft.Security/pricings*" } { $getARMMDfC = $true }
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/subscriptions/*/providers/Microsoft.Security/securescores*" } { $getARMMdFC = $true }
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/subscriptions/*/providers/Microsoft.Security/securityContacts*" } { $getARMMdFCSecurityContacts = $true }
-        { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/subscriptions/*/providers/Microsoft.Security/settings" } { $getARMMdFCSecuritySettings = $true }
+        { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)/subscriptions/*/providers/Microsoft.Security/settings*" } { $getARMMdFCSecuritySettings = $true }
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].ARM)*/federatedIdentityCredentials*" } { $getARMManagedIdentityUserAssignedFederatedIdentityCredentials = $true }
         #MicrosoftGraph
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/applications*" } { $getMicrosoftGraphApplication = $true }
