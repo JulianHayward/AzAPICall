@@ -397,6 +397,10 @@
                 if ($listenOn -eq 'StatusCode' -and ($actualStatusCode -ne 401 -and $catchResult.error.code -ne 'ExpiredAuthenticationToken')) {
                     return [int32]$actualStatusCode
                 }
+                elseif ($listenOn -eq 'Raw') {
+                    debugAzAPICall -debugMessage "listenOn=Raw ($(($azAPIRequest).count))"
+                    $null = $apiCallResultsCollection.Add($azAPIRequest)
+                }
                 else {
                     debugAzAPICall -debugMessage "apiStatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))"
                     if ($actualStatusCode -in $skipOnErrorCode) {
