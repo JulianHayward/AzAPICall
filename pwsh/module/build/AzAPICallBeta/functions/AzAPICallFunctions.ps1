@@ -393,13 +393,14 @@
         if ($unexpectedError -eq $false -and $connectionRelatedError -eq $false) {
             debugAzAPICall -debugMessage 'unexpectedError: false'
             if ($actualStatusCode -notin 200..204) {
+                if ($listenOn -eq 'Raw') {
+                    debugAzAPICall -debugMessage "listenOn=Raw ($(($rawException).count))"
+                    $null = $apiCallResultsCollection.Add($rawException)
+
+                }
                 #if the token has exired it would only return statuscode 401 (ExpiredAuthenticationToken) and not the actual statuscode
                 if ($listenOn -eq 'StatusCode' -and ($actualStatusCode -ne 401 -and $catchResult.error.code -ne 'ExpiredAuthenticationToken')) {
                     return [int32]$actualStatusCode
-                }
-                elseif ($listenOn -eq 'Raw') {
-                    debugAzAPICall -debugMessage "listenOn=Raw ($(($azAPIRequest).count))"
-                    $null = $apiCallResultsCollection.Add($azAPIRequest)
                 }
                 else {
                     debugAzAPICall -debugMessage "apiStatusCode: '$($actualStatusCode)' ($($actualStatusCodePhrase))"
