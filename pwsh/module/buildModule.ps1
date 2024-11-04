@@ -1,101 +1,203 @@
 param(
     [Parameter()]
     [switch]
-    $test
+    $test,
+
+    [Parameter()]
+    [switch]
+    $beta
 )
 
 $ErrorActionPreference = 'Stop'
 
-Write-Host 'Building final module (one file containing all functions)'
 
-$latestAzAPICallVersionInDev = (Import-PowerShellDataFile -Path .\pwsh\module\dev\AzAPICall\AzAPICall.psd1 -Verbose -ErrorAction Stop).ModuleVersion
-if (-not $test) {
-    $latestAzAPICallVersionInGallery = (Find-Module -Name AzAPICall -ErrorAction Stop).Version
-    if ($latestAzAPICallVersionInGallery -eq $latestAzAPICallVersionInDev) {
-        Write-Host "Version conflict (Gallery/Dev):  $latestAzAPICallVersionInGallery = $latestAzAPICallVersionInDev"
-        Write-Host 'For testing use switch parameter -test'
-        throw
+if ($beta) {
+    Write-Host 'Building final beta module (one file containing all functions)'
+
+    $latestAzAPICallVersionInDev = (Import-PowerShellDataFile -Path .\pwsh\module\dev\AzAPICall\AzAPICallBeta.psd1 -Verbose -ErrorAction Stop).ModuleVersion
+    if (-not $test) {
+        $latestAzAPICallBetaVersionInGallery = (Find-Module -Name AzAPICallBeta -ErrorAction Stop).Version
+        if ($latestAzAPICallBetaVersionInGallery -eq $latestAzAPICallVersionInDev) {
+            Write-Host "Version conflict (Gallery/Dev):  $latestAzAPICallBetaVersionInGallery = $latestAzAPICallVersionInDev"
+            Write-Host 'For testing use switch parameter -test'
+            Throw $_
+        }
     }
-}
 
-if (Test-Path .\pwsh\module\build\AzAPICall.zip) {
+    if (Test-Path .\pwsh\module\build\AzAPICallBeta.zip) {
+        try {
+            Remove-Item -Path .\pwsh\module\build\AzAPICallBeta.zip -Verbose -ErrorAction Stop
+        }
+        catch {
+            Write-Host ' Cleaning build for AzAPICallBeta.zip failed'
+            Throw $_
+        }
+    }
+
+    Write-Host ' Cleaning build\functions'
+
+    if (Test-Path .\pwsh\module\build\AzAPICallBeta\functions\getAzAPICallFunctions.ps1) {
+        try {
+            Remove-Item -Path .\pwsh\module\build\AzAPICallBeta\functions\getAzAPICallFunctions.ps1 -Verbose -ErrorAction Stop
+        }
+        catch {
+            Write-Host ' Cleaning build/functions for getAzAPICallFunctions.ps1 failed'
+            Throw $_
+        }
+    }
+
+    if (Test-Path .\pwsh\module\build\AzAPICallBeta\AzAPICallBeta.psd1) {
+        try {
+            Remove-Item -Path .\pwsh\module\build\AzAPICallBeta\AzAPICallBeta.psd1 -Verbose -ErrorAction Stop
+        }
+        catch {
+            Write-Host ' Cleaning build for AzAPICallBeta.psd1 failed'
+            Throw $_
+        }
+    }
+
+    if (Test-Path .\pwsh\module\build\AzAPICallBeta\AzAPICallBeta.psm1) {
+        try {
+            Remove-Item -Path .\pwsh\module\build\AzAPICallBeta\AzAPICallBeta.psm1 -Verbose -ErrorAction Stop
+        }
+        catch {
+            Write-Host ' Cleaning build for AzAPICallBeta.psm1 failed'
+            Throw $_
+        }
+    }
+
     try {
-        Remove-Item -Path .\pwsh\module\build\AzAPICall.zip -Verbose -ErrorAction Stop
+        "function getAzAPICallVersion { return '$latestAzAPICallVersionInDev' }" | Set-Content -Path .\pwsh\module\dev\AzAPICall\functions\getAzAPICallVersion.ps1 -Verbose
     }
     catch {
-        Write-Host ' Cleaning build for AzAPICall.zip failed'
-        throw
+        Write-Host ' building AzAPICallVersion.ps1 failed'
+        Throw $_
     }
-}
 
-Write-Host ' Cleaning build\functions'
+    Get-ChildItem -Path .\pwsh\module\dev\AzAPICall\functions | ForEach-Object -Process {
+        Write-Host ' processing:' $PSItem.Name
+        $fileContent = Get-Content -Path .\pwsh\module\dev\AzAPICall\functions\$($PSItem.Name) -Raw -Verbose
+        $fileContent | Add-Content -Path .\pwsh\module\build\AzAPICallBeta\functions\AzAPICallFunctions.ps1  -Verbose
+    }
 
-if (Test-Path .\pwsh\module\build\AzAPICall\functions\AzAPICallFunctions.ps1) {
     try {
-        Remove-Item -Path .\pwsh\module\build\AzAPICall\functions\AzAPICallFunctions.ps1 -Verbose -ErrorAction Stop
+        Copy-Item -Path .\pwsh\module\dev\AzAPICall\AzAPICallBeta.psd1 -Destination .\pwsh\module\build\AzAPICallBeta -Verbose -ErrorAction Stop
     }
     catch {
-        Write-Host ' Cleaning build/functions for AzAPICallFunctions.ps1 failed'
-        throw
+        Write-Host ' Copy AzAPICallBeta.psd1 failed'
+        Throw $_
     }
-}
 
-if (Test-Path .\pwsh\module\build\AzAPICall\AzAPICall.psd1) {
     try {
-        Remove-Item -Path .\pwsh\module\build\AzAPICall\AzAPICall.psd1 -Verbose -ErrorAction Stop
+        Copy-Item -Path .\pwsh\module\dev\AzAPICall\AzAPICallBeta.psm1 -Destination .\pwsh\module\build\AzAPICallBeta -Verbos -ErrorAction Stop
     }
     catch {
-        Write-Host ' Cleaning build for AzAPICall.psd1 failed'
-        throw
+        Write-Host ' Copy AzAPICallBeta.psm1 failed'
+        Throw $_
     }
-}
 
-if (Test-Path .\pwsh\module\build\AzAPICall\AzAPICall.psm1) {
     try {
-        Remove-Item -Path .\pwsh\module\build\AzAPICall\AzAPICall.psm1 -Verbose -ErrorAction Stop
+        Compress-Archive -Path .\pwsh\module\build\AzAPICallBeta -DestinationPath .\pwsh\module\build\AzAPICallBeta.zip
     }
     catch {
-        Write-Host ' Cleaning build for AzAPICall.psm1 failed'
-        throw
+        Write-Host ' Compress-Archive of build\AzAPICallBeta failed'
+        Throw $_
     }
-}
 
-try {
-    "function getAzAPICallVersion { return '$latestAzAPICallVersionInDev' }" | Set-Content -Path .\pwsh\module\dev\AzAPICall\functions\getAzAPICallVersion.ps1 -Verbose
+    Write-Host "Building one file containing all functions done (module version: $latestAzAPICallVersionInDev)"
 }
-catch {
-    Write-Host ' building AzAPICallVersion.ps1 failed'
-    Throw
-}
+else {
+    Write-Host 'Building final module (one file containing all functions)'
 
-Get-ChildItem -Path .\pwsh\module\dev\AzAPICall\functions | ForEach-Object -Process {
-    Write-Host ' processing:' $PSItem.Name
-    $fileContent = Get-Content -Path .\pwsh\module\dev\AzAPICall\functions\$($PSItem.Name) -Raw -Verbose
-    $fileContent | Add-Content -Path .\pwsh\module\build\AzAPICall\functions\AzAPICallFunctions.ps1 -Verbose
-}
+    $latestAzAPICallVersionInDev = (Import-PowerShellDataFile -Path .\pwsh\module\dev\AzAPICall\AzAPICall.psd1 -Verbose -ErrorAction Stop).ModuleVersion
+    if (-not $test) {
+        $latestAzAPICallVersionInGallery = (Find-Module -Name AzAPICall -ErrorAction Stop).Version
+        if ($latestAzAPICallVersionInGallery -eq $latestAzAPICallVersionInDev) {
+            Write-Host "Version conflict (Gallery/Dev):  $latestAzAPICallVersionInGallery = $latestAzAPICallVersionInDev"
+            Write-Host 'For testing use switch parameter -test'
+            Throw $_
+        }
+    }
 
-try {
-    Copy-Item -Path .\pwsh\module\dev\AzAPICall\AzAPICall.psd1 -Destination .\pwsh\module\build\AzAPICall -Verbose -ErrorAction Stop
-}
-catch {
-    Write-Host ' Copy AzAPICall.psd1 failed'
-    Throw
-}
+    if (Test-Path .\pwsh\module\build\AzAPICall.zip) {
+        try {
+            Remove-Item -Path .\pwsh\module\build\AzAPICall.zip -Verbose -ErrorAction Stop
+        }
+        catch {
+            Write-Host ' Cleaning build for AzAPICall.zip failed'
+            Throw $_
+        }
+    }
 
-try {
-    Copy-Item -Path .\pwsh\module\dev\AzAPICall\AzAPICall.psm1 -Destination .\pwsh\module\build\AzAPICall -Verbos -ErrorAction Stop
-}
-catch {
-    Write-Host ' Copy AzAPICall.psm1 failed'
-    Throw
-}
+    Write-Host ' Cleaning build\functions'
 
-try {
-    Compress-Archive -Path .\pwsh\module\build\AzAPICall -DestinationPath .\pwsh\module\build\AzAPICall.zip
-}
-catch {
-    Write-Host ' Compress-Archive of build\AzAPICall failed'
-    Throw
-}
+    if (Test-Path .\pwsh\module\build\AzAPICall\functions\getAzAPICallFunctions.ps1) {
+        try {
+            Remove-Item -Path .\pwsh\module\build\AzAPICall\functions\getAzAPICallFunctions.ps1 -Verbose -ErrorAction Stop
+        }
+        catch {
+            Write-Host ' Cleaning build/functions for getAzAPICallFunctions.ps1 failed'
+            Throw $_
+        }
+    }
 
-Write-Host "Building one file containing all functions done (module version: $latestAzAPICallVersionInDev)"
+    if (Test-Path .\pwsh\module\build\AzAPICall\AzAPICall.psd1) {
+        try {
+            Remove-Item -Path .\pwsh\module\build\AzAPICall\AzAPICall.psd1 -Verbose -ErrorAction Stop
+        }
+        catch {
+            Write-Host ' Cleaning build for AzAPICall.psd1 failed'
+            Throw $_
+        }
+    }
+
+    if (Test-Path .\pwsh\module\build\AzAPICall\AzAPICall.psm1) {
+        try {
+            Remove-Item -Path .\pwsh\module\build\AzAPICall\AzAPICall.psm1 -Verbose -ErrorAction Stop
+        }
+        catch {
+            Write-Host ' Cleaning build for AzAPICall.psm1 failed'
+            Throw $_
+        }
+    }
+
+    try {
+        "function getAzAPICallVersion { return '$latestAzAPICallVersionInDev' }" | Set-Content -Path .\pwsh\module\dev\AzAPICall\functions\getAzAPICallVersion.ps1 -Verbose
+    }
+    catch {
+        Write-Host ' building AzAPICallVersion.ps1 failed'
+        Throw $_
+    }
+
+    Get-ChildItem -Path .\pwsh\module\dev\AzAPICall\functions | ForEach-Object -Process {
+        Write-Host ' processing:' $PSItem.Name
+        $fileContent = Get-Content -Path .\pwsh\module\dev\AzAPICall\functions\$($PSItem.Name) -Raw -Verbose
+        $fileContent | Add-Content -Path .\pwsh\module\build\AzAPICall\functions\AzAPICallFunctions.ps1  -Verbose
+    }
+
+    try {
+        Copy-Item -Path .\pwsh\module\dev\AzAPICall\AzAPICall.psd1 -Destination .\pwsh\module\build\AzAPICall -Verbose -ErrorAction Stop
+    }
+    catch {
+        Write-Host ' Copy AzAPICall.psd1 failed'
+        Throw $_
+    }
+
+    try {
+        Copy-Item -Path .\pwsh\module\dev\AzAPICall\AzAPICall.psm1 -Destination .\pwsh\module\build\AzAPICall -Verbos -ErrorAction Stop
+    }
+    catch {
+        Write-Host ' Copy AzAPICall.psm1 failed'
+        Throw $_
+    }
+
+    try {
+        Compress-Archive -Path .\pwsh\module\build\AzAPICall -DestinationPath .\pwsh\module\build\AzAPICall.zip
+    }
+    catch {
+        Write-Host ' Compress-Archive of build\AzAPICall failed'
+        Throw $_
+    }
+
+    Write-Host "Building one file containing all functions done (module version: $latestAzAPICallVersionInDev)"
+}
