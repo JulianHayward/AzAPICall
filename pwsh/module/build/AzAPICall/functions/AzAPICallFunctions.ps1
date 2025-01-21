@@ -731,7 +731,7 @@ function AzAPICallErrorHandler {
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/*/roleManagement/directory/roleAssignmentScheduleInstances*" } { $getMicrosoftGraphRoleAssignmentScheduleInstances = $true }
     }
 
-    if ($catchResult.error.code -like '*BadGateway*' -or $actualStatusCodePhrase -like '*BadGateway*' -or $catchResult.error.code -like '*GatewayTimeout*' -or $catchResult.error.code -like '*InvalidGatewayHost*' -or $catchResult.error.code -like '*ServerTimeout*' -or $catchResult.error.code -like '*ServiceUnavailable*' -or $catchResult.code -like '*ServiceUnavailable*' -or $catchResult.error.code -like '*MultipleErrorsOccurred*' -or $catchResult.code -like '*InternalServerError*' -or $catchResult.error.code -like '*InternalServerError*' -or $catchResult.error.code -like '*RequestTimeout*' -or $catchResult.code -like '*RequestTimeout*' -or $catchResult.error.code -like '*UnknownError*' -or $catchResult.error.code -eq 500 -or $actualStatusCode -eq 502) {
+    if ($catchResult.error.code -like '*BadGateway*' -or $actualStatusCodePhrase -like '*BadGateway*' -or $catchResult.error.code -like '*GatewayTimeout*' -or $catchResult.error.code -like '*InvalidGatewayHost*' -or $catchResult.error.code -like '*ServerTimeout*' -or $catchResult.error.code -like '*ServiceUnavailable*' -or $catchResult.code -like '*ServiceUnavailable*' -or $catchResult.error.code -like '*MultipleErrorsOccurred*' -or $catchResult.code -like '*InternalServerError*' -or $catchResult.error.code -like '*InternalServerError*' -or $catchResult.error.code -like '*RequestTimeout*' -or $catchResult.code -like '*RequestTimeout*' -or $catchResult.error.code -like '*UnknownError*' -or $catchResult.error.code -eq 500 -or $actualStatusCode -eq 502 -or $catchResult.error.code -eq 499) {
         $maxTries = 15
         if ($tryCounter -gt $maxTries) {
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: exit (after $maxTries tries)"
@@ -1724,7 +1724,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.2.4' }
+function getAzAPICallVersion { return '1.2.5' }
 
 function getJWTDetails {
     <#
