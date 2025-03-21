@@ -1655,6 +1655,62 @@ function createBearerToken {
                     $dumpErrorProcessingNewBearerToken = $true
                 }
             }
+            elseif (($AzApiCallConfiguration['htParameters']).codeRunPlatform -eq 'AzureDevOps') {
+                if (($AzApiCallConfiguration['htParameters']).accountType -eq 'ClientAssertion') {
+                    if ($_ -like '*AADSTS700024*') {
+                        try {
+                            $serviceConnectionId = (Get-ChildItem -Path Env: -Recurse -Include ENDPOINT_DATA_*)[0].Name.Split('_')[2]
+                        }
+                        catch {
+                            Logging -logMessage "-ERROR: Could not find service connection ID, check if the environment variable 'ENDPOINT_DATA_*' exists and has valid data" -logMessageWriteMethod 'Error'
+                        }
+
+                        $uri = "${env:SYSTEM_TEAMFOUNDATIONCOLLECTIONURI}${env:SYSTEM_TEAMPROJECTID}/_apis/distributedtask/hubs/build/plans/${env:SYSTEM_PLANID}/jobs/${env:SYSTEM_JOBID}/oidctoken?serviceConnectionId=${ServiceConnectionId}&api-version=7.1-preview.1"
+
+                        $invokeSplat = @{
+                            'Uri'         = $uri
+                            'Method'      = 'POST'
+                            'Headers'     = @{
+                                'Authorization' = "Bearer $($env:SYSTEM_ACCESSTOKEN)"
+                            }
+                            'ContentType' = 'application/json'
+                            'ErrorAction' = 'Stop'
+                        }
+
+                        try {
+                            $oidcToken = (Invoke-RestMethod @InvokeSplat).oidcToken
+                        }
+                        catch {
+                            Logging -logMessage '-ERROR: Could not get OIDC token from Azure DevOps' -logMessageWriteMethod 'Error'
+                        }
+
+                        # TODO: This function is 2 times, this should be general function within the script which can be re-used
+                        function CreateBearerTokenFromLoginEndPoint {
+                            param (
+                                [Parameter(Mandatory)]
+                                [string]
+                                $TokenRequestEndPoint,
+
+                                [Parameter(Mandatory)]
+                                $OidcToken,
+
+                                [Parameter(Mandatory)]
+                                [object]
+                                $AzAPICallConfiguration
+                            )
+
+                            $loginUri = "$(($AzApiCallConfiguration['azAPIEndpointUrls']).Login)/$(($AzApiCallConfiguration['checkContext']).Tenant.Id)/oauth2/v2.0/token"
+                            $body = "scope=$($TokenRequestEndPoint)/.default&client_id=$(($AzApiCallConfiguration['checkContext']).Account.Id)&grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion=$($OidcToken)"
+                            $bearerToken = Invoke-RestMethod $loginUri -Body $body -ContentType 'application/x-www-form-urlencoded' -ErrorAction SilentlyContinue
+
+                            return $bearerToken
+                        }
+
+                        $createdBearerToken = (CreateBearerTokenFromLoginEndPoint -TokenRequestEndPoint $tokenRequestEndPoint -AzAPICallConfiguration $AzAPICallConfiguration -OidcToken $oidcToken).access_token
+                        setBearerAccessToken -createdBearerToken $createdBearerToken -targetEndPoint $targetEndPoint -AzAPICallConfiguration $AzAPICallConfiguration
+                    }
+                }
+            }
             else {
                 $dumpErrorProcessingNewBearerToken = $true
             }
@@ -1724,7 +1780,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.2.5' }
+function getAzAPICallVersion { return '1.2.6' }
 
 function getJWTDetails {
     <#

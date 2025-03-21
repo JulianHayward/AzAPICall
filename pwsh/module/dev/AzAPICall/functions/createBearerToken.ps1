@@ -158,62 +158,56 @@
             elseif (($AzApiCallConfiguration['htParameters']).codeRunPlatform -eq 'AzureDevOps') {
                 if (($AzApiCallConfiguration['htParameters']).accountType -eq 'ClientAssertion') {
                     if ($_ -like '*AADSTS700024*') {
-                        # The service connection ID can be found stored in any of the environment variables named ENDPOINT_DATA_<ServiceConnectionId>_<Something>URL
                         try {
-                            $ServiceConnectionId = (Get-ChildItem -Path Env: -Recurse -Include ENDPOINT_DATA_*)[0].Name.Split('_')[2]
+                            $serviceConnectionId = (Get-ChildItem -Path Env: -Recurse -Include ENDPOINT_DATA_*)[0].Name.Split('_')[2]
                         }
                         catch {
-                            throw 'Unable to determine service connection ID!'
+                            Logging -logMessage "-ERROR: Could not find service connection ID, check if the environment variable 'ENDPOINT_DATA_*' exists and has valid data" -logMessageWriteMethod 'Error'
                         }
 
-                        # Set up a URI for the Azure DevOps API endpoint to get the ID token from
-                        $Uri = "${env:SYSTEM_TEAMFOUNDATIONCOLLECTIONURI}${env:SYSTEM_TEAMPROJECTID}/_apis/distributedtask/hubs/build/plans/${env:SYSTEM_PLANID}/jobs/${env:SYSTEM_JOBID}/oidctoken?serviceConnectionId=${ServiceConnectionId}&api-version=7.1-preview.1"
+                        $uri = "${env:SYSTEM_TEAMFOUNDATIONCOLLECTIONURI}${env:SYSTEM_TEAMPROJECTID}/_apis/distributedtask/hubs/build/plans/${env:SYSTEM_PLANID}/jobs/${env:SYSTEM_JOBID}/oidctoken?serviceConnectionId=${ServiceConnectionId}&api-version=7.1-preview.1"
 
-                        $InvokeSplat = @{
-                            'Uri'         = $Uri
+                        $invokeSplat = @{
+                            'Uri'         = $uri
                             'Method'      = 'POST'
                             'Headers'     = @{
                                 'Authorization' = "Bearer $($env:SYSTEM_ACCESSTOKEN)"
                             }
                             'ContentType' = 'application/json'
+                            'ErrorAction' = 'Stop'
                         }
-                        $oidcToken = (Invoke-RestMethod @InvokeSplat).oidcToken
 
-                        # $null = Connect-AzAccount -ServicePrincipal -Tenant $($AzAPICallConfiguration['checkContext'].Tenant.Id) -ApplicationId $($AzAPICallConfiguration['checkContext'].Account.Id) -FederatedToken $OidcToken -Environment $($AzAPICallConfiguration['checkContext'].Environment.Name) -Scope Process
-                        # setBearerAccessToken -createdBearerToken $oidcToken -targetEndPoint $targetEndPoint -AzAPICallConfiguration $AzAPICallConfiguration
+                        try {
+                            $oidcToken = (Invoke-RestMethod @InvokeSplat).oidcToken
+                        }
+                        catch {
+                            Logging -logMessage '-ERROR: Could not get OIDC token from Azure DevOps' -logMessageWriteMethod 'Error'
+                        }
 
-                        function createBearerTokenFromLoginEndPoint {
+                        # TODO: This function is 2 times, this should be general function within the script which can be re-used
+                        function CreateBearerTokenFromLoginEndPoint {
                             param (
                                 [Parameter(Mandatory)]
                                 [string]
-                                $tokenRequestEndPoint,
+                                $TokenRequestEndPoint,
 
                                 [Parameter(Mandatory)]
-                                $gitHubJWT,
+                                $OidcToken,
 
                                 [Parameter(Mandatory)]
                                 [object]
                                 $AzAPICallConfiguration
                             )
 
-                            $loginUri = "$(($AzApiCallConfiguration['azAPIEndpointUrls']).Login)/{0}/oauth2/v2.0/token" -f "$(($AzApiCallConfiguration['checkContext']).Tenant.Id)"
-                            $body = "scope=$($tokenRequestEndPoint)/.default&client_id=$(($AzApiCallConfiguration['checkContext']).Account.Id)&grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion={0}" -f $env:ACCESS_TOKEN
+                            $loginUri = "$(($AzApiCallConfiguration['azAPIEndpointUrls']).Login)/$(($AzApiCallConfiguration['checkContext']).Tenant.Id)/oauth2/v2.0/token"
+                            $body = "scope=$($TokenRequestEndPoint)/.default&client_id=$(($AzApiCallConfiguration['checkContext']).Account.Id)&grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion=$($OidcToken)"
                             $bearerToken = Invoke-RestMethod $loginUri -Body $body -ContentType 'application/x-www-form-urlencoded' -ErrorAction SilentlyContinue
-
-                            <# Output the token
-                            $payloadBearerToken = ($bearerToken.access_token -split '\.')[1]
-                            if (($payloadBearerToken.Length % 4) -ne 0) {
-                                $payloadBearerToken = $payloadBearerToken.PadRight($payloadBearerToken.Length + 4 - ($payloadBearerToken.Length % 4), '=')
-                            }
-                            [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($payloadBearerToken)) | ConvertFrom-Json | ConvertTo-Json
-                            #>
 
                             return $bearerToken
                         }
 
-                        # $createdBearerToken = (createBearerTokenFromLoginEndPoint -tokenRequestEndPoint $tokenRequestEndPoint -AzAPICallConfiguration $AzAPICallConfiguration -gitHubJWT $gitHubJWT).access_token
-                        # setBearerAccessToken -createdBearerToken $createdBearerToken -targetEndPoint $targetEndPoint -AzAPICallConfiguration $AzAPICallConfiguration
-                        setBearerAccessToken -createdBearerToken $oidcToken -targetEndPoint $targetEndPoint -AzAPICallConfiguration $AzAPICallConfiguration
+                        $createdBearerToken = (CreateBearerTokenFromLoginEndPoint -TokenRequestEndPoint $tokenRequestEndPoint -AzAPICallConfiguration $AzAPICallConfiguration -OidcToken $oidcToken).access_token
+                        setBearerAccessToken -createdBearerToken $createdBearerToken -targetEndPoint $targetEndPoint -AzAPICallConfiguration $AzAPICallConfiguration
                     }
                 }
             }
