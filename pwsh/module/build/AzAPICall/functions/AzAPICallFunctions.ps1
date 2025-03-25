@@ -1658,6 +1658,8 @@ function createBearerToken {
             elseif (($AzApiCallConfiguration['htParameters']).codeRunPlatform -eq 'AzureDevOps') {
                 if (($AzApiCallConfiguration['htParameters']).accountType -eq 'ClientAssertion') {
                     if ($_ -like '*AADSTS700024*') {
+                        Logging -logMessage " Running on '$(($AzApiCallConfiguration['htParameters']).codeRunPlatform)' OIDC: '$(($AzApiCallConfiguration['htParameters']).accountType)' - Getting Bearer Token from Login endpoint '$(($AzApiCallConfiguration['azAPIEndpointUrls']).Login)'"
+
                         try {
                             $serviceConnectionId = (Get-ChildItem -Path Env: -Recurse -Include ENDPOINT_DATA_*)[0].Name.Split('_')[2]
                         }
@@ -1700,7 +1702,7 @@ function createBearerToken {
                             )
 
                             $loginUri = "$(($AzApiCallConfiguration['azAPIEndpointUrls']).Login)/$(($AzApiCallConfiguration['checkContext']).Tenant.Id)/oauth2/v2.0/token"
-                            $body = "scope=$($TokenRequestEndPoint)/.default&client_id=$(($AzApiCallConfiguration['checkContext']).Account.Id)&grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion=$($OidcToken)"
+                            $body = "scope=$($TokenRequestEndPoint)/.default&client_id=$(($AzApiCallConfiguration['checkContext']).Account.Id)&grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion=$($oidcToken)"
                             $bearerToken = Invoke-RestMethod $loginUri -Body $body -ContentType 'application/x-www-form-urlencoded' -ErrorAction SilentlyContinue
 
                             return $bearerToken
@@ -1780,7 +1782,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.2.6' }
+function getAzAPICallVersion { return '1.3.0' }
 
 function getJWTDetails {
     <#
