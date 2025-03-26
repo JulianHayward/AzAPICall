@@ -1657,7 +1657,7 @@ function createBearerToken {
             }
             elseif (($AzApiCallConfiguration['htParameters']).codeRunPlatform -eq 'AzureDevOps') {
                 if (($AzApiCallConfiguration['htParameters']).accountType -eq 'ClientAssertion') {
-                    if ($_ -like '*AADSTS700024*') {
+                    if ($_ -like '*ClientAssertionCredential authentication failed*') {
                         Logging -logMessage " Running on '$(($AzApiCallConfiguration['htParameters']).codeRunPlatform)' OIDC: '$(($AzApiCallConfiguration['htParameters']).accountType)' - Getting Bearer Token from Login endpoint '$(($AzApiCallConfiguration['azAPIEndpointUrls']).Login)'"
 
                         try {
