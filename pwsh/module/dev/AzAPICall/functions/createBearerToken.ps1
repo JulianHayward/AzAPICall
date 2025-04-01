@@ -161,14 +161,16 @@
                         Logging -logMessage " Running on '$(($AzApiCallConfiguration['htParameters']).codeRunPlatform)' OIDC: '$(($AzApiCallConfiguration['htParameters']).accountType)' - Getting Bearer Token from Login endpoint '$(($AzApiCallConfiguration['azAPIEndpointUrls']).Login)'"
 
                         try {
-                            $serviceConnectionId = (Get-ChildItem -Path Env: -Recurse -Include ENDPOINT_DATA_*)[0].Name.Split('_')[2]
+                            $serviceConnectionId = (Get-ChildItem -ErrorAction Stop -Path Env: -Recurse -Include ENDPOINT_DATA_*)[0].Name.Split('_')[2]
                         }
                         catch {
-                            Logging -logMessage "-ERROR: Could not find service connection ID, check if the environment variable 'ENDPOINT_DATA_*' exists and has valid data" -logMessageWriteMethod 'Error'
+                            Logging -logMessage "-ERROR: OIDC ADO - Could not find service connection ID, check if the environment variable 'ENDPOINT_DATA_*' exists and has valid data" -logMessageWriteMethod 'Error'
+                            Throw "Error - OIDC ADO - Could not find service connection ID, check if the environment variable 'ENDPOINT_DATA_*' exists and has valid data"
                         }
 
                         $uri = "${env:SYSTEM_TEAMFOUNDATIONCOLLECTIONURI}${env:SYSTEM_TEAMPROJECTID}/_apis/distributedtask/hubs/build/plans/${env:SYSTEM_PLANID}/jobs/${env:SYSTEM_JOBID}/oidctoken?serviceConnectionId=${ServiceConnectionId}&api-version=7.1-preview.1"
 
+                        #TODO: We need to check if we have access to the $env:SYSTEM_ACCESSTOKEN
                         $invokeSplat = @{
                             'Uri'         = $uri
                             'Method'      = 'POST'
@@ -183,11 +185,12 @@
                             $oidcToken = (Invoke-RestMethod @InvokeSplat).oidcToken
                         }
                         catch {
-                            Logging -logMessage '-ERROR: Could not get OIDC token from Azure DevOps' -logMessageWriteMethod 'Error'
+                            Logging -logMessage '-ERROR: OIDC ADO - Could not get OIDC token from Azure DevOps' -logMessageWriteMethod 'Error'
+                            Throw 'Error - OIDC ADO - Could not get OIDC token from Azure DevOps'
                         }
 
                         # TODO: This function is 2 times, this should be general function within the script which can be re-used
-                        function CreateBearerTokenFromLoginEndPoint {
+                        function CreateBearerTokenFromLoginEndPointx {
                             param (
                                 [Parameter(Mandatory)]
                                 [string]
@@ -208,7 +211,8 @@
                             return $bearerToken
                         }
 
-                        $createdBearerToken = (CreateBearerTokenFromLoginEndPoint -TokenRequestEndPoint $tokenRequestEndPoint -AzAPICallConfiguration $AzAPICallConfiguration -OidcToken $oidcToken).access_token
+                        $createdBearerToken = (CreateBearerTokenFromLoginEndPointx -TokenRequestEndPoint $tokenRequestEndPoint -AzAPICallConfiguration $AzAPICallConfiguration -OidcToken $oidcToken).access_token
+                        Start-Sleep -Seconds 2
                         setBearerAccessToken -createdBearerToken $createdBearerToken -targetEndPoint $targetEndPoint -AzAPICallConfiguration $AzAPICallConfiguration
                     }
                 }

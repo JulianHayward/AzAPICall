@@ -25,7 +25,7 @@ function AzAPICallErrorHandler {
         { $_ -like "$($AzApiCallConfiguration['azAPIEndpointUrls'].MicrosoftGraph)/*/roleManagement/directory/roleAssignmentScheduleInstances*" } { $getMicrosoftGraphRoleAssignmentScheduleInstances = $true }
     }
 
-    if ($catchResult.error.code -like '*BadGateway*' -or $actualStatusCodePhrase -like '*BadGateway*' -or $catchResult.error.code -like '*GatewayTimeout*' -or $catchResult.error.code -like '*InvalidGatewayHost*' -or $catchResult.error.code -like '*ServerTimeout*' -or $catchResult.error.code -like '*ServiceUnavailable*' -or $catchResult.code -like '*ServiceUnavailable*' -or $catchResult.error.code -like '*MultipleErrorsOccurred*' -or $catchResult.code -like '*InternalServerError*' -or $catchResult.error.code -like '*InternalServerError*' -or $catchResult.error.code -like '*RequestTimeout*' -or $catchResult.code -like '*RequestTimeout*' -or $catchResult.error.code -like '*UnknownError*' -or $catchResult.error.code -eq 500 -or $actualStatusCode -eq 502 -or $catchResult.error.code -eq 499) {
+    if ($catchResult.error.code -like '*BadGateway*' -or $actualStatusCodePhrase -like '*BadGateway*' -or $catchResult.error.code -like '*GatewayTimeout*' -or $catchResult.error.code -like '*InvalidGatewayHost*' -or $catchResult.error.code -like '*ServerTimeout*' -or $catchResult.error.code -like '*ServiceUnavailable*' -or $catchResult.code -like '*ServiceUnavailable*' -or $catchResult.error.code -like '*MultipleErrorsOccurred*' -or $catchResult.code -like '*InternalServerError*' -or $catchResult.error.code -like '*InternalServerError*' -or $catchResult.error.code -like '*RequestTimeout*' -or $catchResult.code -like '*RequestTimeout*' -or $catchResult.error.code -like '*UnknownError*' -or $catchResult.error.code -eq 500 -or ($actualStatusCode -eq 500 -and $actualStatusCodePhrase -eq 'InternalServerError') -or $actualStatusCode -eq 502 -or $catchResult.error.code -eq 499) {
         $maxTries = 15
         if ($tryCounter -gt $maxTries) {
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - AzAPICall: exit (after $maxTries tries)"
@@ -43,7 +43,7 @@ function AzAPICallErrorHandler {
         }
     }
 
-    if ($catchResult.error.code -like '*ExpiredAuthenticationToken*' -or $catchResult.error.code -like '*Authentication_ExpiredToken*' -or $catchResult.error.code -like '*InvalidAuthenticationToken*' -or $catchResult.error.code -like '*TokenExpired*') {
+    if ($catchResult.error.code -like '*ExpiredAuthenticationToken*' -or $catchResult.error.code -like '*Authentication_ExpiredToken*' -or $catchResult.error.code -like '*InvalidAuthenticationToken*' -or $catchResult.error.code -like '*TokenExpired*' -or ($actualStatusCode -eq 401 -and $catchResult.error.code -eq 'AuthenticationFailed')) {
         if ($catchResult.error.code -eq 'InvalidAuthenticationTokenTenant') {
             if ($currentTask -like "getTenantId for subscriptionId '*'") {
                 #handeled in #region getTenantId for subscriptionId
