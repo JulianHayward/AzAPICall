@@ -1668,6 +1668,11 @@ function createBearerToken {
                     if ($_ -like '*ClientAssertionCredential authentication failed*') {
                         Logging -logMessage " Running on '$(($AzApiCallConfiguration['htParameters']).codeRunPlatform)' OIDC: '$(($AzApiCallConfiguration['htParameters']).accountType)' - Getting Bearer Token from Login endpoint '$(($AzApiCallConfiguration['azAPIEndpointUrls']).Login)'"
 
+                        if ([string]::IsNullOrWhiteSpace($env:SYSTEM_ACCESSTOKEN)) {
+                            Logging -logMessage "-ERROR: OIDC ADO - Could not find access token, check if the environment variable 'SYSTEM_ACCESSTOKEN' exists and has valid data. https://learn.microsoft.com/en-us/azure/devops/pipelines/build/variables?view=azure-devops&tabs=yaml#systemaccesstoken" -logMessageWriteMethod 'Error'
+                            Throw "Error - OIDC ADO - Could not find access token, check if the environment variable 'SYSTEM_ACCESSTOKEN' exists and has valid data. https://learn.microsoft.com/en-us/azure/devops/pipelines/build/variables?view=azure-devops&tabs=yaml#systemaccesstoken"
+                        }
+
                         try {
                             $serviceConnectionId = (Get-ChildItem -ErrorAction Stop -Path Env: -Recurse -Include ENDPOINT_DATA_*)[0].Name.Split('_')[2]
                         }
@@ -1794,7 +1799,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.3.1' }
+function getAzAPICallVersion { return '1.3.2' }
 
 function getJWTDetails {
     <#
@@ -2088,19 +2093,19 @@ function initAzAPICall {
 }
 function Logging {
     param (
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory)]
         [string]
         $logMessage,
 
-        [Parameter(Mandatory = $false)]
+        [Parameter()]
         [string]
         $logMessageForegroundColor = $debugForeGroundColor,
 
-        [Parameter(Mandatory = $false)]
+        [Parameter()]
         [string]
         $logMessageWriteMethod = $AzAPICallConfiguration['htParameters'].writeMethod,
 
-        [Parameter(Mandatory = $false)]
+        [Parameter()]
         [bool]
         $preventWriteOutput
     )
@@ -2122,6 +2127,7 @@ function Logging {
         'Progress' { Write-Progress $logMessage }
         'Verbose' { Write-Verbose $logMessage -Verbose }
         'Warning' { Write-Warning $logMessage }
+        'Throw' { throw $logMessage }
         Default { Write-Host $logMessage -ForegroundColor $logMessageForegroundColor }
     }
 }

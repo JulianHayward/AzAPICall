@@ -5,6 +5,7 @@
 You want to have an easy way to interact with the Microsoft Azure API endpoints without getting headache of taking care of valid bearer token and error handling?
 
 ## Table of content
+
 - [AzAPICall](#azapicall)
   - [Table of content](#table-of-content)
   - [AzAPICall example](#azapicall-example)
@@ -20,6 +21,8 @@ You want to have an easy way to interact with the Microsoft Azure API endpoints 
   - [Good to know](#good-to-know)
     - [Don´t accept the defaults](#dont-accept-the-defaults)
     - [AzAPICall Tracking](#azapicall-tracking)
+  - [Runtime environment](#runtime-environment)
+    - [Azure DevOps](#azure-devops)
   - [Prerequisites](#prerequisites)
     - [Powershell Modules](#powershell-modules)
   - [Contribute](#contribute)
@@ -54,13 +57,16 @@ $parameters4AzAPICallModule = @{
 $azAPICallConf = initAzAPICall @parameters4AzAPICallModule
 ```
 
-### How to use AzAPICall ?!  
+### How to use AzAPICall ?
 
 #### Example for Microsoft Graph
-Get AAD Groups:  
+
+Get AAD Groups:
+
 ```POWERSHELL
 AzAPICall -uri "$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)/v1.0/groups" -AzAPICallConfiguration $azAPICallConf
 ```
+
 _confused by_ '`$($azAPICallConf['azAPIEndpointUrls'].MicrosoftGraph)`'_? It´s basically a reference to the correct endpoint (think public cloud, sovereign clouds). You can of course also hardcode the endpoint URI:_
 
 ```POWERSHELL
@@ -68,24 +74,32 @@ AzAPICall -uri "https://graph.microsoft.com/v1.0/groups" -AzAPICallConfiguration
 ```
 
 #### Example for Azure Resource Manager
-List Azure Subscriptions (expect multiple results):  
+
+List Azure Subscriptions (expect multiple results):
+
 ```POWERSHELL
 AzAPICall -uri "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions?api-version=2020-01-01" -AzAPICallConfiguration $azAPICallConf
 ```
-Get Azure Subscription (expect one result):  
+
+Get Azure Subscription (expect one result):
+
 ```POWERSHELL
 AzAPICall -uri "$($azAPICallConf['azAPIEndpointUrls'].ARM)/subscriptions/$($subscriptionId)?api-version=2020-01-01" -AzAPICallConfiguration $azAPICallConf -listenOn Content
 ```
+
 [AzAPICallExample.ps1](pwsh/AzAPICallExample.ps1)
 
 ## Public functions
-* initAzAPICall
-* AzAPICall
-* getAzAPICallFunctions
-* getAzAPICallRuleSet
-* createBearerToken
 
-createBearerToken example: 
+- initAzAPICall
+
+- AzAPICall
+- getAzAPICallFunctions
+- getAzAPICallRuleSet
+- createBearerToken
+
+createBearerToken example:
+
 ```POWERSHELL
 $azAPICallConf = initAzAPICall
 createBearerToken -AzAPICallConfiguration $azapicallconf -targetEndPoint 'Storage'
@@ -107,7 +121,7 @@ Add a new endpoint -> setAzureEnvironment.ps1
 
 ## General Parameters
 
-Parameters that can be used with the initAzAPICall cmdlet 
+Parameters that can be used with the initAzAPICall cmdlet
 
 Example: [Initialize AzAPICall](#initialize-azapicall)
 
@@ -120,7 +134,6 @@ Example: [Initialize AzAPICall](#initialize-azapicall)
 | DebugWriteMethod                    | `string` | Write method in case of wanted or enforced debug. Debug, Error, Host, Information, Output, Progress, Verbose, Warning (default: host)                                                                                                                                                                                                                                                                                        |          |
 | AzAPICallCustomRuleSet              | `object` | wip                                                                                                                                                                                                                                                                                                                                                                                                                          |          |
 | SkipAzContextSubscriptionValidation |  `bool`  | Only use in case you do not have any valid (quotaId != AAD_* & state != disabled) subscriptions in your tenant OR you do not have any permissions on Azure Resources (Management Groups, Subscriptions, Resource Groups, Resources) and but want to connect non-ARM API endpoints such as Microsoft Graph etc. (Per default a subscription is expected to be present in the Az context, if not then AzAPICall will throw..). |          |
-
 
 ## AzAPICall Parameters
 
@@ -144,6 +157,7 @@ Example: `AzAPICall -uri "https://management.azure.com/subscriptions?api-version
 | unhandledErrorAction   | `string`  | When a call to an API returns an Error, that error is processed by AzAPICallErrorHandler. If that error is unhandled, AzAPICallErrorHandler will log the error and Throw a message which terminates the script. This happens when parameter -unhandledErrorAction is set to `Stop` (which is also the default if not configured). When -unhandledErrorAction is set to `Continue`, AzAPICallErrorHandler logs the error including full details to raise an issue at the repo and continues processing. When -unhandledErrorAction is set to `ContinueQuiet`, AzAPICallErrorHandler only logs the error (excluding full details to raise an issue at the repo) and continues processing | default is `Stop`, options: `Continue`, `ContinueQuiet` |
 
 ## Good to know
+
 ### Don´t accept the defaults
 
 By default, endPoints return results in batches of e.g. `100`. You can increase the return count defining e.g. `$top=999` (`$top` requires use of `consistencyLevel` = `eventual`)
@@ -155,6 +169,7 @@ To get some insights on all API calls you can check the `$azAPICallConf['arrayAP
 ```POWERSHELL
 $azAPICallConf['arrayAPICallTracking'][0] | ConvertTo-Json
 ```
+
 ```JSON
 {
   "CurrentTask": "Microsoft Graph API: Get - Groups",
@@ -183,10 +198,13 @@ $azAPICallConf['arrayAPICallTracking'][0] | ConvertTo-Json
                     [..]
                   }"
 ```
+
 As well you can see how fast a AzAPICall was responding:
+
 ```POWERSHELL
 ($azAPICallConf['arrayAPICallTracking'].Duration | Measure-Object -Average -Maximum -Minimum) | ConvertTo-Json
 ```
+
 ```JSON
 {
   "Count": 1000,
@@ -199,8 +217,51 @@ As well you can see how fast a AzAPICall was responding:
 }
 ```
 
+## Runtime environment
+
+### Azure DevOps
+
+If you are using a PowerShell script within a pipeline and an `OIDC` service connection, you need to set the [`SYSTEM_ACCESSTOKEN` environment variable](https://learn.microsoft.com/en-us/azure/devops/pipelines/build/variables?view=azure-devops&tabs=yaml#systemaccesstoken) in the task of your pipeline. This allows the AzAPICall module to use it for token renewal:
+
+```YML
+  - task: AzurePowerShell@5
+    displayName: 'OIDC testing with AzurePowerShell@5'
+    env:
+      SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+    inputs:
+      azureSubscription: '$(ServiceConnection)'
+      azurePowerShellVersion: LatestVersion
+      ScriptType: 'InlineScript'
+      Inline: |
+        try {
+            Install-Module -Name 'AzAPICall' -RequiredVersion '1.3.2' -ErrorAction Stop # ? https://www.powershellgallery.com/packages/AzAPICall/1.3.2
+        }
+        catch {
+            Write-Warning '33596ac3-5aab-4704-aef2-e1de6ac71f05'
+            Throw $_
+        }
+
+        # [..]
+```
+
+Otherwise, you will encounter an error message during your pipeline execution:
+
+```POWERSHELL
+Logging: /home/vsts/work/1/s/AzAPICall/functions/AzAPICallFunctions.ps1:1672
+Line |
+1672 |  …             Logging -logMessage "-ERROR: OIDC ADO - Could not find ac …
+     |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | -ERROR: OIDC ADO - Could not find access token, check if the environment
+     | variable 'SYSTEM_ACCESSTOKEN' exists and has valid data.
+     | https://learn.microsoft.com/en-us/azure/devops/pipelines/build/variables?view=azure-devops&tabs=yaml#systemaccesstoken
+
+##[error]PowerShell exited with code '1'.
+```
+
 ## Prerequisites
+
 ### Powershell Modules
+
 | PowerShell Module |
 | ----------------- |
 | Az.Accounts       |
@@ -210,8 +271,9 @@ As well you can see how fast a AzAPICall was responding:
 Your contribution is welcome.
 
 Thanks to the awesome contributors:
-* Brooks Vaugn
-* Kai Schulz
-* Simon Wahlin
-* Tim Stock
-* Tim Wanierke
+
+- Brooks Vaugn
+- Kai Schulz
+- Simon Wahlin
+- Tim Stock
+- Tim Wanierke
