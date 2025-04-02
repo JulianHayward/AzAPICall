@@ -1,18 +1,18 @@
 ﻿function Logging {
     param (
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory)]
         [string]
         $logMessage,
 
-        [Parameter(Mandatory = $false)]
+        [Parameter()]
         [string]
         $logMessageForegroundColor = $debugForeGroundColor,
 
-        [Parameter(Mandatory = $false)]
+        [Parameter()]
         [string]
         $logMessageWriteMethod = $AzAPICallConfiguration['htParameters'].writeMethod,
 
-        [Parameter(Mandatory = $false)]
+        [Parameter()]
         [bool]
         $preventWriteOutput
     )
@@ -34,6 +34,7 @@
         'Progress' { Write-Progress $logMessage }
         'Verbose' { Write-Verbose $logMessage -Verbose }
         'Warning' { Write-Warning $logMessage }
+        'Throw' { throw $logMessage }
         Default { Write-Host $logMessage -ForegroundColor $logMessageForegroundColor }
     }
 }
