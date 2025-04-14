@@ -1603,9 +1603,29 @@ function createBearerToken {
                 setBearerAccessToken -createdBearerToken $createdBearerToken -targetEndPoint $targetEndPoint -targetCluster $TargetCluster -AzAPICallConfiguration $AzAPICallConfiguration
             }
             else {
-                $tokenRequestEndPoint = ($AzApiCallConfiguration['azAPIEndpointUrls']).$targetEndPoint
-                $createdBearerToken = ([Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($azContext.Account, $azContext.Environment, $azContext.Tenant.id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "$tokenRequestEndPoint")).AccessToken
-                setBearerAccessToken -createdBearerToken $createdBearerToken -targetEndPoint $targetEndPoint -AzAPICallConfiguration $AzAPICallConfiguration
+                try {
+                    $tokenRequestEndPoint = ($AzApiCallConfiguration['azAPIEndpointUrls']).$targetEndPoint
+                }
+                catch {
+                    Write-Warning 'dfc4ced5-695b-4b6f-8ec9-464c1d886322'
+                    Throw $_
+                }
+
+                try {
+                    $createdBearerToken = ([Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($azContext.Account, $azContext.Environment, $azContext.Tenant.id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "$tokenRequestEndPoint")).AccessToken
+                }
+                catch {
+                    Write-Warning '724378c1-37ef-42e2-9a84-16581ee48cf6'
+                    Throw $_
+                }
+
+                try {
+                    setBearerAccessToken -createdBearerToken $createdBearerToken -targetEndPoint $targetEndPoint -AzAPICallConfiguration $AzAPICallConfiguration
+                }
+                catch {
+                    Write-Warning '37bd83b0-0b72-4cd5-ba59-d7b77d2a5d94'
+                    Throw $_
+                }
             }
         }
         catch {
@@ -1728,6 +1748,10 @@ function createBearerToken {
                         Start-Sleep -Seconds 2
                         setBearerAccessToken -createdBearerToken $createdBearerToken -targetEndPoint $targetEndPoint -AzAPICallConfiguration $AzAPICallConfiguration
                     }
+                    else {
+                        Logging -logMessage " -ERROR: OIDC ADO - Not 'ClientAssertionCredential authentication failed'. `$_: $($_)"
+                        $dumpErrorProcessingNewBearerToken = $true
+                    }
                 }
             }
             else {
@@ -1799,7 +1823,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.3.2' }
+function getAzAPICallVersion { return '1.3.3' }
 
 function getJWTDetails {
     <#
