@@ -100,7 +100,7 @@
                 }
                 catch {
                     Write-Warning 'dfc4ced5-695b-4b6f-8ec9-464c1d886322'
-                    Throw $_
+                    Write-Warning $_
                 }
 
                 try {
@@ -108,7 +108,7 @@
                 }
                 catch {
                     Write-Warning '724378c1-37ef-42e2-9a84-16581ee48cf6'
-                    Throw $_
+                    Write-Warning $_
                 }
 
                 try {
@@ -116,7 +116,7 @@
                 }
                 catch {
                     Write-Warning '37bd83b0-0b72-4cd5-ba59-d7b77d2a5d94'
-                    Throw $_
+                    Write-Warning $_
                 }
             }
         }
@@ -124,7 +124,7 @@
             if (($AzApiCallConfiguration['htParameters']).codeRunPlatform -eq 'GitHubActions') {
                 if (($AzApiCallConfiguration['htParameters']).GitHubActionsOIDC) {
                     if (($AzApiCallConfiguration['htParameters']).GitHubActionsOIDC -eq $true) {
-                        if ($_ -like '*AADSTS700024*') {
+                        if ($_ -like '*AADSTS700024*' -or $_ -like '*ClientAssertionCredential authentication failed*') {
                             Logging -logMessage " Running on '$(($AzApiCallConfiguration['htParameters']).codeRunPlatform)' OIDC: '$(($AzApiCallConfiguration['htParameters']).GitHubActionsOIDC)' - Getting Bearer Token from Login endpoint '$(($AzApiCallConfiguration['azAPIEndpointUrls']).Login)'"
 
                             $audience = 'api://AzureADTokenExchange'
@@ -177,7 +177,7 @@
             }
             elseif (($AzApiCallConfiguration['htParameters']).codeRunPlatform -eq 'AzureDevOps') {
                 if (($AzApiCallConfiguration['htParameters']).accountType -eq 'ClientAssertion') {
-                    if ($_ -like '*ClientAssertionCredential authentication failed*') {
+                    if ($_ -like '*AADSTS700024*' -or $_ -like '*ClientAssertionCredential authentication failed*') {
                         Logging -logMessage " Running on '$(($AzApiCallConfiguration['htParameters']).codeRunPlatform)' OIDC: '$(($AzApiCallConfiguration['htParameters']).accountType)' - Getting Bearer Token from Login endpoint '$(($AzApiCallConfiguration['azAPIEndpointUrls']).Login)'"
 
                         if ([string]::IsNullOrWhiteSpace($env:SYSTEM_ACCESSTOKEN)) {
