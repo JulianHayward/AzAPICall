@@ -1608,7 +1608,7 @@ function createBearerToken {
                 }
                 catch {
                     Write-Warning 'dfc4ced5-695b-4b6f-8ec9-464c1d886322'
-                    Write-Warning $_
+                    Throw $_
                 }
 
                 try {
@@ -1616,7 +1616,7 @@ function createBearerToken {
                 }
                 catch {
                     Write-Warning '724378c1-37ef-42e2-9a84-16581ee48cf6'
-                    Write-Warning $_
+                    Throw $_
                 }
 
                 try {
@@ -1624,7 +1624,7 @@ function createBearerToken {
                 }
                 catch {
                     Write-Warning '37bd83b0-0b72-4cd5-ba59-d7b77d2a5d94'
-                    Write-Warning $_
+                    Throw $_
                 }
             }
         }
