@@ -1632,7 +1632,7 @@ function createBearerToken {
             if (($AzApiCallConfiguration['htParameters']).codeRunPlatform -eq 'GitHubActions') {
                 if (($AzApiCallConfiguration['htParameters']).GitHubActionsOIDC) {
                     if (($AzApiCallConfiguration['htParameters']).GitHubActionsOIDC -eq $true) {
-                        if ($_ -like '*AADSTS700024*') {
+                        if ($_ -like '*AADSTS700024*' -or $_ -like '*ClientAssertionCredential authentication failed*') {
                             Logging -logMessage " Running on '$(($AzApiCallConfiguration['htParameters']).codeRunPlatform)' OIDC: '$(($AzApiCallConfiguration['htParameters']).GitHubActionsOIDC)' - Getting Bearer Token from Login endpoint '$(($AzApiCallConfiguration['azAPIEndpointUrls']).Login)'"
 
                             $audience = 'api://AzureADTokenExchange'
@@ -1823,7 +1823,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.3.3.1' }
+function getAzAPICallVersion { return '1.3.3.2' }
 
 function getJWTDetails {
     <#
