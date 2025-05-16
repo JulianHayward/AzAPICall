@@ -1632,7 +1632,7 @@ function createBearerToken {
             if (($AzApiCallConfiguration['htParameters']).codeRunPlatform -eq 'GitHubActions') {
                 if (($AzApiCallConfiguration['htParameters']).GitHubActionsOIDC) {
                     if (($AzApiCallConfiguration['htParameters']).GitHubActionsOIDC -eq $true) {
-                        if ($_ -like '*AADSTS700024*') {
+                        if ($_ -like '*AADSTS700024*' -or $_ -like '*ClientAssertionCredential authentication failed*') {
                             Logging -logMessage " Running on '$(($AzApiCallConfiguration['htParameters']).codeRunPlatform)' OIDC: '$(($AzApiCallConfiguration['htParameters']).GitHubActionsOIDC)' - Getting Bearer Token from Login endpoint '$(($AzApiCallConfiguration['azAPIEndpointUrls']).Login)'"
 
                             $audience = 'api://AzureADTokenExchange'
@@ -1685,7 +1685,7 @@ function createBearerToken {
             }
             elseif (($AzApiCallConfiguration['htParameters']).codeRunPlatform -eq 'AzureDevOps') {
                 if (($AzApiCallConfiguration['htParameters']).accountType -eq 'ClientAssertion') {
-                    if ($_ -like '*ClientAssertionCredential authentication failed*') {
+                    if ($_ -like '*AADSTS700024*' -or $_ -like '*ClientAssertionCredential authentication failed*') {
                         Logging -logMessage " Running on '$(($AzApiCallConfiguration['htParameters']).codeRunPlatform)' OIDC: '$(($AzApiCallConfiguration['htParameters']).accountType)' - Getting Bearer Token from Login endpoint '$(($AzApiCallConfiguration['azAPIEndpointUrls']).Login)'"
 
                         if ([string]::IsNullOrWhiteSpace($env:SYSTEM_ACCESSTOKEN)) {
