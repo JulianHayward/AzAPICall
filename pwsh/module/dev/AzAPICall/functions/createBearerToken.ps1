@@ -122,34 +122,33 @@
         }
         catch {
             if (($AzApiCallConfiguration['htParameters']).codeRunPlatform -eq 'GitHubActions') {
-                if (($AzApiCallConfiguration['htParameters']).GitHubActionsOIDC) {
-                    if (($AzApiCallConfiguration['htParameters']).GitHubActionsOIDC -eq $true) {
-                        if ($_ -like '*AADSTS700024*' -or $_ -like '*ClientAssertionCredential authentication failed*') {
-                            Logging -logMessage " Running on '$(($AzApiCallConfiguration['htParameters']).codeRunPlatform)' OIDC: '$(($AzApiCallConfiguration['htParameters']).GitHubActionsOIDC)' - Getting Bearer Token from Login endpoint '$(($AzApiCallConfiguration['azAPIEndpointUrls']).Login)'"
+                if (($AzApiCallConfiguration['htParameters']).accountType -eq 'ClientAssertion') {
+                    if ($_ -like '*AADSTS700024*' -or $_ -like '*ClientAssertionCredential authentication failed*') {
+                        Logging -logMessage " Running on '$(($AzApiCallConfiguration['htParameters']).codeRunPlatform)' OIDC accountType: '$(($AzApiCallConfiguration['htParameters']).accountType)' - Getting Bearer Token from Login endpoint '$(($AzApiCallConfiguration['azAPIEndpointUrls']).Login)'"
 
-                            $audience = 'api://AzureADTokenExchange'
-                            $url = '{0}&audience={1}' -f $ENV:ACTIONS_ID_TOKEN_REQUEST_URL, $audience
-                            $gitHubJWT = Invoke-RestMethod $url -Headers @{Authorization = ('bearer {0}' -f $ENV:ACTIONS_ID_TOKEN_REQUEST_TOKEN) }
+                        $audience = 'api://AzureADTokenExchange'
+                        $url = '{0}&audience={1}' -f $ENV:ACTIONS_ID_TOKEN_REQUEST_URL, $audience
+                        $gitHubJWT = Invoke-RestMethod $url -Headers @{Authorization = ('bearer {0}' -f $ENV:ACTIONS_ID_TOKEN_REQUEST_TOKEN) }
 
-                            function createBearerTokenFromLoginEndPoint {
-                                param (
-                                    [Parameter(Mandatory)]
-                                    [string]
-                                    $tokenRequestEndPoint,
+                        function createBearerTokenFromLoginEndPoint {
+                            param (
+                                [Parameter(Mandatory)]
+                                [string]
+                                $tokenRequestEndPoint,
 
-                                    [Parameter(Mandatory)]
-                                    $gitHubJWT,
+                                [Parameter(Mandatory)]
+                                $gitHubJWT,
 
-                                    [Parameter(Mandatory)]
-                                    [object]
-                                    $AzAPICallConfiguration
-                                )
+                                [Parameter(Mandatory)]
+                                [object]
+                                $AzAPICallConfiguration
+                            )
 
-                                $loginUri = "$(($AzApiCallConfiguration['azAPIEndpointUrls']).Login)/{0}/oauth2/v2.0/token" -f "$(($AzApiCallConfiguration['checkContext']).Tenant.Id)"
-                                $body = "scope=$($tokenRequestEndPoint)/.default&client_id=$(($AzApiCallConfiguration['checkContext']).Account.Id)&grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion={0}" -f [System.Net.WebUtility]::UrlEncode($gitHubJWT.Value)
-                                $bearerToken = Invoke-RestMethod $loginUri -Body $body -ContentType 'application/x-www-form-urlencoded' -ErrorAction SilentlyContinue
+                            $loginUri = "$(($AzApiCallConfiguration['azAPIEndpointUrls']).Login)/{0}/oauth2/v2.0/token" -f "$(($AzApiCallConfiguration['checkContext']).Tenant.Id)"
+                            $body = "scope=$($tokenRequestEndPoint)/.default&client_id=$(($AzApiCallConfiguration['checkContext']).Account.Id)&grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion={0}" -f [System.Net.WebUtility]::UrlEncode($gitHubJWT.Value)
+                            $bearerToken = Invoke-RestMethod $loginUri -Body $body -ContentType 'application/x-www-form-urlencoded' -ErrorAction SilentlyContinue
 
-                                <# Output the token
+                            <# Output the token
                                 $payloadBearerToken = ($bearerToken.access_token -split '\.')[1]
                                 if (($payloadBearerToken.Length % 4) -ne 0) {
                                     $payloadBearerToken = $payloadBearerToken.PadRight($payloadBearerToken.Length + 4 - ($payloadBearerToken.Length % 4), '=')
@@ -157,15 +156,11 @@
                                 [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($payloadBearerToken)) | ConvertFrom-Json | ConvertTo-Json
                                 #>
 
-                                return $bearerToken
-                            }
+                            return $bearerToken
+                        }
 
-                            $createdBearerToken = (createBearerTokenFromLoginEndPoint -tokenRequestEndPoint $tokenRequestEndPoint -AzAPICallConfiguration $AzAPICallConfiguration -gitHubJWT $gitHubJWT).access_token
-                            setBearerAccessToken -createdBearerToken $createdBearerToken -targetEndPoint $targetEndPoint -AzAPICallConfiguration $AzAPICallConfiguration
-                        }
-                        else {
-                            $dumpErrorProcessingNewBearerToken = $true
-                        }
+                        $createdBearerToken = (createBearerTokenFromLoginEndPoint -tokenRequestEndPoint $tokenRequestEndPoint -AzAPICallConfiguration $AzAPICallConfiguration -gitHubJWT $gitHubJWT).access_token
+                        setBearerAccessToken -createdBearerToken $createdBearerToken -targetEndPoint $targetEndPoint -AzAPICallConfiguration $AzAPICallConfiguration
                     }
                     else {
                         $dumpErrorProcessingNewBearerToken = $true
@@ -178,7 +173,7 @@
             elseif (($AzApiCallConfiguration['htParameters']).codeRunPlatform -eq 'AzureDevOps') {
                 if (($AzApiCallConfiguration['htParameters']).accountType -eq 'ClientAssertion') {
                     if ($_ -like '*AADSTS700024*' -or $_ -like '*ClientAssertionCredential authentication failed*') {
-                        Logging -logMessage " Running on '$(($AzApiCallConfiguration['htParameters']).codeRunPlatform)' OIDC: '$(($AzApiCallConfiguration['htParameters']).accountType)' - Getting Bearer Token from Login endpoint '$(($AzApiCallConfiguration['azAPIEndpointUrls']).Login)'"
+                        Logging -logMessage " Running on '$(($AzApiCallConfiguration['htParameters']).codeRunPlatform)' OIDC accountType: '$(($AzApiCallConfiguration['htParameters']).accountType)' - Getting Bearer Token from Login endpoint '$(($AzApiCallConfiguration['azAPIEndpointUrls']).Login)'"
 
                         if ([string]::IsNullOrWhiteSpace($env:SYSTEM_ACCESSTOKEN)) {
                             Logging -logMessage "-ERROR: OIDC ADO - Could not find access token, check if the environment variable 'SYSTEM_ACCESSTOKEN' exists and has valid data. https://learn.microsoft.com/en-us/azure/devops/pipelines/build/variables?view=azure-devops&tabs=yaml#systemaccesstoken" -logMessageWriteMethod 'Error'
