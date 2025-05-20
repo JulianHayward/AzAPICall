@@ -1823,7 +1823,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.3.3' }
+function getAzAPICallVersion { return '1.3.3.2' }
 
 function getJWTDetails {
     <#
