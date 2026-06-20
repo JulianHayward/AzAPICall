@@ -1020,6 +1020,7 @@ function AzAPICallErrorHandler {
             $catchResult.error.code -eq 'Unauthorized' -or
             ($catchResult.error.code -eq 'NotFound' -and $catchResult.error.message -like '*have valid WebDirect/AIRS offer type*') -or
             ($catchResult.error.code -eq 'NotFound' -and $catchResult.error.message -like 'Cost management data is not supported for subscription(s)*') -or
+            ($catchResult.error.code -eq 'NotFound' -and $catchResult.error.message -like '*returns null or empty list for id*') -or
             $catchResult.error.code -eq 'IndirectCostDisabled' -or
             ($catchResult.error.code -eq 'BadRequest' -and $catchResult.error.message -like '*The offer*is not supported*' -and $catchResult.error.message -notlike '*The offer MS-AZR-0110P is not supported*') -or
             ($catchResult.error.code -eq 'BadRequest' -and $catchResult.error.message -like 'Invalid query definition*') -or
@@ -1112,6 +1113,14 @@ function AzAPICallErrorHandler {
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'NotFoundNotSupported'
+            }
+            return $response
+        }
+
+        if ($catchResult.error.code -eq 'NotFound' -and $catchResult.error.message -like '*returns null or empty list for id*') {
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: seems Subscription is not onboarded to CostManagement yet (new/parked subscription) - skipping"
+            $response = @{
+                action = 'returnCollection' #break or return or returnCollection
             }
             return $response
         }
