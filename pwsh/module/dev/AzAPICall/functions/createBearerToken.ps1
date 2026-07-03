@@ -108,7 +108,7 @@
                 }
                 catch {
                     Write-Warning $_
-                    Throw '724378c1-37ef-42e2-9a84-16581ee48cf6'
+                    Throw "724378c1-37ef-42e2-9a84-16581ee48cf6 - $_"
                 }
 
                 try {
@@ -173,7 +173,7 @@
             }
             elseif (($AzApiCallConfiguration['htParameters']).codeRunPlatform -eq 'AzureDevOps') {
                 if (($AzApiCallConfiguration['htParameters']).accountType -eq 'ClientAssertion') {
-                    if ($_ -like '*AADSTS700024*' -or $_ -like '*ClientAssertionCredential authentication failed*') {
+                    if ($_ -like '*AADSTS700024*' -or $_ -like '*ClientAssertionCredential authentication failed*' -or $_ -like '*724378c1-37ef-42e2-9a84-16581ee48cf6*') {
                         Logging -logMessage " Running on '$(($AzApiCallConfiguration['htParameters']).codeRunPlatform)' OIDC accountType: '$(($AzApiCallConfiguration['htParameters']).accountType)' - Getting Bearer Token from Login endpoint '$(($AzApiCallConfiguration['azAPIEndpointUrls']).Login)'"
 
                         if ([string]::IsNullOrWhiteSpace($env:SYSTEM_ACCESSTOKEN)) {
