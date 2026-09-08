@@ -8,7 +8,7 @@
     Logging -preventWriteOutput $true -logMessage ' Set environment endPoint url mapping'
 
     function testAvailable {
-        [CmdletBinding()]Param(
+        [CmdletBinding()]param(
             [string]$EndpointUrl,
             [string]$Endpoint,
             [string]$EnvironmentKey
@@ -29,7 +29,7 @@
                 Logging -preventWriteOutput $true -logMessage "  Cannot read '$($Endpoint)' endpoint from current context (`$AzApiCallConfiguration.checkContext.Environment.$($EnvironmentKey))"
                 Logging -preventWriteOutput $true -logMessage "  Please check current context (Subscription criteria: quotaId notLike 'AAD*'; state = enabled); Install latest Az.Accounts version"
                 Logging -preventWriteOutput $true -logMessage ($checkContext | Format-List | Out-String)
-                Throw 'Error - check the last console output for details'
+                throw 'Error - check the last console output for details'
             }
         }
         else {
@@ -89,6 +89,20 @@
     Logging -preventWriteOutput $true -logMessage "  Set endpoint: 'MonitorIngest'; endpoint url: '$($AzAPICallConfiguration['azAPIEndpointUrls'].MonitorIngest)'"
     $AzAPICallConfiguration['azAPIEndpointUrls'].MonitorIngestAuth = $ingestMonitorAuthUrls.($AzApiCallConfiguration['checkContext'].Environment.Name)
     Logging -preventWriteOutput $true -logMessage "  Auth endpoint for 'MonitorIngest': '$($AzAPICallConfiguration['azAPIEndpointUrls'].MonitorIngestAuth)'"
+    #TokenExchangeAudience (workload identity federation) https://learn.microsoft.com/en-us/entra/workload-id/workload-identity-federation-config-app-trust-managed-identity#important-considerations-and-restrictions
+    $tokenExchangeAudiences = @{
+        AzureCloud        = 'api://AzureADTokenExchange'
+        AzureUSGovernment = 'api://AzureADTokenExchangeUSGov'
+        AzureChinaCloud   = 'api://AzureADTokenExchangeChina'
+    }
+    if ($tokenExchangeAudiences.($AzApiCallConfiguration['checkContext'].Environment.Name)) {
+        $AzAPICallConfiguration['azAPIEndpointUrls'].TokenExchangeAudience = $tokenExchangeAudiences.($AzApiCallConfiguration['checkContext'].Environment.Name)
+    }
+    else {
+        $AzAPICallConfiguration['azAPIEndpointUrls'].TokenExchangeAudience = $tokenExchangeAudiences.AzureCloud
+        Logging -preventWriteOutput $true -logMessage "  No token exchange audience defined for environment '$($AzApiCallConfiguration['checkContext'].Environment.Name)'; using the default"
+    }
+    Logging -preventWriteOutput $true -logMessage "  Set token exchange audience: '$($AzAPICallConfiguration['azAPIEndpointUrls'].TokenExchangeAudience)'"
 
     #AzureEnvironmentRelatedTargetEndpoints
     $AzAPICallConfiguration['azAPIEndpoints'] = @{ }
