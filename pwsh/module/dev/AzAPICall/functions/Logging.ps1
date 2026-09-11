@@ -34,7 +34,7 @@
         'Progress' { Write-Progress $logMessage }
         'Verbose' { Write-Verbose $logMessage -Verbose }
         'Warning' { Write-Warning $logMessage }
-        'Throw' { throw $logMessage }
-        Default { Write-Host $logMessage -ForegroundColor $logMessageForegroundColor }
+        #'Throw' { throw $logMessage } #initazapicall validateset for -WriteMethod does not cover 'Throw'
+        default { Write-Host $logMessage -ForegroundColor $logMessageForegroundColor }
     }
 }

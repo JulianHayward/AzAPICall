@@ -306,6 +306,7 @@ function AzAPICallErrorHandler {
             $catchResult.error.code -eq 'Unauthorized' -or
             ($catchResult.error.code -eq 'NotFound' -and $catchResult.error.message -like '*have valid WebDirect/AIRS offer type*') -or
             ($catchResult.error.code -eq 'NotFound' -and $catchResult.error.message -like 'Cost management data is not supported for subscription(s)*') -or
+            ($catchResult.error.code -eq 'NotFound' -and $catchResult.error.message -like '*returns null or empty list for id*') -or
             $catchResult.error.code -eq 'IndirectCostDisabled' -or
             ($catchResult.error.code -eq 'BadRequest' -and $catchResult.error.message -like '*The offer*is not supported*' -and $catchResult.error.message -notlike '*The offer MS-AZR-0110P is not supported*') -or
             ($catchResult.error.code -eq 'BadRequest' -and $catchResult.error.message -like 'Invalid query definition*') -or
@@ -395,6 +396,15 @@ function AzAPICallErrorHandler {
 
         if ($catchResult.error.code -eq 'NotFound' -and $catchResult.error.message -like 'Cost management data is not supported for subscription(s)*') {
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: handling as exception - return 'NotFoundNotSupported'"
+            $response = @{
+                action    = 'return' #break or return or returnCollection
+                returnVar = 'NotFoundNotSupported'
+            }
+            return $response
+        }
+
+        if ($catchResult.error.code -eq 'NotFound' -and $catchResult.error.message -like '*returns null or empty list for id*') {
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: seems Subscription is not onboarded to CostManagement yet (new/parked subscription) - skipping - return 'NotFoundNotSupported'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'NotFoundNotSupported'
@@ -546,7 +556,7 @@ function AzAPICallErrorHandler {
     }
 
     elseif (
-            (($getMicrosoftGraphRoleAssignmentSchedules) -and (
+        (($getMicrosoftGraphRoleAssignmentSchedules) -and (
             ($catchResult.error.code -eq 'ResourceNotOnboarded') -or
             ($catchResult.error.code -eq 'TenantNotOnboarded') -or
             ($catchResult.error.code -eq 'InvalidResourceType') -or
@@ -655,14 +665,14 @@ function AzAPICallErrorHandler {
     }
 
     elseif ($getARMDiagnosticSettingsResource -and (
-                ($catchResult.error.code -like '*ResourceNotFound*') -or
-                ($catchResult.code -like '*ResourceNotFound*') -or
-                ($catchResult.error.code -like '*ResourceGroupNotFound*') -or
-                ($catchResult.code -like '*ResourceGroupNotFound*') -or
-                ($catchResult.code -eq 'ResourceTypeNotSupported') -or
-                ($catchResult.code -eq 'ResourceProviderNotSupported') -or
-                ($catchResult.message -like '*invalid character*') -or
-                ($actualStatusCode -eq 404 -and $catchResult.error.code -eq 'InvalidResourceType') #microsoft.datafactory/datafactories
+            ($catchResult.error.code -like '*ResourceNotFound*') -or
+            ($catchResult.code -like '*ResourceNotFound*') -or
+            ($catchResult.error.code -like '*ResourceGroupNotFound*') -or
+            ($catchResult.code -like '*ResourceGroupNotFound*') -or
+            ($catchResult.code -eq 'ResourceTypeNotSupported') -or
+            ($catchResult.code -eq 'ResourceProviderNotSupported') -or
+            ($catchResult.message -like '*invalid character*') -or
+            ($actualStatusCode -eq 404 -and $catchResult.error.code -eq 'InvalidResourceType') #microsoft.datafactory/datafactories
         )
     ) {
         if (($actualStatusCode -eq 404 -and $catchResult.error.code -eq 'InvalidResourceType') -or $catchResult.message -like '*invalid character*' -or $catchResult.error.code -like '*ResourceNotFound*' -or $catchResult.code -like '*ResourceNotFound*' -or $catchResult.error.code -like '*ResourceGroupNotFound*' -or $catchResult.code -like '*ResourceGroupNotFound*') {
@@ -786,7 +796,7 @@ function AzAPICallErrorHandler {
         }
         else {
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo $exitMsg - unhandledErrorAction: $unhandledErrorAction" -logMessageForegroundColor 'DarkRed'
-            Throw 'Error - check the last console output for details'
+            throw 'Error - check the last console output for details'
         }
     }
 

@@ -158,7 +158,7 @@ function AzAPICall {
     do {
         if ($uri -notlike 'https://*') {
             Logging -preventWriteOutput $true -logMessage "  [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] Forced DEBUG: $currentTask -> check uri: '$uri' - EXIT"
-            Throw "Error - check uri: '$uri'"
+            throw "Error - check uri: '$uri'"
         }
 
         $uriSplitted = $uri.split('/')
@@ -181,19 +181,19 @@ function AzAPICall {
                             $targetEndpoint = ($AzApiCallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].ARM).replace('https://', '')))
                         }
                         else {
-                            Throw "Error - Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'"
+                            throw "Error - Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'"
                         }
                     }
                     else {
                         Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'" -logMessageForegroundColor 'Yellow'
                         Logging -preventWriteOutput $true -logMessage "!c712e5a2 Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository)" -logMessageForegroundColor 'Yellow'
-                        Throw "Error - Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'"
+                        throw "Error - Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'"
                     }
                 }
                 else {
                     Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'" -logMessageForegroundColor 'Yellow'
                     Logging -preventWriteOutput $true -logMessage "!ab981d8f Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository)" -logMessageForegroundColor 'Yellow'
-                    Throw "Error - Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'"
+                    throw "Error - Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'"
                 }
             }
             else {
@@ -322,7 +322,7 @@ function AzAPICall {
                         $saTokenRefreshed = $true
                         $notTryCounter = $true
                     }
-                    elseif ($targetEndpoint -eq 'Storage' -and $catchResult -like '*AuthorizationFailure*' -or $catchResult -like '*AuthorizationPermissionDenied*' -or $catchResult -like '*AuthorizationPermissionMismatch*' -or $catchResult -like '*name or service not known*') {
+                    elseif ($targetEndpoint -eq 'Storage' -and ($catchResult -like '*AuthorizationFailure*' -or $catchResult -like '*AuthorizationPermissionDenied*' -or $catchResult -like '*AuthorizationPermissionMismatch*' -or $catchResult -like '*name or service not known*')) {
                         if ($catchResult -like '*AuthorizationPermissionDenied*' -or $catchResult -like '*AuthorizationPermissionMismatch*') {
                             if ($catchResult -like '*AuthorizationPermissionDenied*') {
                                 Logging -preventWriteOutput $true -logMessage "  [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] Forced DEBUG: $currentTask -> $catchResult -> returning string 'AuthorizationPermissionDenied'"
@@ -468,7 +468,7 @@ function AzAPICall {
                                     if ($currentTask -like 'Getting Resource Properties*') {
                                         return 'convertfromJSONError'
                                     }
-                                    Throw 'throwing - Command ConvertFrom-Json failed (*different casing*)'
+                                    throw 'throwing - Command ConvertFrom-Json failed (*different casing*)'
                                 }
                                 catch {
                                     Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] '$currentTask' uri='$uri' Command 'ConvertFrom-Json -AsHashtable' failed" -logMessageForegroundColor 'darkred'
@@ -478,7 +478,7 @@ function AzAPICall {
                                     if ($currentTask -like 'Getting Resource Properties*') {
                                         return 'convertfromJSONError'
                                     }
-                                    Throw 'throwing - Command ConvertFrom-Json -AsHashtable failed (*different casing*)'
+                                    throw 'throwing - Command ConvertFrom-Json -AsHashtable failed (*different casing*)'
                                 }
                             }
                             else {
@@ -544,7 +544,7 @@ function AzAPICall {
                             if ($uri -eq $azAPIRequestConvertedFromJson.nextLink) {
                                 if ($restartDueToDuplicateNextlinkCounter -gt 3) {
                                     Logging -preventWriteOutput $true -logMessage " [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] $currentTask restartDueToDuplicateNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
-                                    Throw 'Error - check the last console output for details'
+                                    throw 'Error - check the last console output for details'
                                 }
                                 else {
                                     $restartDueToDuplicateNextlinkCounter++
@@ -575,12 +575,13 @@ function AzAPICall {
                                         if ($bodyHt.options.'$skiptoken' -eq $azAPIRequestConvertedFromJson.'$skipToken') {
                                             if ($restartDueToDuplicateNextlinkCounter -gt 3) {
                                                 Logging -preventWriteOutput $true -logMessage " [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] $currentTask restartDueToDuplicateSkipTokenCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
-                                                Throw 'Error - check the last console output for details'
+                                                throw 'Error - check the last console output for details'
                                             }
                                             else {
                                                 $restartDueToDuplicateNextlinkCounter++
                                                 debugAzAPICall -debugMessage "skipTokenLog: `$skipToken: $($azAPIRequestConvertedFromJson.'$skipToken') is equal to previous skipToken"
                                                 debugAzAPICall -debugMessage 'skipTokenLog: re-starting'
+                                                $apiCallResultsCollection = [System.Collections.ArrayList]@()
                                                 $bodyht.options.remove('$skiptoken')
                                                 debugAzAPICall -debugMessage "`$body: $($bodyHt | ConvertTo-Json -Depth 99 | Out-String)"
                                             }
@@ -609,7 +610,7 @@ function AzAPICall {
                             if ($uri -eq $azAPIRequestConvertedFromJson.'@odata.nextLink') {
                                 if ($restartDueToDuplicateNextlinkCounter -gt 3) {
                                     Logging -preventWriteOutput $true -logMessage " [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] $currentTask restartDueToDuplicate@odataNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
-                                    Throw 'Error - check the last console output for details'
+                                    throw 'Error - check the last console output for details'
                                 }
                                 else {
                                     $restartDueToDuplicateNextlinkCounter++
@@ -633,7 +634,7 @@ function AzAPICall {
                             if ($uri -eq $azAPIRequestConvertedFromJson.properties.nextLink) {
                                 if ($restartDueToDuplicateNextlinkCounter -gt 3) {
                                     Logging -preventWriteOutput $true -logMessage " [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] $currentTask restartDueToDuplicateNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
-                                    Throw 'Error - check the last console output for details'
+                                    throw 'Error - check the last console output for details'
                                 }
                                 else {
                                     $restartDueToDuplicateNextlinkCounter++
@@ -679,7 +680,7 @@ function AzAPICall {
                             break
                         }
                         else {
-                            Throw 'Error - check the last console output for details'
+                            throw 'Error - check the last console output for details'
                         }
                     }
                 }
@@ -699,7 +700,7 @@ function AzAPICall {
                             break
                         }
                         else {
-                            Throw 'Error - check the last console output for details'
+                            throw 'Error - check the last console output for details'
                         }
                     }
                 }
@@ -707,8 +708,8 @@ function AzAPICall {
         }
     }
     until(
-            ($actualStatusCode -in 200..204 -and -not $isMore ) -or
-            ($Method -eq 'HEAD' -and $actualStatusCode -eq 404)
+        ($actualStatusCode -in 200..204 -and -not $isMore ) -or
+        ($Method -eq 'HEAD' -and $actualStatusCode -eq 404)
     )
     return [PSCustomObject]$apiCallResultsCollection
 }
@@ -1020,6 +1021,7 @@ function AzAPICallErrorHandler {
             $catchResult.error.code -eq 'Unauthorized' -or
             ($catchResult.error.code -eq 'NotFound' -and $catchResult.error.message -like '*have valid WebDirect/AIRS offer type*') -or
             ($catchResult.error.code -eq 'NotFound' -and $catchResult.error.message -like 'Cost management data is not supported for subscription(s)*') -or
+            ($catchResult.error.code -eq 'NotFound' -and $catchResult.error.message -like '*returns null or empty list for id*') -or
             $catchResult.error.code -eq 'IndirectCostDisabled' -or
             ($catchResult.error.code -eq 'BadRequest' -and $catchResult.error.message -like '*The offer*is not supported*' -and $catchResult.error.message -notlike '*The offer MS-AZR-0110P is not supported*') -or
             ($catchResult.error.code -eq 'BadRequest' -and $catchResult.error.message -like 'Invalid query definition*') -or
@@ -1109,6 +1111,15 @@ function AzAPICallErrorHandler {
 
         if ($catchResult.error.code -eq 'NotFound' -and $catchResult.error.message -like 'Cost management data is not supported for subscription(s)*') {
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: handling as exception - return 'NotFoundNotSupported'"
+            $response = @{
+                action    = 'return' #break or return or returnCollection
+                returnVar = 'NotFoundNotSupported'
+            }
+            return $response
+        }
+
+        if ($catchResult.error.code -eq 'NotFound' -and $catchResult.error.message -like '*returns null or empty list for id*') {
+            Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo - (plain : $catchResult) - AzAPICall: seems Subscription is not onboarded to CostManagement yet (new/parked subscription) - skipping - return 'NotFoundNotSupported'"
             $response = @{
                 action    = 'return' #break or return or returnCollection
                 returnVar = 'NotFoundNotSupported'
@@ -1260,7 +1271,7 @@ function AzAPICallErrorHandler {
     }
 
     elseif (
-            (($getMicrosoftGraphRoleAssignmentSchedules) -and (
+        (($getMicrosoftGraphRoleAssignmentSchedules) -and (
             ($catchResult.error.code -eq 'ResourceNotOnboarded') -or
             ($catchResult.error.code -eq 'TenantNotOnboarded') -or
             ($catchResult.error.code -eq 'InvalidResourceType') -or
@@ -1369,14 +1380,14 @@ function AzAPICallErrorHandler {
     }
 
     elseif ($getARMDiagnosticSettingsResource -and (
-                ($catchResult.error.code -like '*ResourceNotFound*') -or
-                ($catchResult.code -like '*ResourceNotFound*') -or
-                ($catchResult.error.code -like '*ResourceGroupNotFound*') -or
-                ($catchResult.code -like '*ResourceGroupNotFound*') -or
-                ($catchResult.code -eq 'ResourceTypeNotSupported') -or
-                ($catchResult.code -eq 'ResourceProviderNotSupported') -or
-                ($catchResult.message -like '*invalid character*') -or
-                ($actualStatusCode -eq 404 -and $catchResult.error.code -eq 'InvalidResourceType') #microsoft.datafactory/datafactories
+            ($catchResult.error.code -like '*ResourceNotFound*') -or
+            ($catchResult.code -like '*ResourceNotFound*') -or
+            ($catchResult.error.code -like '*ResourceGroupNotFound*') -or
+            ($catchResult.code -like '*ResourceGroupNotFound*') -or
+            ($catchResult.code -eq 'ResourceTypeNotSupported') -or
+            ($catchResult.code -eq 'ResourceProviderNotSupported') -or
+            ($catchResult.message -like '*invalid character*') -or
+            ($actualStatusCode -eq 404 -and $catchResult.error.code -eq 'InvalidResourceType') #microsoft.datafactory/datafactories
         )
     ) {
         if (($actualStatusCode -eq 404 -and $catchResult.error.code -eq 'InvalidResourceType') -or $catchResult.message -like '*invalid character*' -or $catchResult.error.code -like '*ResourceNotFound*' -or $catchResult.code -like '*ResourceNotFound*' -or $catchResult.error.code -like '*ResourceGroupNotFound*' -or $catchResult.code -like '*ResourceGroupNotFound*') {
@@ -1500,7 +1511,7 @@ function AzAPICallErrorHandler {
         }
         else {
             Logging -preventWriteOutput $true -logMessage "$defaultErrorInfo $exitMsg - unhandledErrorAction: $unhandledErrorAction" -logMessageForegroundColor 'DarkRed'
-            Throw 'Error - check the last console output for details'
+            throw 'Error - check the last console output for details'
         }
     }
 
@@ -1607,71 +1618,98 @@ function createBearerToken {
                     $tokenRequestEndPoint = ($AzApiCallConfiguration['azAPIEndpointUrls']).$targetEndPoint
                 }
                 catch {
-                    Write-Warning $_
-                    Throw 'dfc4ced5-695b-4b6f-8ec9-464c1d886322'
+                    Logging -logMessage ' failed "tokenRequestEndPoint" dfc4ced5-695b-4b6f-8ec9-464c1d886322'
+                    throw $_
                 }
 
                 try {
                     $createdBearerToken = ([Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($azContext.Account, $azContext.Environment, $azContext.Tenant.id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "$tokenRequestEndPoint")).AccessToken
                 }
                 catch {
-                    Write-Warning $_
-                    Throw '724378c1-37ef-42e2-9a84-16581ee48cf6'
+                    Logging -logMessage ' failed "createdBearerToken" 724378c1-37ef-42e2-9a84-16581ee48cf6'
+                    throw $_
                 }
 
                 try {
                     setBearerAccessToken -createdBearerToken $createdBearerToken -targetEndPoint $targetEndPoint -AzAPICallConfiguration $AzAPICallConfiguration
                 }
                 catch {
-                    Write-Warning $_
-                    Throw '37bd83b0-0b72-4cd5-ba59-d7b77d2a5d94'
+                    Logging -logMessage ' failed "setBearerAccessToken" 37bd83b0-0b72-4cd5-ba59-d7b77d2a5d94'
+                    throw $_
                 }
             }
         }
         catch {
+            function createBearerTokenFromLoginEndPoint {
+                param (
+                    [Parameter(Mandatory)]
+                    [string]
+                    $TokenRequestEndPoint,
+
+                    [Parameter(Mandatory)]
+                    $Token,
+
+                    [Parameter(Mandatory)]
+                    $CodeRunPlatform,
+
+                    [Parameter(Mandatory)]
+                    [object]
+                    $AzAPICallConfiguration
+                )
+
+                $loginUri = "$(($AzApiCallConfiguration['azAPIEndpointUrls']).Login)/$(($AzApiCallConfiguration['checkContext']).Tenant.Id)/oauth2/v2.0/token"
+
+                if ($CodeRunPlatform -eq 'GitHubActions') {
+                    $body = "scope=$($TokenRequestEndPoint)/.default&client_id=$(($AzApiCallConfiguration['checkContext']).Account.Id)&grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion=$(([System.Net.WebUtility]::UrlEncode($Token.Value)))"
+                }
+                elseif ($CodeRunPlatform -eq 'AzureDevOps') {
+                    $body = "scope=$($TokenRequestEndPoint)/.default&client_id=$(($AzApiCallConfiguration['checkContext']).Account.Id)&grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion=$($Token)"
+                }
+                else {
+                    Logging -logMessage " -ERROR: OIDC - Unknown codeRunPlatform '$CodeRunPlatform'" -logMessageWriteMethod 'Error'
+                    throw "Error - OIDC - Unknown codeRunPlatform '$CodeRunPlatform'"
+                }
+
+                try {
+                    $bearerToken = Invoke-RestMethod $loginUri -Body $body -ContentType 'application/x-www-form-urlencoded' -ErrorAction Stop
+                }
+                catch {
+                    Logging -logMessage " -ERROR: OIDC - Failed to get Bearer Token from Login endpoint '$loginUri'" -logMessageWriteMethod 'Error'
+                    throw "Error - OIDC - Failed to get Bearer Token from Login endpoint '$loginUri'"
+                }
+
+                <# Output the token
+                $payloadBearerToken = ($bearerToken.access_token -split '\.')[1]
+                if (($payloadBearerToken.Length % 4) -ne 0) {
+                    $payloadBearerToken = $payloadBearerToken.PadRight($payloadBearerToken.Length + 4 - ($payloadBearerToken.Length % 4), '=')
+                }
+                [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($payloadBearerToken)) | ConvertFrom-Json | ConvertTo-Json
+                #>
+
+                return $bearerToken.access_token
+            }
+
             if (($AzApiCallConfiguration['htParameters']).codeRunPlatform -eq 'GitHubActions') {
                 if (($AzApiCallConfiguration['htParameters']).accountType -eq 'ClientAssertion') {
                     if ($_ -like '*AADSTS700024*' -or $_ -like '*ClientAssertionCredential authentication failed*') {
                         Logging -logMessage " Running on '$(($AzApiCallConfiguration['htParameters']).codeRunPlatform)' OIDC accountType: '$(($AzApiCallConfiguration['htParameters']).accountType)' - Getting Bearer Token from Login endpoint '$(($AzApiCallConfiguration['azAPIEndpointUrls']).Login)'"
 
-                        $audience = 'api://AzureADTokenExchange'
+                        $audience = ($AzApiCallConfiguration['azAPIEndpointUrls']).TokenExchangeAudience
                         $url = '{0}&audience={1}' -f $ENV:ACTIONS_ID_TOKEN_REQUEST_URL, $audience
                         $gitHubJWT = Invoke-RestMethod $url -Headers @{Authorization = ('bearer {0}' -f $ENV:ACTIONS_ID_TOKEN_REQUEST_TOKEN) }
 
-                        function createBearerTokenFromLoginEndPoint {
-                            param (
-                                [Parameter(Mandatory)]
-                                [string]
-                                $tokenRequestEndPoint,
-
-                                [Parameter(Mandatory)]
-                                $gitHubJWT,
-
-                                [Parameter(Mandatory)]
-                                [object]
-                                $AzAPICallConfiguration
-                            )
-
-                            $loginUri = "$(($AzApiCallConfiguration['azAPIEndpointUrls']).Login)/{0}/oauth2/v2.0/token" -f "$(($AzApiCallConfiguration['checkContext']).Tenant.Id)"
-                            $body = "scope=$($tokenRequestEndPoint)/.default&client_id=$(($AzApiCallConfiguration['checkContext']).Account.Id)&grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion={0}" -f [System.Net.WebUtility]::UrlEncode($gitHubJWT.Value)
-                            $bearerToken = Invoke-RestMethod $loginUri -Body $body -ContentType 'application/x-www-form-urlencoded' -ErrorAction SilentlyContinue
-
-                            <# Output the token
-                                $payloadBearerToken = ($bearerToken.access_token -split '\.')[1]
-                                if (($payloadBearerToken.Length % 4) -ne 0) {
-                                    $payloadBearerToken = $payloadBearerToken.PadRight($payloadBearerToken.Length + 4 - ($payloadBearerToken.Length % 4), '=')
-                                }
-                                [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($payloadBearerToken)) | ConvertFrom-Json | ConvertTo-Json
-                                #>
-
-                            return $bearerToken
+                        $createBearerTokenFromLoginEndPointSplat = @{
+                            'TokenRequestEndPoint'   = $tokenRequestEndPoint
+                            'AzAPICallConfiguration' = $AzAPICallConfiguration
+                            'Token'                  = $gitHubJWT
+                            'CodeRunPlatform'        = $(($AzApiCallConfiguration['htParameters']).codeRunPlatform)
                         }
-
-                        $createdBearerToken = (createBearerTokenFromLoginEndPoint -tokenRequestEndPoint $tokenRequestEndPoint -AzAPICallConfiguration $AzAPICallConfiguration -gitHubJWT $gitHubJWT).access_token
+                        $createdBearerToken = (createBearerTokenFromLoginEndPoint @createBearerTokenFromLoginEndPointSplat)
                         Start-Sleep -Seconds 2
                         setBearerAccessToken -createdBearerToken $createdBearerToken -targetEndPoint $targetEndPoint -AzAPICallConfiguration $AzAPICallConfiguration
                     }
                     else {
+                        Logging -logMessage " -ERROR: OIDC GH - Not 'ClientAssertionCredential authentication failed'. `$_: $($_)"
                         $dumpErrorProcessingNewBearerToken = $true
                     }
                 }
@@ -1684,22 +1722,21 @@ function createBearerToken {
                     if ($_ -like '*AADSTS700024*' -or $_ -like '*ClientAssertionCredential authentication failed*') {
                         Logging -logMessage " Running on '$(($AzApiCallConfiguration['htParameters']).codeRunPlatform)' OIDC accountType: '$(($AzApiCallConfiguration['htParameters']).accountType)' - Getting Bearer Token from Login endpoint '$(($AzApiCallConfiguration['azAPIEndpointUrls']).Login)'"
 
-                        if ([string]::IsNullOrWhiteSpace($env:SYSTEM_ACCESSTOKEN)) {
+                        #region get token
+                        if (-not $env:SYSTEM_ACCESSTOKEN -or [string]::IsNullOrWhiteSpace($env:SYSTEM_ACCESSTOKEN)) {
                             Logging -logMessage "-ERROR: OIDC ADO - Could not find access token, check if the environment variable 'SYSTEM_ACCESSTOKEN' exists and has valid data. https://learn.microsoft.com/en-us/azure/devops/pipelines/build/variables?view=azure-devops&tabs=yaml#systemaccesstoken" -logMessageWriteMethod 'Error'
-                            Throw "Error - OIDC ADO - Could not find access token, check if the environment variable 'SYSTEM_ACCESSTOKEN' exists and has valid data. https://learn.microsoft.com/en-us/azure/devops/pipelines/build/variables?view=azure-devops&tabs=yaml#systemaccesstoken"
+                            throw "Error - OIDC ADO - Could not find access token, check if the environment variable 'SYSTEM_ACCESSTOKEN' exists and has valid data. https://learn.microsoft.com/en-us/azure/devops/pipelines/build/variables?view=azure-devops&tabs=yaml#systemaccesstoken"
                         }
 
                         try {
                             $serviceConnectionId = (Get-ChildItem -ErrorAction Stop -Path Env: -Recurse -Include ENDPOINT_DATA_*)[0].Name.Split('_')[2]
+                            $uri = "${env:SYSTEM_TEAMFOUNDATIONCOLLECTIONURI}${env:SYSTEM_TEAMPROJECTID}/_apis/distributedtask/hubs/build/plans/${env:SYSTEM_PLANID}/jobs/${env:SYSTEM_JOBID}/oidctoken?serviceConnectionId=${ServiceConnectionId}&api-version=7.1-preview.1"
                         }
                         catch {
                             Logging -logMessage "-ERROR: OIDC ADO - Could not find service connection ID, check if the environment variable 'ENDPOINT_DATA_*' exists and has valid data" -logMessageWriteMethod 'Error'
-                            Throw "Error - OIDC ADO - Could not find service connection ID, check if the environment variable 'ENDPOINT_DATA_*' exists and has valid data"
+                            throw "Error - OIDC ADO - Could not find service connection ID, check if the environment variable 'ENDPOINT_DATA_*' exists and has valid data"
                         }
 
-                        $uri = "${env:SYSTEM_TEAMFOUNDATIONCOLLECTIONURI}${env:SYSTEM_TEAMPROJECTID}/_apis/distributedtask/hubs/build/plans/${env:SYSTEM_PLANID}/jobs/${env:SYSTEM_JOBID}/oidctoken?serviceConnectionId=${ServiceConnectionId}&api-version=7.1-preview.1"
-
-                        #TODO: We need to check if we have access to the $env:SYSTEM_ACCESSTOKEN
                         $invokeSplat = @{
                             'Uri'         = $uri
                             'Method'      = 'POST'
@@ -1715,32 +1752,17 @@ function createBearerToken {
                         }
                         catch {
                             Logging -logMessage '-ERROR: OIDC ADO - Could not get OIDC token from Azure DevOps' -logMessageWriteMethod 'Error'
-                            Throw 'Error - OIDC ADO - Could not get OIDC token from Azure DevOps'
+                            throw 'Error - OIDC ADO - Could not get OIDC token from Azure DevOps'
                         }
+                        #endregion get token
 
-                        # TODO: This function is 2 times, this should be general function within the script which can be re-used
-                        function CreateBearerTokenFromLoginEndPointx {
-                            param (
-                                [Parameter(Mandatory)]
-                                [string]
-                                $TokenRequestEndPoint,
-
-                                [Parameter(Mandatory)]
-                                $OidcToken,
-
-                                [Parameter(Mandatory)]
-                                [object]
-                                $AzAPICallConfiguration
-                            )
-
-                            $loginUri = "$(($AzApiCallConfiguration['azAPIEndpointUrls']).Login)/$(($AzApiCallConfiguration['checkContext']).Tenant.Id)/oauth2/v2.0/token"
-                            $body = "scope=$($TokenRequestEndPoint)/.default&client_id=$(($AzApiCallConfiguration['checkContext']).Account.Id)&grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion=$($oidcToken)"
-                            $bearerToken = Invoke-RestMethod $loginUri -Body $body -ContentType 'application/x-www-form-urlencoded' -ErrorAction SilentlyContinue
-
-                            return $bearerToken
+                        $createBearerTokenFromLoginEndPointSplat = @{
+                            'TokenRequestEndPoint'   = $tokenRequestEndPoint
+                            'AzAPICallConfiguration' = $AzAPICallConfiguration
+                            'Token'                  = $oidcToken
+                            'CodeRunPlatform'        = $(($AzApiCallConfiguration['htParameters']).codeRunPlatform)
                         }
-
-                        $createdBearerToken = (CreateBearerTokenFromLoginEndPointx -TokenRequestEndPoint $tokenRequestEndPoint -AzAPICallConfiguration $AzAPICallConfiguration -OidcToken $oidcToken).access_token
+                        $createdBearerToken = (CreateBearerTokenFromLoginEndPoint @createBearerTokenFromLoginEndPointSplat)
                         Start-Sleep -Seconds 2
                         setBearerAccessToken -createdBearerToken $createdBearerToken -targetEndPoint $targetEndPoint -AzAPICallConfiguration $AzAPICallConfiguration
                     }
@@ -1748,6 +1770,9 @@ function createBearerToken {
                         Logging -logMessage " -ERROR: OIDC ADO - Not 'ClientAssertionCredential authentication failed'. `$_: $($_)"
                         $dumpErrorProcessingNewBearerToken = $true
                     }
+                }
+                else {
+                    $dumpErrorProcessingNewBearerToken = $true
                 }
             }
             else {
@@ -1758,7 +1783,7 @@ function createBearerToken {
                 Logging -logMessage "Likely your Azure credentials have not been set up or have expired, please run 'Connect-AzAccount -tenantId <tenantId>'" -logMessageForegroundColor 'DarkRed'
                 #Logging -logMessage "It could also well be that there are multiple context in cache, please run 'Clear-AzContext' and then run 'Connect-AzAccount -tenantId <tenantId>'." -logMessageForegroundColor 'DarkRed'
                 Logging -logMessage "-ERROR processing new bearer token request ($(($AzApiCallConfiguration['htParameters']).codeRunPlatform)) for targetEndPoint '$targetEndPoint' ($($AzApiCallConfiguration['azAPIEndpointUrls'].$targetEndPoint)): $_" -logMessageWriteMethod 'Error'
-                Throw 'Error - check the last console output for details'
+                throw 'Error - check the last console output for details'
             }
         }
     }
@@ -1819,7 +1844,7 @@ function getAzAPICallFunctions {
 function getAzAPICallRuleSet {
     return $function:AzAPICallErrorHandler.ToString()
 }
-function getAzAPICallVersion { return '1.4.1' }
+function getAzAPICallVersion { return '1.4.2' }
 
 function getJWTDetails {
     <#
@@ -2147,8 +2172,8 @@ function Logging {
         'Progress' { Write-Progress $logMessage }
         'Verbose' { Write-Verbose $logMessage -Verbose }
         'Warning' { Write-Warning $logMessage }
-        'Throw' { throw $logMessage }
-        Default { Write-Host $logMessage -ForegroundColor $logMessageForegroundColor }
+        #'Throw' { throw $logMessage } #initazapicall validateset for -WriteMethod does not cover 'Throw'
+        default { Write-Host $logMessage -ForegroundColor $logMessageForegroundColor }
     }
 }
 function setAzureEnvironment {
@@ -2161,7 +2186,7 @@ function setAzureEnvironment {
     Logging -preventWriteOutput $true -logMessage ' Set environment endPoint url mapping'
 
     function testAvailable {
-        [CmdletBinding()]Param(
+        [CmdletBinding()]param(
             [string]$EndpointUrl,
             [string]$Endpoint,
             [string]$EnvironmentKey
@@ -2182,7 +2207,7 @@ function setAzureEnvironment {
                 Logging -preventWriteOutput $true -logMessage "  Cannot read '$($Endpoint)' endpoint from current context (`$AzApiCallConfiguration.checkContext.Environment.$($EnvironmentKey))"
                 Logging -preventWriteOutput $true -logMessage "  Please check current context (Subscription criteria: quotaId notLike 'AAD*'; state = enabled); Install latest Az.Accounts version"
                 Logging -preventWriteOutput $true -logMessage ($checkContext | Format-List | Out-String)
-                Throw 'Error - check the last console output for details'
+                throw 'Error - check the last console output for details'
             }
         }
         else {
@@ -2242,6 +2267,20 @@ function setAzureEnvironment {
     Logging -preventWriteOutput $true -logMessage "  Set endpoint: 'MonitorIngest'; endpoint url: '$($AzAPICallConfiguration['azAPIEndpointUrls'].MonitorIngest)'"
     $AzAPICallConfiguration['azAPIEndpointUrls'].MonitorIngestAuth = $ingestMonitorAuthUrls.($AzApiCallConfiguration['checkContext'].Environment.Name)
     Logging -preventWriteOutput $true -logMessage "  Auth endpoint for 'MonitorIngest': '$($AzAPICallConfiguration['azAPIEndpointUrls'].MonitorIngestAuth)'"
+    #TokenExchangeAudience (workload identity federation) https://learn.microsoft.com/en-us/entra/workload-id/workload-identity-federation-config-app-trust-managed-identity#important-considerations-and-restrictions
+    $tokenExchangeAudiences = @{
+        AzureCloud        = 'api://AzureADTokenExchange'
+        AzureUSGovernment = 'api://AzureADTokenExchangeUSGov'
+        AzureChinaCloud   = 'api://AzureADTokenExchangeChina'
+    }
+    if ($tokenExchangeAudiences.($AzApiCallConfiguration['checkContext'].Environment.Name)) {
+        $AzAPICallConfiguration['azAPIEndpointUrls'].TokenExchangeAudience = $tokenExchangeAudiences.($AzApiCallConfiguration['checkContext'].Environment.Name)
+    }
+    else {
+        $AzAPICallConfiguration['azAPIEndpointUrls'].TokenExchangeAudience = $tokenExchangeAudiences.AzureCloud
+        Logging -preventWriteOutput $true -logMessage "  No token exchange audience defined for environment '$($AzApiCallConfiguration['checkContext'].Environment.Name)'; using the default"
+    }
+    Logging -preventWriteOutput $true -logMessage "  Set token exchange audience: '$($AzAPICallConfiguration['azAPIEndpointUrls'].TokenExchangeAudience)'"
 
     #AzureEnvironmentRelatedTargetEndpoints
     $AzAPICallConfiguration['azAPIEndpoints'] = @{ }

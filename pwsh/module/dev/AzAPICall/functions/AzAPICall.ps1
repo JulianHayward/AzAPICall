@@ -158,7 +158,7 @@
     do {
         if ($uri -notlike 'https://*') {
             Logging -preventWriteOutput $true -logMessage "  [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] Forced DEBUG: $currentTask -> check uri: '$uri' - EXIT"
-            Throw "Error - check uri: '$uri'"
+            throw "Error - check uri: '$uri'"
         }
 
         $uriSplitted = $uri.split('/')
@@ -181,19 +181,19 @@
                             $targetEndpoint = ($AzApiCallConfiguration['azAPIEndpoints'].(($AzApiCallConfiguration['azAPIEndpointUrls'].ARM).replace('https://', '')))
                         }
                         else {
-                            Throw "Error - Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'"
+                            throw "Error - Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'"
                         }
                     }
                     else {
                         Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'" -logMessageForegroundColor 'Yellow'
                         Logging -preventWriteOutput $true -logMessage "!c712e5a2 Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository)" -logMessageForegroundColor 'Yellow'
-                        Throw "Error - Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'"
+                        throw "Error - Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'"
                     }
                 }
                 else {
                     Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'" -logMessageForegroundColor 'Yellow'
                     Logging -preventWriteOutput $true -logMessage "!ab981d8f Please report at $($AzApiCallConfiguration['htParameters'].gitHubRepository)" -logMessageForegroundColor 'Yellow'
-                    Throw "Error - Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'"
+                    throw "Error - Unknown targetEndpoint: '$($uriSplitted[2])'; `$uri: '$uri'"
                 }
             }
             else {
@@ -322,7 +322,7 @@
                         $saTokenRefreshed = $true
                         $notTryCounter = $true
                     }
-                    elseif ($targetEndpoint -eq 'Storage' -and $catchResult -like '*AuthorizationFailure*' -or $catchResult -like '*AuthorizationPermissionDenied*' -or $catchResult -like '*AuthorizationPermissionMismatch*' -or $catchResult -like '*name or service not known*') {
+                    elseif ($targetEndpoint -eq 'Storage' -and ($catchResult -like '*AuthorizationFailure*' -or $catchResult -like '*AuthorizationPermissionDenied*' -or $catchResult -like '*AuthorizationPermissionMismatch*' -or $catchResult -like '*name or service not known*')) {
                         if ($catchResult -like '*AuthorizationPermissionDenied*' -or $catchResult -like '*AuthorizationPermissionMismatch*') {
                             if ($catchResult -like '*AuthorizationPermissionDenied*') {
                                 Logging -preventWriteOutput $true -logMessage "  [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] Forced DEBUG: $currentTask -> $catchResult -> returning string 'AuthorizationPermissionDenied'"
@@ -468,7 +468,7 @@
                                     if ($currentTask -like 'Getting Resource Properties*') {
                                         return 'convertfromJSONError'
                                     }
-                                    Throw 'throwing - Command ConvertFrom-Json failed (*different casing*)'
+                                    throw 'throwing - Command ConvertFrom-Json failed (*different casing*)'
                                 }
                                 catch {
                                     Logging -preventWriteOutput $true -logMessage "[AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] '$currentTask' uri='$uri' Command 'ConvertFrom-Json -AsHashtable' failed" -logMessageForegroundColor 'darkred'
@@ -478,7 +478,7 @@
                                     if ($currentTask -like 'Getting Resource Properties*') {
                                         return 'convertfromJSONError'
                                     }
-                                    Throw 'throwing - Command ConvertFrom-Json -AsHashtable failed (*different casing*)'
+                                    throw 'throwing - Command ConvertFrom-Json -AsHashtable failed (*different casing*)'
                                 }
                             }
                             else {
@@ -544,7 +544,7 @@
                             if ($uri -eq $azAPIRequestConvertedFromJson.nextLink) {
                                 if ($restartDueToDuplicateNextlinkCounter -gt 3) {
                                     Logging -preventWriteOutput $true -logMessage " [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] $currentTask restartDueToDuplicateNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
-                                    Throw 'Error - check the last console output for details'
+                                    throw 'Error - check the last console output for details'
                                 }
                                 else {
                                     $restartDueToDuplicateNextlinkCounter++
@@ -575,12 +575,13 @@
                                         if ($bodyHt.options.'$skiptoken' -eq $azAPIRequestConvertedFromJson.'$skipToken') {
                                             if ($restartDueToDuplicateNextlinkCounter -gt 3) {
                                                 Logging -preventWriteOutput $true -logMessage " [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] $currentTask restartDueToDuplicateSkipTokenCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
-                                                Throw 'Error - check the last console output for details'
+                                                throw 'Error - check the last console output for details'
                                             }
                                             else {
                                                 $restartDueToDuplicateNextlinkCounter++
                                                 debugAzAPICall -debugMessage "skipTokenLog: `$skipToken: $($azAPIRequestConvertedFromJson.'$skipToken') is equal to previous skipToken"
                                                 debugAzAPICall -debugMessage 'skipTokenLog: re-starting'
+                                                $apiCallResultsCollection = [System.Collections.ArrayList]@()
                                                 $bodyht.options.remove('$skiptoken')
                                                 debugAzAPICall -debugMessage "`$body: $($bodyHt | ConvertTo-Json -Depth 99 | Out-String)"
                                             }
@@ -609,7 +610,7 @@
                             if ($uri -eq $azAPIRequestConvertedFromJson.'@odata.nextLink') {
                                 if ($restartDueToDuplicateNextlinkCounter -gt 3) {
                                     Logging -preventWriteOutput $true -logMessage " [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] $currentTask restartDueToDuplicate@odataNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
-                                    Throw 'Error - check the last console output for details'
+                                    throw 'Error - check the last console output for details'
                                 }
                                 else {
                                     $restartDueToDuplicateNextlinkCounter++
@@ -633,7 +634,7 @@
                             if ($uri -eq $azAPIRequestConvertedFromJson.properties.nextLink) {
                                 if ($restartDueToDuplicateNextlinkCounter -gt 3) {
                                     Logging -preventWriteOutput $true -logMessage " [AzAPICall $($AzApiCallConfiguration['htParameters'].azAPICallModuleVersion)] $currentTask restartDueToDuplicateNextlinkCounter: #$($restartDueToDuplicateNextlinkCounter) - Please report this error/exit"
-                                    Throw 'Error - check the last console output for details'
+                                    throw 'Error - check the last console output for details'
                                 }
                                 else {
                                     $restartDueToDuplicateNextlinkCounter++
@@ -679,7 +680,7 @@
                             break
                         }
                         else {
-                            Throw 'Error - check the last console output for details'
+                            throw 'Error - check the last console output for details'
                         }
                     }
                 }
@@ -699,7 +700,7 @@
                             break
                         }
                         else {
-                            Throw 'Error - check the last console output for details'
+                            throw 'Error - check the last console output for details'
                         }
                     }
                 }
@@ -707,8 +708,8 @@
         }
     }
     until(
-            ($actualStatusCode -in 200..204 -and -not $isMore ) -or
-            ($Method -eq 'HEAD' -and $actualStatusCode -eq 404)
+        ($actualStatusCode -in 200..204 -and -not $isMore ) -or
+        ($Method -eq 'HEAD' -and $actualStatusCode -eq 404)
     )
     return [PSCustomObject]$apiCallResultsCollection
 }
